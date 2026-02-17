@@ -1388,11 +1388,14 @@
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Action</div>
                 </th>
+                <th style="border:1px solid #000; padding:8px; text-align:center;">
+                  <div>Delete</div>
+                </th>
               </tr>
             </thead>
             <tbody id="suppliersTableBody">
               <tr>
-                <td colspan="7" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+                <td colspan="8" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
                   No suppliers saved yet. Create suppliers first.
                 </td>
               </tr>
@@ -1401,9 +1404,22 @@
         </div>
       </div>
 
+      <!-- Supplier Delete Confirmation Modal -->
+      <div id="supplierDeleteModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#fff; border:2px solid #000; padding:30px; min-width:350px; max-width:450px; text-align:center;">
+          <h3 style="margin:0 0 15px 0; font-weight:700;">Delete Supplier</h3>
+          <p style="margin:0 0 20px 0;">Are you sure you want to delete<br><strong id="supplierDeleteName"></strong>?</p>
+          <p style="margin:0 0 20px 0; font-size:12px; color:#666;">This action cannot be undone. All members will also be deleted.</p>
+          <div style="display:flex; gap:10px; justify-content:center;">
+            <button id="supplierDeleteConfirmBtn" class="page-btn" style="background:#dc3545; color:#fff; padding:8px 24px; font-weight:600;">Confirm</button>
+            <button id="supplierDeleteCancelBtn" class="page-btn" style="padding:8px 24px; font-weight:600;">Cancel</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Quotation View board -->
-      <div id="quotationViewPanel" style="border:1px solid #000; padding:20px; margin-bottom:20px; display:none;">
-        <div style="margin-bottom:15px; display:flex; gap:10px; flex-wrap:wrap;">
+      <div id="quotationViewPanel" style="border:1px solid #000; padding:0; margin-bottom:0; display:none; flex:1; min-height:0; overflow-y:auto;">
+        <div style="margin-bottom:0; display:flex; gap:10px; flex-wrap:wrap; position:sticky; top:0; background:#fff; z-index:50; padding:20px 20px 15px 20px; border-bottom:1px solid #000;">
           <button id="refreshQuotationsBtn" class="page-btn">Refresh List</button>
           <button id="selectAllQuotationsBtn" class="page-btn">Select All</button>
           <button id="deselectAllQuotationsBtn" class="page-btn">Deselect All</button>
@@ -1412,7 +1428,7 @@
         </div>
 
         <!-- Quotation Table -->
-        <div id="quotationsTableContainer">
+        <div id="quotationsTableContainer" style="padding:0 20px 20px 20px;">
           <table id="quotationsTable" style="width:100%; border-collapse:collapse; border:1px solid #000;">
             <thead>
               <tr style="background:#f8f8f8;">
@@ -1497,8 +1513,8 @@
       </div>
 
       <!-- Outsourcing View board -->
-      <div id="outsourcingViewPanel" style="border:1px solid #000; padding:20px; margin-bottom:20px; display:none;">
-        <div style="margin-bottom:15px; display:flex; gap:10px; flex-wrap:wrap;">
+      <div id="outsourcingViewPanel" style="border:1px solid #000; padding:0; margin-bottom:0; display:none; flex:1; min-height:0; overflow-y:auto;">
+        <div style="margin-bottom:0; display:flex; gap:10px; flex-wrap:wrap; position:sticky; top:0; background:#fff; z-index:50; padding:20px 20px 15px 20px; border-bottom:1px solid #000;">
           <button id="refreshOutsourcingBtn" class="page-btn">Refresh List</button>
           <button id="selectAllOutsourcingBtn" class="page-btn">Select All</button>
           <button id="deselectAllOutsourcingBtn" class="page-btn">Deselect All</button>
@@ -1507,7 +1523,7 @@
         </div>
 
         <!-- Outsourcing Table -->
-        <div id="outsourcingTableContainer">
+        <div id="outsourcingTableContainer" style="padding:0 20px 20px 20px;">
           <table id="outsourcingTable" style="width:100%; border-collapse:collapse; border:1px solid #000;">
             <thead>
               <tr style="background:#f8f8f8;">
@@ -1738,7 +1754,7 @@
       </div>
 
       <!-- Email UI (next step; hidden for now) -->
-      <div id="emails" style="margin:0; display:none; width:100%;">
+      <div id="emails" style="margin:0; display:none; width:100%; flex:1; overflow-y:auto; min-height:0;">
         <div class="topbar">
           <button id="composeBtn" class="page-btn">Compose</button>
           <button id="refreshEmailsBtn" class="page-btn">Refresh List</button>
@@ -2677,14 +2693,12 @@
         chartInstance.destroy();
       }
 
-      // Prepare data for Chart.js - BLACK AND WHITE ONLY
+      // Prepare data for Chart.js - use same colors as bar chart
       const labels = dashboardData.statuses.map(s => s.name);
       const data = dashboardData.statuses.map(s => s.count);
+      const colors = dashboardData.statuses.map(s => s.color);
 
-      // Black and white gradient shades
-      const bwColors = ['#000000', '#333333', '#666666', '#999999', '#cccccc', '#e5e5e5'];
-
-      // Create new Chart.js doughnut chart with minimal black and white design
+      // Create new Chart.js doughnut chart
       const ctx = canvas.getContext('2d');
       chartInstance = new Chart(ctx, {
         type: 'doughnut',
@@ -2692,7 +2706,7 @@
           labels: labels,
           datasets: [{
             data: data,
-            backgroundColor: bwColors.slice(0, data.length),
+            backgroundColor: colors,
             borderColor: '#fff',
             borderWidth: 3,
             hoverBorderWidth: 4,
@@ -7675,6 +7689,44 @@
       }
     }
 
+    // Supplier delete confirmation modal logic
+    let pendingDeleteSupplierId = null;
+    const supplierDeleteModal = document.getElementById('supplierDeleteModal');
+    const supplierDeleteName = document.getElementById('supplierDeleteName');
+    const supplierDeleteConfirmBtn = document.getElementById('supplierDeleteConfirmBtn');
+    const supplierDeleteCancelBtn = document.getElementById('supplierDeleteCancelBtn');
+
+    function onDeleteSupplierButtonClick(event) {
+      const btn = event.target.closest('button');
+      pendingDeleteSupplierId = btn.dataset.suppId;
+      supplierDeleteName.textContent = btn.dataset.suppName;
+      supplierDeleteModal.style.display = 'flex';
+    }
+
+    supplierDeleteCancelBtn.onclick = () => {
+      supplierDeleteModal.style.display = 'none';
+      pendingDeleteSupplierId = null;
+    };
+
+    supplierDeleteModal.onclick = (e) => {
+      if (e.target === supplierDeleteModal) {
+        supplierDeleteModal.style.display = 'none';
+        pendingDeleteSupplierId = null;
+      }
+    };
+
+    supplierDeleteConfirmBtn.onclick = async () => {
+      if (!pendingDeleteSupplierId) return;
+      try {
+        await deleteSupplierFromStorage(pendingDeleteSupplierId);
+        supplierDeleteModal.style.display = 'none';
+        pendingDeleteSupplierId = null;
+        await displaySuppliers();
+      } catch (error) {
+        alert('Failed to delete supplier: ' + error.message);
+      }
+    };
+
     async function initializeSupplierViewPanel() {
       // Refresh button functionality
       const refreshBtn = document.getElementById('refreshSuppliersBtn');
@@ -7752,6 +7804,9 @@
             </td>
             <td style="border:1px solid #000; padding:8px; text-align:right;">
               <button class="btn" style="padding:4px 8px; font-weight:600;" data-supp-index="${suppIndex}" onclick="onEditSupplierButtonClick(event)">Edit</button>
+            </td>
+            <td style="border:1px solid #000; padding:8px; text-align:center;">
+              <button class="btn" style="padding:4px 8px; font-weight:600; background:#dc3545; color:#fff;" data-supp-id="${supplier.id}" data-supp-name="${escapeHtml(supplier.companyName)}" onclick="onDeleteSupplierButtonClick(event)">Delete</button>
             </td>
           </tr>
         `;
@@ -8120,6 +8175,8 @@
         selectAllBtn.onclick = () => {
           const checkboxes = document.querySelectorAll('.quotation-checkbox');
           checkboxes.forEach(cb => cb.checked = true);
+          const headerCb = document.getElementById('selectAllCheckbox');
+          if (headerCb) headerCb.checked = true;
         };
       }
 
@@ -8129,6 +8186,17 @@
         deselectAllBtn.onclick = () => {
           const checkboxes = document.querySelectorAll('.quotation-checkbox');
           checkboxes.forEach(cb => cb.checked = false);
+          const headerCb = document.getElementById('selectAllCheckbox');
+          if (headerCb) headerCb.checked = false;
+        };
+      }
+
+      // Header checkbox toggle all
+      const selectAllQuotationCb = document.getElementById('selectAllCheckbox');
+      if (selectAllQuotationCb) {
+        selectAllQuotationCb.onchange = () => {
+          const checkboxes = document.querySelectorAll('.quotation-checkbox');
+          checkboxes.forEach(cb => cb.checked = selectAllQuotationCb.checked);
         };
       }
 
@@ -8173,6 +8241,8 @@
         selectAllBtn.onclick = () => {
           const checkboxes = document.querySelectorAll('.outsourcing-checkbox');
           checkboxes.forEach(cb => cb.checked = true);
+          const headerCb = document.getElementById('selectAllOutsourcingCheckbox');
+          if (headerCb) headerCb.checked = true;
         };
       }
 
@@ -8182,6 +8252,17 @@
         deselectAllBtn.onclick = () => {
           const checkboxes = document.querySelectorAll('.outsourcing-checkbox');
           checkboxes.forEach(cb => cb.checked = false);
+          const headerCb = document.getElementById('selectAllOutsourcingCheckbox');
+          if (headerCb) headerCb.checked = false;
+        };
+      }
+
+      // Header checkbox toggle all
+      const selectAllOutsourcingCb = document.getElementById('selectAllOutsourcingCheckbox');
+      if (selectAllOutsourcingCb) {
+        selectAllOutsourcingCb.onchange = () => {
+          const checkboxes = document.querySelectorAll('.outsourcing-checkbox');
+          checkboxes.forEach(cb => cb.checked = selectAllOutsourcingCb.checked);
         };
       }
 
@@ -8214,27 +8295,37 @@
       const selectedIds = Array.from(checkboxes).map(cb => cb.dataset.quotationId);
 
       if (selectedIds.length === 0) {
-        showModal({
-          title: 'No Selection',
-          body: 'Please select at least one quotation to delete.',
-          buttons: [{ text: 'OK', action: 'close' }]
-        });
+        alert('Please select at least one quotation to delete.');
         return;
       }
 
-      showModal({
-        title: 'Confirm Delete',
-        body: `Are you sure you want to delete ${selectedIds.length} quotation(s)?`,
-        buttons: [
-          { text: 'Cancel', action: 'close' },
-          { text: 'Delete', action: async () => {
-            for (const id of selectedIds) {
-              await deleteQuotationFromStorage(id);
-            }
-            await displayOutsourcingQuotations();
-          }}
-        ]
-      });
+      if (!confirm(`Are you sure you want to delete ${selectedIds.length} quotation(s)? This action cannot be undone.`)) {
+        return;
+      }
+
+      try {
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const id of selectedIds) {
+          try {
+            await deleteQuotationFromStorage(id);
+            successCount++;
+          } catch (error) {
+            console.error(`Failed to delete outsourcing quotation ${id}:`, error);
+            failCount++;
+          }
+        }
+
+        await displayOutsourcingQuotations();
+
+        if (failCount > 0) {
+          alert(`Deleted ${successCount}, failed ${failCount}.`);
+        }
+      } catch (error) {
+        console.error('Batch delete error:', error);
+        alert('Error during batch delete: ' + error.message);
+      }
     }
 
     // Initialize Outsourcing Panel (for creating outsourcing quotations)
@@ -8388,7 +8479,7 @@
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.status || 'pending'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${formatDate(quotation.dateCreated)}</td>
                   <td style="border:1px solid #000; padding:8px;">
-                    <strong>${supplier.name}</strong><br>
+                    <strong>${supplier.companyName}</strong><br>
                     <span style="font-size:12px; color:#666;">${memberNames}</span>
                   </td>
                   <td style="border:1px solid #000; padding:8px; text-align:center;" rowspan="${suppliers.length}">
@@ -8404,7 +8495,7 @@
               rows.push(`
                 <tr style="cursor:pointer;" onclick="viewQuotationDetails(${quotation.id})">
                   <td style="border:1px solid #000; padding:8px;">
-                    <strong>${supplier.name}</strong><br>
+                    <strong>${supplier.companyName}</strong><br>
                     <span style="font-size:12px; color:#666;">${memberNames}</span>
                   </td>
                 </tr>
@@ -9152,20 +9243,14 @@
           closeQuotationViewModal();
         }
 
-        await displayQuotations(); // Refresh the table
+        // Refresh both tables since this could be called from either view
+        await displayQuotations();
+        await displayOutsourcingQuotations();
 
-        showModal({
-          title: 'Success',
-          body: 'Quotation deleted successfully.',
-          buttons: [{ text: 'OK', action: 'close' }]
-        });
+        alert('Quotation deleted successfully.');
       } catch (error) {
         console.error('Error deleting quotation:', error);
-        showModal({
-          title: 'Error',
-          body: 'Failed to delete quotation. Please try again.',
-          buttons: [{ text: 'OK', action: 'close' }]
-        });
+        alert('Failed to delete quotation. Please try again.');
       }
     }
 

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ERP NLR - Screen Captures (20260212-221308)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e1e4e8; padding: 24px; }
+  h1 { font-size: 1.4em; font-weight: 600; margin-bottom: 6px; color: #fff; }
+  .subtitle { font-size: 0.85em; color: #666; margin-bottom: 28px; }
+  .section { margin-bottom: 32px; }
+  .section-title { font-size: 0.95em; font-weight: 600; color: #58a6ff; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid #21262d; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .card { background: #161b22; border: 1px solid #21262d; border-radius: 8px; overflow: hidden; cursor: pointer; transition: border-color 0.15s, transform 0.15s; }
+  .card:hover { border-color: #58a6ff; transform: translateY(-2px); }
+  .card img { width: 100%; height: 160px; object-fit: cover; object-position: top left; display: block; }
+  .card .label { padding: 8px 10px; font-size: 0.75em; color: #8b949e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .label span { color: #c9d1d9; font-weight: 500; }
+  /* Lightbox */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 1000; justify-content: center; align-items: center; flex-direction: column; }
+  .overlay.active { display: flex; }
+  .overlay img { max-width: 92vw; max-height: 82vh; border-radius: 6px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
+  .overlay .caption { margin-top: 12px; font-size: 0.85em; color: #8b949e; }
+  .overlay .close { position: fixed; top: 16px; right: 20px; font-size: 2em; color: #666; cursor: pointer; z-index: 1001; line-height: 1; }
+  .overlay .close:hover { color: #fff; }
+  .overlay .nav { position: fixed; top: 50%; font-size: 2.5em; color: #444; cursor: pointer; z-index: 1001; user-select: none; }
+  .overlay .nav:hover { color: #fff; }
+  .overlay .prev { left: 16px; }
+  .overlay .next { right: 16px; }
+  .counter { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); font-size: 0.8em; color: #555; }
+</style>
+</head>
+<body>
+
+<h1>ERP NLR — Screen Captures</h1>
+<div class="subtitle">20260212-222007 &middot; 66 screenshots &middot; Click to view</div>
+
+<div id="app"></div>
+
+<div class="overlay" id="lightbox">
+  <span class="close" onclick="closeLB()">&times;</span>
+  <span class="nav prev" onclick="navLB(-1)">&#8249;</span>
+  <span class="nav next" onclick="navLB(1)">&#8250;</span>
+  <img id="lbImg" src="" />
+  <div class="caption" id="lbCaption"></div>
+  <div class="counter" id="lbCounter"></div>
+</div>
+
+<script>
+const sections = [
+  { title: '00 — Dashboard', prefix: '00' },
+  { title: '01 — Email', prefix: '01' },
+  { title: '02 — Customer', prefix: '02' },
+  { title: '03 — Supplier', prefix: '03' },
+  { title: '04 — Task List', prefix: '04' },
+  { title: '05 — Skills', prefix: '05' },
+  { title: '06 — Quotation', prefix: '06' },
+  { title: '07 — Outsourcing', prefix: '07' },
+  { title: '08 — Setting', prefix: '08' },
+];
+
+const files = [
+  '00-0001-dashboard',
+  '00-0002-dashboard-pie',
+  '00-0003-dashboard-bar',
+  '00-0004-dashboard-quotation-expand',
+  '00-0005-dashboard-outsourcing-expand',
+  '01-0001-email-receive',
+  '01-0002-email-receive-compose',
+  '01-0003-email-receive-refresh',
+  '01-0004-email-receive-test-send',
+  '01-0005-email-receive-test-smtp',
+  '01-0006-email-receive-modal',
+  '01-0007-email-receive-modal-quotation-expand',
+  '01-0008-email-receive-quotation-hang-tag',
+  '01-0009-email-receive-quotation-woven-label',
+  '01-0010-email-receive-quotation-care-label',
+  '01-0011-email-receive-quotation-transfer',
+  '01-0012-email-receive-quotation-outsource',
+  '01-0013-email-receive-image-lib',
+  '01-0014-email-send',
+  '01-0015-email-send-compose',
+  '01-0016-email-send-compose-dummy-fill',
+  '01-0017-email-send-compose-cancel',
+  '01-0018-email-send-test-send',
+  '01-0019-email-send-test-smtp',
+  '01-0020-email-send-refresh',
+  '02-0001-customer-create',
+  '02-0002-customer-create-dummy-input',
+  '02-0003-customer-create-save',
+  '02-0004-customer-create-add-member',
+  '02-0005-customer-create-dummy-member',
+  '02-0006-customer-view',
+  '02-0007-customer-view-refresh',
+  '03-0001-supplier-create',
+  '03-0002-supplier-create-dummy-input',
+  '03-0003-supplier-create-save',
+  '03-0004-supplier-create-add-member',
+  '03-0005-supplier-create-dummy-member',
+  '03-0006-supplier-view',
+  '03-0007-supplier-view-refresh',
+  '04-0001-task-list',
+  '05-0001-skills',
+  '05-0002-skills-create',
+  '05-0003-skills-refresh',
+  '06-0001-quotation-create',
+  '06-0002-quotation-create-hang-tag',
+  '06-0003-quotation-create-woven-label',
+  '06-0004-quotation-create-care-label',
+  '06-0005-quotation-create-heat-transfer',
+  '06-0006-quotation-create-others',
+  '06-0007-quotation-create-dummy-fill',
+  '06-0008-quotation-create-dummy2',
+  '06-0009-quotation-create-clear',
+  '06-0010-quotation-view',
+  '06-0011-quotation-view-refresh',
+  '06-0012-quotation-view-select-all',
+  '06-0013-quotation-view-deselect-all',
+  '07-0001-outsourcing-create',
+  '07-0002-outsourcing-view',
+  '07-0003-outsourcing-view-refresh',
+  '07-0004-outsourcing-view-select-all',
+  '07-0005-outsourcing-view-deselect-all',
+  '07-0006-outsourcing-view-generate-dummy',
+  '08-0001-setting',
+  '08-0002-setting-auto-fill',
+  '08-0003-setting-toggle-password',
+  '08-0004-setting-save',
+];
+
+function label(f) {
+  return f.replace(/^\d+-\d+-/, '').replace(/-/g, ' ');
+}
+
+const app = document.getElementById('app');
+sections.forEach(sec => {
+  const items = files.filter(f => f.startsWith(sec.prefix + '-'));
+  if (!items.length) return;
+  const div = document.createElement('div');
+  div.className = 'section';
+  div.innerHTML = `<div class="section-title">${sec.title} (${items.length})</div><div class="grid">${
+    items.map(f => `<div class="card" onclick="openLB('${f}')"><img src="${f}.png" loading="lazy"/><div class="label"><span>${f.split('-').slice(0,2).join('-')}</span> ${label(f)}</div></div>`).join('')
+  }</div>`;
+  app.appendChild(div);
+});
+
+let currentIdx = 0;
+function openLB(f) {
+  currentIdx = files.indexOf(f);
+  showLB();
+}
+function showLB() {
+  const f = files[currentIdx];
+  document.getElementById('lbImg').src = f + '.png';
+  document.getElementById('lbCaption').textContent = f;
+  document.getElementById('lbCounter').textContent = (currentIdx + 1) + ' / ' + files.length;
+  document.getElementById('lightbox').classList.add('active');
+}
+function closeLB() { document.getElementById('lightbox').classList.remove('active'); }
+function navLB(dir) {
+  currentIdx = (currentIdx + dir + files.length) % files.length;
+  showLB();
+}
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('lightbox').classList.contains('active')) return;
+  if (e.key === 'Escape') closeLB();
+  if (e.key === 'ArrowLeft') navLB(-1);
+  if (e.key === 'ArrowRight') navLB(1);
+});
+</script>
+</body>
+</html>

@@ -43,7 +43,8 @@
       "Bash(python test_dashboard.py:*)",
       "mcp__plugin_playwright_playwright__browser_navigate",
       "mcp__plugin_playwright_playwright__browser_evaluate",
-      "mcp__plugin_playwright_playwright__browser_click"
+      "mcp__plugin_playwright_playwright__browser_click",
+      "Bash(npx @playwright/mcp@latest --help:*)"
     ]
   }
 }
