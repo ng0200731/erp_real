@@ -1425,6 +1425,7 @@
           <button id="deselectAllQuotationsBtn" class="page-btn">Deselect All</button>
           <button id="batchDeleteQuotationsBtn" class="page-btn" style="background:#dc3545; color:#fff;">Delete Selected</button>
           <button id="batchUpdateStatusBtn" class="page-btn">Update Status</button>
+          <button id="generateQuotationDummyBtn" class="page-btn" style="background:#17a2b8; color:#fff;">Generate 10 Dummy</button>
         </div>
 
         <!-- Quotation Table -->
@@ -7275,6 +7276,54 @@
       }
     }
 
+    async function generateQuotationDummyData() {
+      const statuses = ['pending', 'send to customer', 'price confirmed', 'sampling', 'sample delivered'];
+      const productTypes = ['hang-tag', 'woven-label', 'care-label', 'heat-transfer'];
+
+      const customerNames = [
+        'Star Fashion Ltd', 'Ocean Apparel Co', 'Bright Textiles Inc',
+        'Golden Thread Corp', 'Silver Stitch Group', 'Blue Wave Garments',
+        'Red Lion Trading', 'Green Valley Fabrics', 'White Pearl Fashion', 'Black Diamond Wear'
+      ];
+
+      try {
+        alert('Creating 10 quotations...');
+
+        for (let i = 0; i < 10; i++) {
+          const quantity = Math.floor(100 + Math.random() * 9900);
+          const unitPrice = Math.floor(10 + Math.random() * 90);
+          const total = quantity * unitPrice;
+
+          const quotationData = {
+            customerName: customerNames[i],
+            contactPerson: `Contact ${i + 1}`,
+            email: `contact${i + 1}@${customerNames[i].toLowerCase().replace(/\s+/g, '')}.com`,
+            phone: `+852-${Math.floor(10000000 + Math.random() * 90000000)}`,
+            productType: productTypes[Math.floor(Math.random() * productTypes.length)],
+            productDetails: { description: `Product order ${i + 1}` },
+            quantity: quantity,
+            unitPrice: unitPrice,
+            total: total,
+            type: 'non email',
+            dateCreated: new Date().toISOString(),
+            status: statuses[Math.floor(Math.random() * statuses.length)]
+          };
+
+          await fetch('/api/quotations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(quotationData)
+          });
+        }
+
+        alert('Generated 10 quotations successfully!');
+        await displayQuotations();
+      } catch (error) {
+        console.error('Error generating quotation dummy data:', error);
+        alert('Failed to generate quotation data. Please try again.');
+      }
+    }
+
     async function saveSupplierInfo() {
       const companyName = document.getElementById('supplierCompanyName').value.trim();
       const emailDomain = document.getElementById('supplierEmailDomain').value.trim();
@@ -8210,6 +8259,12 @@
       const batchUpdateStatusBtn = document.getElementById('batchUpdateStatusBtn');
       if (batchUpdateStatusBtn) {
         batchUpdateStatusBtn.onclick = async () => await batchUpdateQuotationStatus();
+      }
+
+      // Generate Dummy Data button functionality
+      const generateQuotationDummyBtn = document.getElementById('generateQuotationDummyBtn');
+      if (generateQuotationDummyBtn) {
+        generateQuotationDummyBtn.onclick = async () => await generateQuotationDummyData();
       }
 
       // Set up filter event listeners
