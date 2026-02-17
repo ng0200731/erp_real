@@ -8521,6 +8521,80 @@
 
         const quotation = result.quotation;
 
+        // If sending to supplier, email the quotation info to linked suppliers
+        if (newStatus === 'send to outsourcing supplier') {
+          const suppRes = await fetch(`/api/quotations/${quotationId}/suppliers`);
+          const suppData = await suppRes.json();
+          const suppliers = suppData.success ? suppData.suppliers : [];
+
+          if (suppliers.length === 0) {
+            alert('No suppliers linked to this quotation. Please link suppliers first.');
+            return;
+          }
+
+          // Collect all supplier member emails
+          const emailTargets = [];
+          for (const supplier of suppliers) {
+            if (supplier.members && supplier.members.length > 0) {
+              for (const member of supplier.members) {
+                if (member.emailPrefix && supplier.emailDomain) {
+                  emailTargets.push({
+                    email: `${member.emailPrefix}@${supplier.emailDomain}`,
+                    name: member.name,
+                    company: supplier.companyName
+                  });
+                }
+              }
+            }
+          }
+
+          if (emailTargets.length === 0) {
+            alert('No supplier members with email found. Please add members to suppliers first.');
+            return;
+          }
+
+          const confirmMsg = `Send quotation to ${emailTargets.length} supplier contact(s)?\n\n` +
+            emailTargets.map(t => `${t.name} (${t.email}) - ${t.company}`).join('\n');
+          if (!confirm(confirmMsg)) return;
+
+          // Generate email HTML for supplier
+          const emailHtml = generateOutsourcingSupplierEmailHtml(quotation, suppliers);
+
+          // Send email to each supplier contact
+          let sentCount = 0;
+          let failCount = 0;
+          for (const target of emailTargets) {
+            try {
+              const sendRes = await fetch('/api/email/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  to: target.email,
+                  subject: `Quotation Request - ${quotation.customerName} - ${quotation.productType}`,
+                  html: emailHtml
+                })
+              });
+              const sendResult = await sendRes.json();
+              if (sendResult.success) sentCount++;
+              else failCount++;
+            } catch (e) {
+              console.error('Failed to send to:', target.email, e);
+              failCount++;
+            }
+          }
+
+          if (sentCount === 0) {
+            alert('No emails were sent. Status will not be updated. Please check SMTP settings.');
+            return;
+          }
+
+          if (failCount > 0) {
+            alert(`Sent ${sentCount} email(s), failed ${failCount}.`);
+          } else {
+            alert(`Successfully sent ${sentCount} email(s) to suppliers.`);
+          }
+        }
+
         // Update the status
         const updateResponse = await fetch(`/api/quotations/${quotationId}`, {
           method: 'PUT',
@@ -8535,23 +8609,36 @@
           throw new Error('Failed to update status');
         }
 
-        showModal({
-          title: 'Success',
-          body: `Status updated to "${newStatus}" successfully!`,
-          buttons: [{ text: 'OK', action: 'close' }]
-        });
+        alert(`Status updated to "${newStatus}" successfully!`);
 
         // Refresh the outsourcing list
         await displayOutsourcingQuotations();
       } catch (error) {
         console.error('Error updating outsourcing status:', error);
-        showModal({
-          title: 'Error',
-          body: 'Failed to update status. Please try again.',
-          buttons: [{ text: 'OK', action: 'close' }]
-        });
+        alert('Failed to update status. Please try again.');
       }
     };
+
+    function generateOutsourcingSupplierEmailHtml(quotation, suppliers) {
+      const productDetails = quotation.productDetails || {};
+      return `
+        <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto;">
+          <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Quotation Request</h2>
+          <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerName || 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Contact Person</td><td style="padding:8px; border:1px solid #ccc;">${quotation.contactPerson || 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${quotation.productType || 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Description</td><td style="padding:8px; border:1px solid #ccc;">${productDetails.description || 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Category</td><td style="padding:8px; border:1px solid #ccc;">${productDetails.category || 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity ? quotation.quantity.toLocaleString() : 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Unit Price (HKD)</td><td style="padding:8px; border:1px solid #ccc;">${quotation.unitPrice ? quotation.unitPrice.toFixed(2) : 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Total (HKD)</td><td style="padding:8px; border:1px solid #ccc;">${quotation.total ? quotation.total.toFixed(2) : 'N/A'}</td></tr>
+          </table>
+          ${quotation.notes ? '<p><strong>Notes:</strong> ' + quotation.notes + '</p>' : ''}
+          <p style="margin-top:20px; font-size:12px; color:#666;">This is an automated quotation request. Please reply with your best offer.</p>
+        </div>
+      `;
+    }
 
     // Apply filters for outsourcing quotations
     function applyOutsourcingFilters(quotations) {
@@ -8788,35 +8875,39 @@
 
     async function viewQuotationDetails(quotationId) {
       console.log('Viewing quotation with ID:', quotationId);
-      const quotations = await loadQuotationsFromStorage();
-      console.log('All quotations:', quotations);
 
-      const quotation = quotations.find(q => q.id == quotationId); // Use == for type coercion
-      console.log('Found quotation:', quotation ? 'YES' : 'NO');
-      console.log('Looking for ID:', quotationId, 'Type:', typeof quotationId);
-      console.log('Available IDs:', quotations.map(q => ({ id: q.id, type: typeof q.id })));
+      // Fetch quotation directly by ID so it works for both quotation and outsourcing views
+      let quotation = null;
+      try {
+        const response = await fetch(`/api/quotations/${quotationId}`);
+        const result = await response.json();
+        if (result.success && result.quotation) {
+          quotation = result.quotation;
+        }
+      } catch (e) {
+        console.error('Direct fetch failed:', e);
+      }
 
-      if (quotation) {
-        console.log('Found quotation data:', {
-          id: quotation.id,
-          customerName: quotation.customerName,
-          profileImagePath: quotation.profileImagePath,
-          attachmentPaths: quotation.attachmentPaths
-        });
-        console.log('Profile image path exists?', !!quotation.profileImagePath);
-        console.log('Profile image path value:', quotation.profileImagePath);
-        console.log('Attachment paths exist?', !!quotation.attachmentPaths);
-        console.log('Attachment paths value:', quotation.attachmentPaths);
+      // Fallback: search in both lists
+      if (!quotation) {
+        try {
+          const allRes = await fetch('/api/quotations');
+          const allData = await allRes.json();
+          const allQuotations = allData.quotations || [];
+          quotation = allQuotations.find(q => q.id == quotationId);
+        } catch (e) { console.error('Fallback quotations fetch failed:', e); }
+      }
+      if (!quotation) {
+        try {
+          const outRes = await fetch('/api/quotations/outsourcing');
+          const outData = await outRes.json();
+          const outQuotations = outData.quotations || [];
+          quotation = outQuotations.find(q => q.id == quotationId);
+        } catch (e) { console.error('Fallback outsourcing fetch failed:', e); }
       }
 
       if (!quotation) {
-        console.error('Quotation not found for ID:', quotationId);
-        console.error('Available quotation IDs:', quotations.map(q => q.id));
-        showModal({
-          title: 'Error',
-          body: 'Quotation not found.',
-          buttons: [{ text: 'OK', action: 'close' }]
-        });
+        alert('Quotation not found.');
         return;
       }
 
@@ -8836,6 +8927,28 @@
         </div>
       `;
 
+      // Fetch linked suppliers for this quotation
+      let suppliersHtml = '';
+      try {
+        const suppRes = await fetch(`/api/quotations/${quotation.id}/suppliers`);
+        const suppData = await suppRes.json();
+        const suppliers = suppData.success ? suppData.suppliers : [];
+        if (suppliers.length > 0) {
+          suppliersHtml = '<div style="margin-top:15px; padding:10px; border:1px solid #000; background:#f8f8f8;">' +
+            '<h4 style="margin:0 0 10px 0;">Linked Suppliers (' + suppliers.length + ')</h4>' +
+            suppliers.map(s => {
+              const members = (s.members || []).map(m => m.name).join(', ') || 'No members';
+              return '<div style="padding:8px; border:1px solid #ccc; margin-bottom:8px; background:#fff;">' +
+                '<strong>' + (s.companyName || 'Unknown') + '</strong>' +
+                ' <span style="color:#666; font-size:12px;">(' + (s.companyType || '') + ')</span><br>' +
+                '<span style="font-size:12px;">Email: ' + (s.emailDomain || 'N/A') + ' | Phone: ' + (s.companyTel || 'N/A') + '</span><br>' +
+                '<span style="font-size:12px; color:#666;">Members: ' + members + '</span>' +
+              '</div>';
+            }).join('') +
+          '</div>';
+        }
+      } catch (e) { console.error('Failed to fetch suppliers:', e); }
+
       // Create a custom modal overlay for the quotation form
       const overlay = document.createElement('div');
       overlay.className = 'modal-overlay';
@@ -8845,6 +8958,9 @@
       modal.className = 'modal';
       modal.style.maxWidth = '900px';
       modal.style.width = '90vw';
+      modal.style.maxHeight = '90vh';
+      modal.style.display = 'flex';
+      modal.style.flexDirection = 'column';
 
       const header = document.createElement('div');
       header.className = 'modal-header';
@@ -8852,7 +8968,10 @@
 
       const body = document.createElement('div');
       body.className = 'modal-body';
-      body.innerHTML = modalContent;
+      body.style.overflowY = 'auto';
+      body.style.flex = '1';
+      body.style.minHeight = '0';
+      body.innerHTML = modalContent + suppliersHtml;
 
       const actions = document.createElement('div');
       actions.className = 'modal-actions';
