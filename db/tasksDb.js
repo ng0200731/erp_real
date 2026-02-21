@@ -188,6 +188,42 @@ async function ensureSchema(db) {
 
     CREATE INDEX IF NOT EXISTS idx_quotation_suppliers_quotationId ON quotation_suppliers(quotationId);
     CREATE INDEX IF NOT EXISTS idx_quotation_suppliers_supplierId ON quotation_suppliers(supplierId);
+
+    CREATE TABLE IF NOT EXISTS supplier_quotation_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      token TEXT NOT NULL UNIQUE,
+      quotationId INTEGER NOT NULL,
+      supplierId INTEGER NOT NULL,
+      supplierMemberId INTEGER NOT NULL,
+      expiresAt TEXT NOT NULL,
+      usedAt TEXT,
+      createdAt TEXT NOT NULL,
+      FOREIGN KEY (quotationId) REFERENCES quotations(id) ON DELETE CASCADE,
+      FOREIGN KEY (supplierId) REFERENCES suppliers(id) ON DELETE CASCADE,
+      FOREIGN KEY (supplierMemberId) REFERENCES supplier_members(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS supplier_quotation_responses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tokenId INTEGER NOT NULL,
+      quotationId INTEGER NOT NULL,
+      supplierId INTEGER NOT NULL,
+      supplierMemberId INTEGER NOT NULL,
+      unitPrice REAL,
+      totalPrice REAL,
+      deliveryDays INTEGER,
+      notes TEXT,
+      submittedAt TEXT NOT NULL,
+      FOREIGN KEY (tokenId) REFERENCES supplier_quotation_tokens(id),
+      FOREIGN KEY (quotationId) REFERENCES quotations(id) ON DELETE CASCADE,
+      FOREIGN KEY (supplierId) REFERENCES suppliers(id) ON DELETE CASCADE,
+      FOREIGN KEY (supplierMemberId) REFERENCES supplier_members(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_sqt_token ON supplier_quotation_tokens(token);
+    CREATE INDEX IF NOT EXISTS idx_sqt_quotationId ON supplier_quotation_tokens(quotationId);
+    CREATE INDEX IF NOT EXISTS idx_sqr_quotationId ON supplier_quotation_responses(quotationId);
+    CREATE INDEX IF NOT EXISTS idx_sqr_tokenId ON supplier_quotation_responses(tokenId);
   `);
 
   // Add new columns if they don't exist (for database migration)

@@ -1570,6 +1570,7 @@
                     <option value="await quotation">Await Quotation</option>
                     <option value="compare quotation">Compare Quotation</option>
                     <option value="send to customer">Send to Customer</option>
+                    <option value="await customer confirm price">Await Customer Confirm Price</option>
                     <option value="price confirmed">Price Confirmed</option>
                     <option value="sampling">Sampling</option>
                     <option value="sample delivered">Sample Delivered</option>
@@ -8455,14 +8456,40 @@
       }
 
       // Helper function to get outsourcing action button based on status
-      function getOutsourcingActionButton(quotation, supplier = null) {
+      async function getOutsourcingActionButton(quotation, linkedCount, responseCount) {
         const status = quotation.status || 'pending';
+
+        // Special handling for "await quotation" status
+        if (status === 'await quotation') {
+          if (responseCount < linkedCount) {
+            // Not all suppliers responded - show reminder button
+            return `
+              <div style="text-align:center;">
+                <div style="font-size:12px; color:#666; margin-bottom:4px;">
+                  ${responseCount} of ${linkedCount} suppliers responded
+                </div>
+                <button class="page-btn" style="padding:4px 8px; font-size:12px; background:#ffc107; color:#000;"
+                        onclick="event.stopPropagation(); sendSupplierReminder(${quotation.id})">
+                  Resend Reminder
+                </button>
+              </div>
+            `;
+          } else {
+            // All suppliers responded - show compare button
+            return `
+              <button class="page-btn" style="padding:4px 8px; font-size:12px;"
+                      onclick="event.stopPropagation(); updateOutsourcingStatus(${quotation.id}, 'compare quotation')">
+                Compare Quotation
+              </button>
+            `;
+          }
+        }
+
         const statusMap = {
           'pending': { next: 'send to outsourcing supplier', label: 'Send to Supplier' },
           'send to outsourcing supplier': { next: 'await quotation', label: 'Await Quotation' },
-          'await quotation': { next: 'compare quotation', label: 'Compare Quotation' },
-          'compare quotation': { next: 'send to customer', label: 'Send to Customer' },
-          'send to customer': { next: 'price confirmed', label: 'Confirm Price' },
+          'compare quotation': { next: 'send to customer', label: 'Send to Customer', popup: true },
+          'await customer confirm price': { next: 'price confirmed', label: 'Confirm Price' },
           'price confirmed': { next: 'sampling', label: 'Start Sampling' },
           'sampling': { next: 'sample delivered', label: 'Mark Delivered' },
           'sample delivered': { next: null, label: 'Completed' }
@@ -8471,6 +8498,10 @@
         const action = statusMap[status];
         if (!action || !action.next) {
           return '<span style="color:#999;">Completed</span>';
+        }
+
+        if (action.popup) {
+          return `<button class="page-btn" style="padding:4px 8px; font-size:12px;" onclick="event.stopPropagation(); showCompareQuotationPopup(${quotation.id})">${action.label}</button>`;
         }
 
         return `<button class="page-btn" style="padding:4px 8px; font-size:12px;" onclick="event.stopPropagation(); updateOutsourcingStatus(${quotation.id}, '${action.next}')">${action.label}</button>`;
@@ -8483,6 +8514,19 @@
         const suppliersResponse = await fetch(`/api/quotations/${quotation.id}/suppliers`);
         const suppliersData = await suppliersResponse.json();
         const suppliers = suppliersData.success ? suppliersData.suppliers : [];
+
+        // Fetch supplier responses count
+        let responseCount = 0;
+        try {
+          const responsesRes = await fetch(`/api/supplier-portal/responses/${quotation.id}`);
+          const responsesData = await responsesRes.json();
+          responseCount = responsesData.success ? (responsesData.responses?.length || 0) : 0;
+        } catch (e) {
+          console.error('Error fetching responses:', e);
+        }
+
+        // Get action button HTML
+        const actionButtonHtml = await getOutsourcingActionButton(quotation, suppliers.length, responseCount);
 
         if (suppliers.length === 0) {
           // No suppliers linked - show single row with "No supplier" message
@@ -8538,7 +8582,7 @@
                     <span style="font-size:12px; color:#666;">${memberNames}</span>
                   </td>
                   <td style="border:1px solid #000; padding:8px; text-align:center;" rowspan="${suppliers.length}">
-                    ${getOutsourcingActionButton(quotation, supplier)}
+                    ${actionButtonHtml}
                   </td>
                   <td style="border:1px solid #000; padding:8px; text-align:center;" rowspan="${suppliers.length}">
                     <button class="page-btn" style="padding:4px 8px; font-size:12px; background:#dc3545; color:#fff;" onclick="event.stopPropagation(); deleteQuotation(${quotation.id})">Delete</button>
@@ -8578,53 +8622,37 @@
 
         // If sending to supplier, email the quotation info to linked suppliers
         if (newStatus === 'send to outsourcing supplier') {
-          const suppRes = await fetch(`/api/quotations/${quotationId}/suppliers`);
-          const suppData = await suppRes.json();
-          const suppliers = suppData.success ? suppData.suppliers : [];
+          // Generate tokens for all linked supplier members
+          const tokenRes = await fetch('/api/supplier-portal/generate-and-notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quotationId })
+          });
+          const tokenData = await tokenRes.json();
 
-          if (suppliers.length === 0) {
-            alert('No suppliers linked to this quotation. Please link suppliers first.');
+          if (!tokenData.success) {
+            alert(tokenData.error || 'Failed to generate supplier tokens.');
             return;
           }
 
-          // Collect all supplier member emails
-          const emailTargets = [];
-          for (const supplier of suppliers) {
-            if (supplier.members && supplier.members.length > 0) {
-              for (const member of supplier.members) {
-                if (member.emailPrefix && supplier.emailDomain) {
-                  emailTargets.push({
-                    email: `${member.emailPrefix}@${supplier.emailDomain}`,
-                    name: member.name,
-                    company: supplier.companyName
-                  });
-                }
-              }
-            }
-          }
-
-          if (emailTargets.length === 0) {
-            alert('No supplier members with email found. Please add members to suppliers first.');
-            return;
-          }
-
-          const confirmMsg = `Send quotation to ${emailTargets.length} supplier contact(s)?\n\n` +
-            emailTargets.map(t => `${t.name} (${t.email}) - ${t.company}`).join('\n');
+          const tokens = tokenData.tokens;
+          const confirmMsg = `Send quotation portal link to ${tokens.length} supplier contact(s)?\n\n` +
+            tokens.map(t => `${t.memberName} (${t.email}) - ${t.supplierName}`).join('\n');
           if (!confirm(confirmMsg)) return;
 
-          // Generate email HTML for supplier
-          const emailHtml = generateOutsourcingSupplierEmailHtml(quotation, suppliers);
-
-          // Send email to each supplier contact
           let sentCount = 0;
           let failCount = 0;
-          for (const target of emailTargets) {
+          const baseUrl = window.location.origin;
+
+          for (const t of tokens) {
             try {
+              const portalLink = `${baseUrl}/supplier-portal/${t.token}`;
+              const emailHtml = generateSupplierPortalEmailHtml(quotation, t, portalLink);
               const sendRes = await fetch('/api/email/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  to: target.email,
+                  to: t.email,
                   subject: `Quotation Request - ${quotation.customerName} - ${quotation.productType}`,
                   html: emailHtml
                 })
@@ -8633,7 +8661,7 @@
               if (sendResult.success) sentCount++;
               else failCount++;
             } catch (e) {
-              console.error('Failed to send to:', target.email, e);
+              console.error('Failed to send to:', t.email, e);
               failCount++;
             }
           }
@@ -8646,7 +8674,7 @@
           if (failCount > 0) {
             alert(`Sent ${sentCount} email(s), failed ${failCount}.`);
           } else {
-            alert(`Successfully sent ${sentCount} email(s) to suppliers.`);
+            alert(`Successfully sent ${sentCount} portal link(s) to suppliers.`);
           }
         }
 
@@ -8694,6 +8722,455 @@
         </div>
       `;
     }
+
+    function generateSupplierPortalEmailHtml(quotation, supplierToken, portalLink) {
+      const productDetails = quotation.productDetails || {};
+      return `
+        <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
+          <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Quotation Request</h2>
+          <p>Dear ${supplierToken.memberName},</p>
+          <p>We would like to request a quotation for the following:</p>
+          <table style="width:100%; border-collapse:collapse; margin:20px 0;">
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerName || 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${quotation.productType || 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Description</td><td style="padding:8px; border:1px solid #ccc;">${productDetails.description || 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity ? quotation.quantity.toLocaleString() : 'N/A'}</td></tr>
+          </table>
+          <p>Please submit your quotation using the link below:</p>
+          <p style="margin:20px 0;">
+            <a href="${portalLink}" style="display:inline-block; padding:12px 24px; background:#000; color:#fff; text-decoration:none; font-weight:500;">Submit Your Quotation</a>
+          </p>
+          <p style="font-size:12px; color:#666;">Or copy this link: ${portalLink}</p>
+          <p style="font-size:12px; color:#666; margin-top:20px;">This link is unique to you and expires in 30 days.</p>
+        </div>
+      `;
+    }
+
+    // Generate reminder email HTML for suppliers
+    function generateSupplierReminderEmailHtml(quotation, memberName, companyName, portalLink) {
+      const productDetails = JSON.parse(quotation.productDetails || '{}');
+      return `
+        <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
+          <h2 style="border-bottom:2px solid #f00; padding-bottom:10px;">REMINDER: Quotation Request</h2>
+          <p>Dear ${memberName},</p>
+          <p><strong>This is a reminder</strong> that we are still awaiting your quotation for:</p>
+          <table style="width:100%; border-collapse:collapse; margin:20px 0;">
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerName || 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${quotation.productType || 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Description</td><td style="padding:8px; border:1px solid #ccc;">${productDetails.description || 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity ? quotation.quantity.toLocaleString() : 'N/A'}</td></tr>
+          </table>
+          <p><strong>Please submit your quotation as soon as possible:</strong></p>
+          <p style="margin:20px 0;">
+            <a href="${portalLink}" style="display:inline-block; padding:12px 24px; background:#f00; color:#fff; text-decoration:none; font-weight:500;">Submit Your Quotation Now</a>
+          </p>
+          <p style="font-size:12px; color:#666;">Or copy this link: ${portalLink}</p>
+        </div>
+      `;
+    }
+
+    // Send reminder email to suppliers who haven't responded
+    window.sendSupplierReminder = async function(quotationId) {
+      try {
+        // 1. Get quotation details
+        const quotationRes = await fetch(`/api/quotations/${quotationId}`);
+        const quotationData = await quotationRes.json();
+        if (!quotationData.success) {
+          alert('Failed to get quotation details.');
+          return;
+        }
+        const quotation = quotationData.quotation;
+
+        // 2. Get linked suppliers
+        const linkedRes = await fetch(`/api/quotations/${quotationId}/suppliers`);
+        const linkedData = await linkedRes.json();
+        const linkedSuppliers = linkedData.success ? (linkedData.suppliers || []) : [];
+
+        if (linkedSuppliers.length === 0) {
+          alert('No suppliers linked to this quotation.');
+          return;
+        }
+
+        // 3. Get existing responses
+        const responsesRes = await fetch(`/api/supplier-portal/responses/${quotationId}`);
+        const responsesData = await responsesRes.json();
+        const responses = responsesData.success ? (responsesData.responses || []) : [];
+
+        // 4. Find suppliers who haven't responded
+        const respondedSupplierIds = new Set(responses.map(r => r.supplierId));
+        const nonResponders = linkedSuppliers.filter(s => !respondedSupplierIds.has(s.id));
+
+        if (nonResponders.length === 0) {
+          alert('All suppliers have already responded!');
+          return;
+        }
+
+        // 5. Confirm sending reminders
+        const confirmMsg = `Send reminder to ${nonResponders.length} supplier(s)?\n\n` +
+          nonResponders.map(s => s.companyName).join('\n');
+        if (!confirm(confirmMsg)) return;
+
+        // 6. Get/regenerate tokens and send emails
+        let sentCount = 0;
+        let failCount = 0;
+        const baseUrl = window.location.origin;
+        const errors = [];
+
+        for (const supplier of nonResponders) {
+          const members = supplier.members || [];
+
+          if (members.length === 0) {
+            errors.push(`${supplier.companyName}: No members found`);
+            continue;
+          }
+
+          for (const member of members) {
+            if (!member.emailPrefix || !supplier.emailDomain) {
+              errors.push(`${supplier.companyName} - ${member.name}: Missing email information`);
+              failCount++;
+              continue;
+            }
+
+            try {
+              // Generate new token
+              const tokenRes = await fetch('/api/supplier-portal/generate-tokens', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  quotationId,
+                  suppliers: [{
+                    supplierId: supplier.id,
+                    members: [{
+                      memberId: member.id,
+                      email: `${member.emailPrefix}@${supplier.emailDomain}`
+                    }]
+                  }]
+                })
+              });
+              const tokenData = await tokenRes.json();
+
+              if (!tokenData.success) {
+                errors.push(`${supplier.companyName} - ${member.name}: Failed to generate token - ${tokenData.error || 'Unknown error'}`);
+                failCount++;
+                continue;
+              }
+
+              if (!tokenData.tokens || tokenData.tokens.length === 0) {
+                errors.push(`${supplier.companyName} - ${member.name}: No tokens returned`);
+                failCount++;
+                continue;
+              }
+
+              const token = tokenData.tokens[0].token;
+              const portalLink = `${baseUrl}/supplier-portal/${token}`;
+              const email = `${member.emailPrefix}@${supplier.emailDomain}`;
+
+              // Send reminder email
+              const emailHtml = generateSupplierReminderEmailHtml(quotation, member.name, supplier.companyName, portalLink);
+              const sendRes = await fetch('/api/email/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  to: email,
+                  subject: `REMINDER: Quotation Request - ${quotation.customerName}`,
+                  html: emailHtml
+                })
+              });
+
+              const sendResult = await sendRes.json();
+              if (sendResult.success) {
+                sentCount++;
+                console.log(`✓ Reminder sent to ${email}`);
+              } else {
+                errors.push(`${supplier.companyName} - ${member.name} (${email}): ${sendResult.error || 'Email send failed'}`);
+                failCount++;
+              }
+            } catch (e) {
+              console.error('Error sending reminder to supplier member:', e);
+              errors.push(`${supplier.companyName} - ${member.name}: ${e.message}`);
+              failCount++;
+            }
+          }
+        }
+
+        // Show detailed results
+        if (sentCount === 0) {
+          let errorMsg = 'No reminder emails were sent.\n\n';
+          if (errors.length > 0) {
+            errorMsg += 'Errors:\n' + errors.join('\n');
+          } else {
+            errorMsg += 'Please check SMTP settings and supplier email configurations.';
+          }
+          alert(errorMsg);
+        } else if (failCount > 0) {
+          let msg = `Reminder sent to ${sentCount} supplier contact(s), failed ${failCount}.\n\n`;
+          if (errors.length > 0) {
+            msg += 'Errors:\n' + errors.slice(0, 5).join('\n');
+            if (errors.length > 5) {
+              msg += `\n... and ${errors.length - 5} more errors`;
+            }
+          }
+          alert(msg);
+        } else {
+          alert(`Successfully sent reminder to ${sentCount} supplier contact(s).`);
+        }
+
+        await displayOutsourcingQuotations();
+      } catch (error) {
+        console.error('Error sending reminders:', error);
+        alert('Failed to send reminders: ' + error.message);
+      }
+    };
+
+    // Show comparison popup for supplier quotations
+    window.showCompareQuotationPopup = async function(quotationId) {
+      try {
+        // 1. Fetch quotation details
+        const quotationRes = await fetch(`/api/quotations/${quotationId}`);
+        const quotationData = await quotationRes.json();
+        if (!quotationData.success) {
+          alert('Failed to get quotation details.');
+          return;
+        }
+        const quotation = quotationData.quotation;
+
+        // 2. Fetch supplier responses
+        const responsesRes = await fetch(`/api/supplier-portal/responses/${quotationId}`);
+        const responsesData = await responsesRes.json();
+        const responses = responsesData.success ? (responsesData.responses || []) : [];
+
+        if (responses.length === 0) {
+          alert('No supplier responses available yet.');
+          return;
+        }
+
+        // 3. Build comparison table HTML
+        const productDetails = JSON.parse(quotation.productDetails || '{}');
+        let tableHtml = `
+          <div style="margin-bottom:20px;">
+            <h3 style="margin:0 0 10px 0;">Quotation Details</h3>
+            <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
+              <tr><td style="padding:6px; border:1px solid #ccc; font-weight:bold; width:150px;">Customer</td><td style="padding:6px; border:1px solid #ccc;">${quotation.customerName}</td></tr>
+              <tr><td style="padding:6px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:6px; border:1px solid #ccc;">${quotation.productType}</td></tr>
+              <tr><td style="padding:6px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:6px; border:1px solid #ccc;">${quotation.quantity.toLocaleString()}</td></tr>
+            </table>
+          </div>
+
+          <h3 style="margin:0 0 10px 0;">Supplier Quotations Comparison</h3>
+          <div style="max-height:400px; overflow-y:auto;">
+            <table style="width:100%; border-collapse:collapse;">
+              <thead style="position:sticky; top:0; background:#f8f8f8;">
+                <tr>
+                  <th style="border:1px solid #000; padding:8px; text-align:left;">Supplier</th>
+                  <th style="border:1px solid #000; padding:8px; text-align:left;">Contact</th>
+                  <th style="border:1px solid #000; padding:8px; text-align:right;">Unit Price (HKD)</th>
+                  <th style="border:1px solid #000; padding:8px; text-align:right;">Total Price (HKD)</th>
+                  <th style="border:1px solid #000; padding:8px; text-align:center;">Delivery Days</th>
+                  <th style="border:1px solid #000; padding:8px; text-align:left;">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+
+        responses.forEach(r => {
+          tableHtml += `
+            <tr>
+              <td style="border:1px solid #ccc; padding:8px;">${r.companyName}</td>
+              <td style="border:1px solid #ccc; padding:8px;">${r.memberName}</td>
+              <td style="border:1px solid #ccc; padding:8px; text-align:right;">${r.unitPrice ? r.unitPrice.toFixed(2) : 'N/A'}</td>
+              <td style="border:1px solid #ccc; padding:8px; text-align:right;">${r.totalPrice ? r.totalPrice.toFixed(2) : 'N/A'}</td>
+              <td style="border:1px solid #ccc; padding:8px; text-align:center;">${r.deliveryDays || 'N/A'}</td>
+              <td style="border:1px solid #ccc; padding:8px;">${r.notes || '-'}</td>
+            </tr>
+          `;
+        });
+
+        tableHtml += `
+              </tbody>
+            </table>
+          </div>
+        `;
+
+        // 4. Create modal
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999;';
+
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.cssText = 'background:#fff; padding:20px; border-radius:8px; max-width:900px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1);';
+
+        const header = document.createElement('div');
+        header.style.cssText = 'font-size:20px; font-weight:bold; margin-bottom:15px; border-bottom:2px solid #000; padding-bottom:10px;';
+        header.textContent = 'Supplier Quotations Comparison';
+
+        const content = document.createElement('div');
+        content.innerHTML = tableHtml;
+
+        const actions = document.createElement('div');
+        actions.style.cssText = 'margin-top:20px; display:flex; gap:10px; justify-content:flex-end;';
+
+        // Send to Customer button
+        const sendBtn = document.createElement('button');
+        sendBtn.className = 'page-btn';
+        sendBtn.textContent = 'Send to Customer';
+        sendBtn.style.cssText = 'padding:10px 20px; background:#000; color:#fff; border:none; cursor:pointer;';
+        sendBtn.onclick = async () => {
+          try {
+            document.body.removeChild(overlay);
+            await sendQuotationToCustomer(quotationId, quotation, responses);
+          } catch (e) {
+            console.error('Error sending to customer:', e);
+          }
+        };
+
+        // Cancel button
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'page-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.style.cssText = 'padding:10px 20px; background:#ccc; color:#000; border:none; cursor:pointer;';
+        cancelBtn.onclick = () => {
+          document.body.removeChild(overlay);
+        };
+
+        actions.appendChild(sendBtn);
+        actions.appendChild(cancelBtn);
+
+        modal.appendChild(header);
+        modal.appendChild(content);
+        modal.appendChild(actions);
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+      } catch (error) {
+        console.error('Error showing comparison popup:', error);
+        alert('Failed to load supplier responses');
+      }
+    };
+
+    // Generate customer comparison email HTML
+    function generateCustomerComparisonEmailHtml(quotation, responses) {
+      const productDetails = JSON.parse(quotation.productDetails || '{}');
+
+      let html = `
+        <div style="font-family:Arial,sans-serif; max-width:800px; margin:0 auto; color:#000;">
+          <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Quotation Comparison</h2>
+          <p>Dear ${quotation.customerName},</p>
+          <p>We have received quotations from our suppliers for your request. Please review the options below:</p>
+
+          <h3 style="margin-top:30px;">Your Request Details:</h3>
+          <table style="width:100%; border-collapse:collapse; margin:20px 0;">
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold; width:200px;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${quotation.productType}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Description</td><td style="padding:8px; border:1px solid #ccc;">${productDetails.description || 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity.toLocaleString()}</td></tr>
+          </table>
+
+          <h3 style="margin-top:30px;">Supplier Quotations:</h3>
+          <table style="width:100%; border-collapse:collapse; margin:20px 0;">
+            <thead>
+              <tr style="background:#f8f8f8;">
+                <th style="border:1px solid #000; padding:10px; text-align:left;">Supplier</th>
+                <th style="border:1px solid #000; padding:10px; text-align:right;">Unit Price (HKD)</th>
+                <th style="border:1px solid #000; padding:10px; text-align:right;">Total Price (HKD)</th>
+                <th style="border:1px solid #000; padding:10px; text-align:center;">Delivery Days</th>
+                <th style="border:1px solid #000; padding:10px; text-align:left;">Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      responses.forEach(r => {
+        html += `
+          <tr>
+            <td style="border:1px solid #ccc; padding:10px;">${r.companyName}</td>
+            <td style="border:1px solid #ccc; padding:10px; text-align:right;">${r.unitPrice ? r.unitPrice.toFixed(2) : 'N/A'}</td>
+            <td style="border:1px solid #ccc; padding:10px; text-align:right;">${r.totalPrice ? r.totalPrice.toFixed(2) : 'N/A'}</td>
+            <td style="border:1px solid #ccc; padding:10px; text-align:center;">${r.deliveryDays || 'N/A'}</td>
+            <td style="border:1px solid #ccc; padding:10px;">${r.notes || '-'}</td>
+          </tr>
+        `;
+      });
+
+      html += `
+            </tbody>
+          </table>
+
+          <p style="margin-top:30px;">Please review the quotations and let us know your preferred option or if you have any questions.</p>
+          <p style="margin-top:20px;">Best regards,<br>Your Team</p>
+          <p style="font-size:12px; color:#666; margin-top:30px;">This is an automated email. Please reply to confirm your selection.</p>
+        </div>
+      `;
+
+      return html;
+    }
+
+    // Send quotation comparison to customer
+    window.sendQuotationToCustomer = async function(quotationId, quotation, responses) {
+      try {
+        if (!quotation.email) {
+          alert('Customer email not found in quotation.');
+          return;
+        }
+
+        // Generate email HTML
+        const emailHtml = generateCustomerComparisonEmailHtml(quotation, responses);
+
+        // Send email
+        const sendRes = await fetch('/api/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: quotation.email,
+            subject: `Quotation Comparison - ${quotation.productType} - ${quotation.customerName}`,
+            html: emailHtml
+          })
+        });
+
+        const sendResult = await sendRes.json();
+
+        if (!sendResult.success) {
+          alert('Failed to send email to customer. Please check SMTP settings.');
+          return;
+        }
+
+        // Update status to "send to customer" first
+        const updateRes1 = await fetch(`/api/quotations/${quotationId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...quotation,
+            status: 'send to customer'
+          })
+        });
+
+        if (!updateRes1.ok) {
+          alert('Email sent but failed to update status to "send to customer"');
+          return;
+        }
+
+        // Automatically update to "await customer confirm price"
+        const updateRes2 = await fetch(`/api/quotations/${quotationId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...quotation,
+            status: 'await customer confirm price'
+          })
+        });
+
+        if (!updateRes2.ok) {
+          alert('Email sent but failed to update status to "await customer confirm price"');
+          return;
+        }
+
+        alert('Quotation comparison sent to customer successfully!\nStatus updated to "Await Customer Confirm Price".');
+        await displayOutsourcingQuotations();
+
+      } catch (error) {
+        console.error('Error sending quotation to customer:', error);
+        alert('Failed to send quotation to customer. Please try again.');
+      }
+    };
 
     // Apply filters for outsourcing quotations
     function applyOutsourcingFilters(quotations) {

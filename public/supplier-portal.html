@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supplier Quotation Portal</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #fff;
+      color: #000;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    .container { max-width: 640px; width: 100%; }
+    .header {
+      border-bottom: 2px solid #000;
+      padding-bottom: 16px;
+      margin-bottom: 32px;
+    }
+    .header h1 { font-size: 22px; font-weight: 600; }
+    .header p { font-size: 13px; color: #555; margin-top: 4px; }
+    .info-section {
+      border: 1px solid #000;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    .info-section h2 {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 14px;
+      border-bottom: 1px solid #eee;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: #555; }
+    .info-value { font-weight: 500; text-align: right; max-width: 60%; }
+    .form-section { margin-bottom: 24px; }
+    .form-section h2 {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #000;
+      font-size: 14px;
+      font-family: inherit;
+      background: #fff;
+      outline: none;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus {
+      box-shadow: 0 0 0 1px #000;
+    }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .form-row { display: flex; gap: 16px; }
+    .form-row .form-group { flex: 1; }
+    .btn-submit {
+      width: 100%;
+      padding: 12px;
+      background: #000;
+      color: #fff;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-submit:hover { background: #333; }
+    .btn-submit:disabled { background: #999; cursor: not-allowed; }
+    .status-msg {
+      text-align: center;
+      padding: 40px 20px;
+      font-size: 15px;
+    }
+    .status-msg.error { color: #000; }
+    .status-msg.success { color: #000; }
+    .already-submitted {
+      border: 1px solid #000;
+      padding: 20px;
+      margin-bottom: 24px;
+      background: #f5f5f5;
+      text-align: center;
+      font-size: 14px;
+    }
+    .loading { text-align: center; padding: 60px 20px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="loading" class="loading">Loading quotation details...</div>
+    <div id="error" class="status-msg error" style="display:none;"></div>
+    <div id="success" class="status-msg success" style="display:none;"></div>
+    <div id="main" style="display:none;">
+      <div class="header">
+        <h1>Quotation Submission</h1>
+        <p>Welcome, <span id="supplierName"></span> — <span id="companyName"></span></p>
+      </div>
+      <div class="info-section">
+        <h2>Quotation Details</h2>
+        <div class="info-row"><span class="info-label">Customer</span><span class="info-value" id="customerName"></span></div>
+        <div class="info-row"><span class="info-label">Product Type</span><span class="info-value" id="productType"></span></div>
+        <div class="info-row"><span class="info-label">Product Details</span><span class="info-value" id="productDetails"></span></div>
+        <div class="info-row"><span class="info-label">Quantity</span><span class="info-value" id="quantity"></span></div>
+        <div class="info-row" id="notesRow" style="display:none;"><span class="info-label">Notes</span><span class="info-value" id="notes"></span></div>
+      </div>
+      <div id="alreadySubmitted" class="already-submitted" style="display:none;">
+        You have already submitted a response for this quotation.
+      </div>
+      <form id="submitForm" style="display:none;">
+        <div class="form-section">
+          <h2>Your Quotation</h2>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="unitPrice">Unit Price</label>
+              <input type="number" id="unitPrice" step="0.01" min="0" required placeholder="0.00">
+            </div>
+            <div class="form-group">
+              <label for="totalPrice">Total Price</label>
+              <input type="number" id="totalPrice" step="0.01" min="0" required placeholder="0.00">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="deliveryDays">Delivery Days</label>
+            <input type="number" id="deliveryDays" min="1" required placeholder="e.g. 14">
+          </div>
+          <div class="form-group">
+            <label for="supplierNotes">Notes (optional)</label>
+            <textarea id="supplierNotes" placeholder="Any additional information..."></textarea>
+          </div>
+        </div>
+        <button type="submit" class="btn-submit" id="btnSubmit">Submit Quotation</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const token = window.location.pathname.split('/supplier-portal/')[1]?.split('/')[0]
+      || new URLSearchParams(window.location.search).get('token');
+
+    if (!token) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error').textContent = 'Invalid link. No token provided.';
+    } else {
+      loadQuotation();
+    }
+
+    async function loadQuotation() {
+      try {
+        const res = await fetch(`/api/supplier-portal/${token}`);
+        const data = await res.json();
+        document.getElementById('loading').style.display = 'none';
+
+        if (!data.success) {
+          document.getElementById('error').style.display = 'block';
+          document.getElementById('error').textContent = data.error || 'Unable to load quotation.';
+          return;
+        }
+
+        document.getElementById('main').style.display = 'block';
+        document.getElementById('supplierName').textContent = data.supplier.memberName;
+        document.getElementById('companyName').textContent = data.supplier.companyName;
+        document.getElementById('customerName').textContent = data.quotation.customerName || '-';
+        document.getElementById('productType').textContent = data.quotation.productType || '-';
+        document.getElementById('productDetails').textContent = data.quotation.productDetails || '-';
+        document.getElementById('quantity').textContent = data.quotation.quantity || '-';
+        if (data.quotation.notes) {
+          document.getElementById('notesRow').style.display = 'flex';
+          document.getElementById('notes').textContent = data.quotation.notes;
+        }
+        if (data.alreadySubmitted) {
+          document.getElementById('alreadySubmitted').style.display = 'block';
+        } else {
+          document.getElementById('submitForm').style.display = 'block';
+        }
+      } catch (err) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error').style.display = 'block';
+        document.getElementById('error').textContent = 'Failed to connect to server.';
+      }
+    }
+    document.getElementById('submitForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btnSubmit');
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+
+      try {
+        const res = await fetch(`/api/supplier-portal/${token}/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            unitPrice: parseFloat(document.getElementById('unitPrice').value),
+            totalPrice: parseFloat(document.getElementById('totalPrice').value),
+            deliveryDays: parseInt(document.getElementById('deliveryDays').value),
+            notes: document.getElementById('supplierNotes').value
+          })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          document.getElementById('main').style.display = 'none';
+          document.getElementById('success').style.display = 'block';
+          document.getElementById('success').textContent = 'Thank you! Your quotation has been submitted successfully.';
+        } else {
+          alert(data.error || 'Submission failed. Please try again.');
+          btn.disabled = false;
+          btn.textContent = 'Submit Quotation';
+        }
+      } catch (err) {
+        alert('Failed to connect to server. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Submit Quotation';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -31,6 +31,7 @@ import { createSupplierRoutes } from './routes/suppliers.js';
 import { createQuotationRoutes } from './routes/quotations.js';
 import { createSkillRoutes } from './routes/skills.js';
 import { createEmailRoutes } from './routes/emails.js';
+import supplierPortalRouter from './routes/supplier-portal.js';
 
 // ---------- ENV ----------
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -453,6 +454,9 @@ const emailRoutes = createEmailRoutes({
 });
 app.use('/api', emailRoutes);
 
+// Supplier portal routes
+app.use('/api/supplier-portal', supplierPortalRouter);
+
 // Serve uploaded files
 app.use('/uploads', express.static(uploadsDir));
 
@@ -531,6 +535,11 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('Promise:', promise);
   console.error('====================================================================');
   // Don't exit - keep server running, but log the error
+});
+
+// Catch-all route for supplier portal token URLs
+app.get('/supplier-portal/:token', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'supplier-portal.html'));
 });
 
 app.listen(Number(PORT), () => {
