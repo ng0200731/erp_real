@@ -842,7 +842,7 @@
     }
   </style>
   <!-- Chart.js library for better chart layout and responsiveness -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="/chart.umd.js"></script>
 </head>
 <body>
   <div id="layout">
@@ -8748,7 +8748,7 @@
 
     // Generate reminder email HTML for suppliers
     function generateSupplierReminderEmailHtml(quotation, memberName, companyName, portalLink) {
-      const productDetails = JSON.parse(quotation.productDetails || '{}');
+      const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
       return `
         <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
           <h2 style="border-bottom:2px solid #f00; padding-bottom:10px;">REMINDER: Quotation Request</h2>
@@ -8945,7 +8945,7 @@
         }
 
         // 3. Build comparison table HTML
-        const productDetails = JSON.parse(quotation.productDetails || '{}');
+        const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
         let tableHtml = `
           <div style="margin-bottom:20px;">
             <h3 style="margin:0 0 10px 0;">Quotation Details</h3>
@@ -9050,7 +9050,7 @@
 
     // Generate customer comparison email HTML
     function generateCustomerComparisonEmailHtml(quotation, responses) {
-      const productDetails = JSON.parse(quotation.productDetails || '{}');
+      const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
 
       let html = `
         <div style="font-family:Arial,sans-serif; max-width:800px; margin:0 auto; color:#000;">
