@@ -293,6 +293,66 @@ async function ensureSchema(db) {
       console.warn('Error adding resendCount column:', err);
     }
   }
+
+  try {
+    await db.exec(`ALTER TABLE sent_emails ADD COLUMN isRead INTEGER DEFAULT 0;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding isRead column:', err);
+    }
+  }
+
+  try {
+    await db.exec(`ALTER TABLE quotations ADD COLUMN outsourcingSeq TEXT;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding outsourcingSeq column:', err);
+    }
+  }
+
+  try {
+    await db.exec(`ALTER TABLE quotations ADD COLUMN selectedSupplierId INTEGER;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding selectedSupplierId column:', err);
+    }
+  }
+
+  try {
+    await db.exec(`ALTER TABLE quotations ADD COLUMN selectedSupplierResponseId INTEGER;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding selectedSupplierResponseId column:', err);
+    }
+  }
+
+  try {
+    await db.exec(`ALTER TABLE quotations ADD COLUMN sampleReadyDate TEXT;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding sampleReadyDate column:', err);
+    }
+  }
+
+  try {
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS supplier_sampling_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        token TEXT NOT NULL UNIQUE,
+        quotationId INTEGER NOT NULL,
+        supplierId INTEGER NOT NULL,
+        supplierMemberId INTEGER NOT NULL,
+        expiresAt TEXT NOT NULL,
+        usedAt TEXT,
+        createdAt TEXT NOT NULL,
+        FOREIGN KEY (quotationId) REFERENCES quotations(id) ON DELETE CASCADE,
+        FOREIGN KEY (supplierId) REFERENCES suppliers(id),
+        FOREIGN KEY (supplierMemberId) REFERENCES supplier_members(id)
+      );
+    `);
+  } catch (err) {
+    console.warn('Error creating supplier_sampling_tokens table:', err);
+  }
 }
 
 export async function getTasksDb() {
@@ -797,7 +857,7 @@ export async function updateQuotation(id, quotationData) {
   await db.run(
     `
       UPDATE quotations
-      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?
+      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?, outsourcingSeq = ?, selectedSupplierId = ?, selectedSupplierResponseId = ?, sampleReadyDate = ?
       WHERE id = ?
     `,
     [
@@ -819,6 +879,10 @@ export async function updateQuotation(id, quotationData) {
       JSON.stringify(quotationData.attachmentPaths || []),
       quotationData.status || 'draft',
       quotationData.resendCount || 0,
+      quotationData.outsourcingSeq || null,
+      quotationData.selectedSupplierId || null,
+      quotationData.selectedSupplierResponseId || null,
+      quotationData.sampleReadyDate || null,
       id
     ]
   );

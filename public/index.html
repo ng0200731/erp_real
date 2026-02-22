@@ -1532,6 +1532,10 @@
                   <input type="checkbox" id="selectAllOutsourcingCheckbox" style="cursor:pointer;">
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
+                  <div>OS Ref</div>
+                  <input type="text" id="outsourcingFilterOSRef" class="filter-input" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
+                </th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Customer Name</div>
                   <input type="text" id="outsourcingFilterCustomer" class="filter-input" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
                 </th>
@@ -1566,10 +1570,7 @@
                   <select id="outsourcingFilterStatus" class="filter-input" style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
                     <option value="">All Status</option>
                     <option value="pending">Pending</option>
-                    <option value="send to outsourcing supplier">Send to Outsourcing Supplier</option>
                     <option value="await quotation">Await Quotation</option>
-                    <option value="compare quotation">Compare Quotation</option>
-                    <option value="send to customer">Send to Customer</option>
                     <option value="await customer confirm price">Await Customer Confirm Price</option>
                     <option value="price confirmed">Price Confirmed</option>
                     <option value="sampling">Sampling</option>
@@ -1760,6 +1761,7 @@
         <div class="topbar">
           <button id="composeBtn" class="page-btn">Compose</button>
           <button id="refreshEmailsBtn" class="page-btn">Refresh List</button>
+          <button id="readAllEmailsBtn" class="page-btn">Read All</button>
           <button id="testSendBtn" class="page-btn">Send Test Email</button>
           <button id="testSmtpBtn" class="page-btn">Test SMTP Connection</button>
         </div>
@@ -1774,8 +1776,9 @@
             <button id="dummyFillComposeBtn" class="page-btn" type="button" style="margin-left:auto;">Dummy Fill</button>
           </div>
         </div>
-        <table id="emailTable" style="width:100%; border-collapse:collapse; border:1px solid #000; margin-bottom:15px;">
-          <thead>
+        <div style="max-height:500px; overflow-y:auto; border:1px solid #000; margin-bottom:15px;">
+        <table id="emailTable" style="width:100%; border-collapse:collapse;">
+          <thead style="position:sticky; top:0; background:#fff; z-index:1;">
             <tr style="background:#fff;">
               <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Date</th>
               <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Sender</th>
@@ -1803,6 +1806,7 @@
           </thead>
           <tbody id="emailTableBody"></tbody>
         </table>
+        </div>
 
         <!-- Email Reader Modal (Microsoft Outlook style) -->
         <div id="emailModal" class="email-modal-overlay" style="display:none;">
@@ -1882,8 +1886,9 @@
             <h3>Sent Emails from m.yau.01@longriverlabel.com</h3>
             <button id="refreshSentEmailsBtn" class="page-btn">Refresh</button>
           </div>
-          <table id="sentEmailsTable" style="width:100%; border-collapse:collapse; border:1px solid #000; margin-bottom:15px;">
-            <thead>
+          <div style="max-height:500px; overflow-y:auto; border:1px solid #000; margin-bottom:15px;">
+          <table id="sentEmailsTable" style="width:100%; border-collapse:collapse;">
+            <thead style="position:sticky; top:0; background:#fff; z-index:1;">
               <tr style="background:#fff;">
                 <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Date Sent</th>
                 <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">From</th>
@@ -1919,6 +1924,7 @@
             </thead>
             <tbody id="sentEmailsTableBody"></tbody>
           </table>
+          </div>
           <div id="sentEmailsLoading" style="text-align:center; padding:20px; display:none;">Loading sent emails...</div>
           <div id="sentEmailsEmpty" style="text-align:center; padding:20px; color:#666; display:none;">No sent emails found from m.yau.01@longriverlabel.com</div>
         </div>
@@ -4956,6 +4962,8 @@
         const row = document.createElement('tr');
         row.style.cursor = 'pointer';
         row.style.border = '1px solid #000';
+        const isSeen = (e.flags || []).includes('\\Seen');
+        const boldStyle = !isSeen ? 'font-weight:bold;' : 'font-weight:normal;';
 
         // Format date
         const date = new Date(e.envelope?.date);
@@ -4971,15 +4979,15 @@
         }
 
         // For now, we'll use placeholder data for context and attachments since they're not available in the current email data structure
-        const context = '<span style="cursor:pointer; font-weight:500;">Click to view</span>'; // Placeholder with clickable styling
-        const attachment = 'N/A'; // Placeholder - would need to be extracted from email headers
+        const context = '<span style="cursor:pointer;">Click to view</span>';
+        const attachment = 'N/A';
 
         row.innerHTML = `
-          <td style="padding:12px; border:1px solid #000; vertical-align:top;">${formattedDate}</td>
-          <td style="padding:12px; border:1px solid #000; vertical-align:top;">${senderEmail}</td>
-          <td style="padding:12px; border:1px solid #000; vertical-align:top;">${e.envelope?.subject||'No subject'}</td>
-          <td class="email-view-cell" style="padding:12px; border:1px solid #000; vertical-align:top;">${context}</td>
-          <td style="padding:12px; border:1px solid #000; vertical-align:top;">${attachment}</td>
+          <td style="padding:12px; border:1px solid #000; vertical-align:top; ${boldStyle}">${formattedDate}</td>
+          <td style="padding:12px; border:1px solid #000; vertical-align:top; ${boldStyle}">${senderEmail}</td>
+          <td style="padding:12px; border:1px solid #000; vertical-align:top; ${boldStyle}">${e.envelope?.subject||'No subject'}</td>
+          <td class="email-view-cell" style="padding:12px; border:1px solid #000; vertical-align:top; ${boldStyle}">${context}</td>
+          <td style="padding:12px; border:1px solid #000; vertical-align:top; ${boldStyle}">${attachment}</td>
         `;
 
         tableBody.appendChild(row);
@@ -4992,6 +5000,12 @@
         const viewCell = row.querySelector('.email-view-cell');
         viewCell.onclick = (event) => {
           console.log('View cell clicked for email UID:', e.uid);
+          // Mark row as read visually
+          if (!isSeen) {
+            row.querySelectorAll('td').forEach(td => td.style.fontWeight = 'normal');
+            e.flags = e.flags || [];
+            e.flags.push('\\Seen');
+          }
           show(e.uid);
         };
       });
@@ -5052,6 +5066,28 @@
     refreshEmailsBtn.onclick = () => {
       // Refresh the email list
       load(true);
+    };
+
+    document.getElementById('readAllEmailsBtn').onclick = async () => {
+      try {
+        const btn = document.getElementById('readAllEmailsBtn');
+        btn.disabled = true;
+        btn.textContent = 'Marking...';
+        const res = await fetch('/api/emails/mark-all-read', { method: 'PUT' });
+        const data = await res.json();
+        if (data.success) {
+          await load(true);
+        } else {
+          alert('Failed to mark all as read: ' + (data.error || 'Unknown error'));
+        }
+        btn.disabled = false;
+        btn.textContent = 'Read All';
+      } catch (err) {
+        alert('Failed to mark all as read: ' + err.message);
+        const btn = document.getElementById('readAllEmailsBtn');
+        btn.disabled = false;
+        btn.textContent = 'Read All';
+      }
     };
     
     cancelBtn.onclick = () => {
@@ -5839,6 +5875,8 @@
       sentEmails.forEach(email => {
         const row = document.createElement('tr');
         row.style.border = '1px solid #000';
+        const isUnread = !email.isRead;
+        const boldStyle = isUnread ? 'font-weight:bold;' : 'font-weight:normal;';
 
         // Format date
         const sentDate = new Date(email.sent_at);
@@ -5853,12 +5891,12 @@
         const previewText = contentPreview.length > 50 ? contentPreview.substring(0, 50) + '...' : contentPreview;
 
         row.innerHTML = `
-          <td style="padding:12px; border:1px solid #000; vertical-align:top;">${formattedDate}</td>
-          <td style="padding:12px; border:1px solid #000; vertical-align:top;">${email.sender_email || 'Unknown'}</td>
-          <td style="padding:12px; border:1px solid #000; vertical-align:top;">${email.to_email}</td>
-          <td style="padding:12px; border:1px solid #000; vertical-align:top;">${email.subject || '(No subject)'}</td>
+          <td style="padding:12px; border:1px solid #000; vertical-align:top; ${boldStyle}">${formattedDate}</td>
+          <td style="padding:12px; border:1px solid #000; vertical-align:top; ${boldStyle}">${email.sender_email || 'Unknown'}</td>
+          <td style="padding:12px; border:1px solid #000; vertical-align:top; ${boldStyle}">${email.to_email}</td>
+          <td style="padding:12px; border:1px solid #000; vertical-align:top; ${boldStyle}">${email.subject || '(No subject)'}</td>
           <td style="padding:12px; border:1px solid #000; vertical-align:top; ${statusClass} font-weight:bold;">${statusText}</td>
-          <td class="sent-email-details-cell" style="padding:12px; border:1px solid #000; vertical-align:top; cursor:pointer; font-weight:500;">${previewText}</td>
+          <td class="sent-email-details-cell" style="padding:12px; border:1px solid #000; vertical-align:top; cursor:pointer; ${boldStyle}">${previewText}</td>
         `;
 
         tableBody.appendChild(row);
@@ -5869,9 +5907,16 @@
 
         // Only make the preview cell clickable
         const detailsCell = row.querySelector('.sent-email-details-cell');
-        detailsCell.onclick = () => {
+        detailsCell.onclick = async () => {
           console.log('Sent email details cell clicked, id=', email.id, 'subject=', email.subject);
           try {
+            // Mark as read
+            if (isUnread) {
+              await fetch(`/api/sent-emails/${email.id}/read`, { method: 'PUT' });
+              email.isRead = 1;
+              row.querySelectorAll('td').forEach(td => { if (!td.classList.contains('sent-email-details-cell')) td.style.fontWeight = 'normal'; });
+              detailsCell.style.fontWeight = 'normal';
+            }
             showSentEmailDetails(email);
           } catch (e) {
             console.error('Error in showSentEmailDetails:', e);
@@ -8539,6 +8584,7 @@
               <td style="border:1px solid #000; padding:8px; text-align:center;" onclick="event.stopPropagation();">
                 <input type="checkbox" class="outsourcing-checkbox" data-quotation-id="${quotation.id}" style="cursor:pointer;">
               </td>
+              <td style="border:1px solid #000; padding:8px;">${quotation.outsourcingSeq || '-'}</td>
               <td style="border:1px solid #000; padding:8px;">${quotation.customerName}</td>
               <td style="border:1px solid #000; padding:8px;">${quotation.contactPerson || 'N/A'}</td>
               <td style="border:1px solid #000; padding:8px;">${quotation.email || 'N/A'}</td>
@@ -8571,6 +8617,7 @@
                   <td style="border:1px solid #000; padding:8px; text-align:center;" rowspan="${suppliers.length}" onclick="event.stopPropagation();">
                     <input type="checkbox" class="outsourcing-checkbox" data-quotation-id="${quotation.id}" style="cursor:pointer;">
                   </td>
+                  <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.outsourcingSeq || '-'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.customerName}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.contactPerson || 'N/A'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.email || 'N/A'}</td>
@@ -8583,7 +8630,8 @@
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${formatDate(quotation.dateCreated)}</td>
                   <td style="border:1px solid #000; padding:8px;">
                     <strong>${supplier.companyName}</strong><br>
-                    <span style="font-size:12px; color:#666;">${memberNames}</span>
+                    <span style="font-size:12px; color:#666;">${memberNames}</span><br>
+                    <span style="font-size:11px; color:#999;">${supplier.emailDomain ? (supplier.members || []).map(m => m.emailPrefix ? m.emailPrefix + '@' + supplier.emailDomain : '').filter(Boolean).join(', ') : ''}</span>
                   </td>
                   <td style="border:1px solid #000; padding:8px; text-align:center;" rowspan="${suppliers.length}">
                     ${actionButtonHtml}
@@ -8599,7 +8647,8 @@
                 <tr style="cursor:pointer;" onclick="viewQuotationDetails(${quotation.id})">
                   <td style="border:1px solid #000; padding:8px;">
                     <strong>${supplier.companyName}</strong><br>
-                    <span style="font-size:12px; color:#666;">${memberNames}</span>
+                    <span style="font-size:12px; color:#666;">${memberNames}</span><br>
+                    <span style="font-size:11px; color:#999;">${supplier.emailDomain ? (supplier.members || []).map(m => m.emailPrefix ? m.emailPrefix + '@' + supplier.emailDomain : '').filter(Boolean).join(', ') : ''}</span>
                   </td>
                 </tr>
               `);
@@ -8636,6 +8685,16 @@
 
         // If sending to supplier, email the quotation info to linked suppliers
         if (newStatus === 'send to outsourcing supplier') {
+          // Generate OS sequence number if not already assigned
+          if (!quotation.outsourcingSeq) {
+            const allQuotRes = await fetch('/api/quotations');
+            const allQuotData = await allQuotRes.json();
+            const allQuotations = allQuotData.success ? allQuotData.quotations : [];
+            const existingSeqs = allQuotations.filter(q => q.outsourcingSeq).map(q => parseInt(q.outsourcingSeq.replace('OS', '')) || 0);
+            const nextSeq = existingSeqs.length > 0 ? Math.max(...existingSeqs) + 1 : 1;
+            quotation.outsourcingSeq = 'OS' + String(nextSeq).padStart(7, '0');
+          }
+
           // Generate tokens for all linked supplier members
           const tokenRes = await fetch('/api/supplier-portal/generate-and-notify', {
             method: 'POST',
@@ -8692,6 +8751,96 @@
             alert(`Sent ${sentCount} email(s), failed ${failCount}.`);
           } else {
             alert(`Successfully sent ${sentCount} portal link(s) to suppliers.`);
+          }
+        }
+
+        // Handle "Start Sampling" - send email to selected supplier with sampling link
+        if (newStatus === 'sampling') {
+          if (!quotation.selectedSupplierId) {
+            alert('No supplier was selected for this quotation. Cannot start sampling.');
+            if (loadingOverlay) document.body.removeChild(loadingOverlay);
+            return;
+          }
+
+          // Show loading
+          if (!loadingOverlay) {
+            loadingOverlay = document.createElement('div');
+            loadingOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999;';
+            loadingOverlay.innerHTML = '<div style="background:#fff; padding:30px 40px; border-radius:8px; text-align:center;"><div style="border:4px solid #f3f3f3; border-top:4px solid #000; border-radius:50%; width:40px; height:40px; animation:spin 1s linear infinite; margin:0 auto 15px;"></div><div style="font-size:16px;">Sending sampling request to supplier...</div></div><style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>';
+            document.body.appendChild(loadingOverlay);
+          }
+
+          try {
+            // Generate sampling token
+            const samplingTokenRes = await fetch('/api/supplier-portal/generate-sampling-token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ quotationId })
+            });
+            const samplingTokenData = await samplingTokenRes.json();
+
+            if (!samplingTokenData.success) {
+              alert(samplingTokenData.error || 'Failed to generate sampling token.');
+              if (loadingOverlay) document.body.removeChild(loadingOverlay);
+              return;
+            }
+
+            const baseUrl = window.location.origin;
+            const samplingLink = `${baseUrl}/supplier-sampling/${samplingTokenData.token}`;
+
+            // Get active profile domain
+            let activeProfileDomain = 'longriver.com';
+            try {
+              const profilesRes = await fetch('/api/profiles');
+              const profilesData = await profilesRes.json();
+              const activeProfile = (profilesData.profiles || profilesData || []).find(p => p.isActive === 1);
+              if (activeProfile && activeProfile.mailUser) {
+                activeProfileDomain = activeProfile.mailUser.split('@')[1] || activeProfileDomain;
+              }
+            } catch (e) { console.warn('Could not fetch profile domain:', e); }
+
+            const supplierName = samplingTokenData.supplierName || 'Supplier';
+            const supplierEmail = samplingTokenData.supplierEmail;
+            const subject = `Quotation Request from ${activeProfileDomain} to ${supplierName} / ${quotation.outsourcingSeq || 'N/A'} - confirm to start sampling`;
+
+            const emailHtml = `
+              <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
+                <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Sampling Request</h2>
+                <p>Dear Supplier,</p>
+                <p>We are ready to proceed with sampling for the following quotation:</p>
+                <table style="width:100%; border-collapse:collapse; margin:20px 0;">
+                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerName || 'N/A'}</td></tr>
+                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${quotation.productType || 'N/A'}</td></tr>
+                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity ? quotation.quantity.toLocaleString() : 'N/A'}</td></tr>
+                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">OS Ref</td><td style="padding:8px; border:1px solid #ccc;">${quotation.outsourcingSeq || 'N/A'}</td></tr>
+                </table>
+                <p>Please click the link below to confirm and provide the expected sample ready date:</p>
+                <p style="margin:20px 0;">
+                  <a href="${samplingLink}" style="display:inline-block; padding:12px 24px; background:#000; color:#fff; text-decoration:none; font-weight:500;">Submit Sample Ready Date</a>
+                </p>
+                <p style="font-size:12px; color:#666;">Or copy this link: ${samplingLink}</p>
+                <p style="font-size:12px; color:#666; margin-top:20px;">This link expires in 30 days.</p>
+              </div>
+            `;
+
+            if (supplierEmail) {
+              const sendRes = await fetch('/api/email/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to: supplierEmail, subject, html: emailHtml })
+              });
+              const sendResult = await sendRes.json();
+              if (!sendResult.success) {
+                alert('Failed to send sampling email to supplier. Status will still be updated.');
+              } else {
+                alert(`Sampling request sent to ${supplierEmail}`);
+              }
+            } else {
+              alert('Supplier email not found. Status will be updated but no email sent.');
+            }
+          } catch (e) {
+            console.error('Error sending sampling email:', e);
+            alert('Error sending sampling email: ' + e.message);
           }
         }
 
@@ -8793,6 +8942,17 @@
     // Send reminder email to suppliers who haven't responded
     window.sendSupplierReminder = async function(quotationId) {
       try {
+        // 0. Get active profile domain
+        let activeProfileDomain = 'longriver.com';
+        try {
+          const profilesRes = await fetch('/api/profiles');
+          const profilesData = await profilesRes.json();
+          const activeProfile = (profilesData.profiles || profilesData || []).find(p => p.isActive === 1);
+          if (activeProfile && activeProfile.mailUser) {
+            activeProfileDomain = activeProfile.mailUser.split('@')[1] || activeProfileDomain;
+          }
+        } catch (e) { console.warn('Could not fetch profile domain:', e); }
+
         // 1. Get quotation details
         const quotationRes = await fetch(`/api/quotations/${quotationId}`);
         const quotationData = await quotationRes.json();
@@ -8830,6 +8990,12 @@
         const confirmMsg = `Send reminder to ${nonResponders.length} supplier(s)?\n\n` +
           nonResponders.map(s => s.companyName).join('\n');
         if (!confirm(confirmMsg)) return;
+
+        // Show loading spinner
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999;';
+        loadingOverlay.innerHTML = '<div style="background:#fff; padding:30px 40px; border-radius:8px; text-align:center;"><div style="border:4px solid #f3f3f3; border-top:4px solid #000; border-radius:50%; width:40px; height:40px; animation:spin 1s linear infinite; margin:0 auto 15px;"></div><div style="font-size:16px;">Sending reminders to suppliers...</div></div><style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>';
+        document.body.appendChild(loadingOverlay);
 
         // 5.5 Increment resend count
         const currentResendCount = (quotation.resendCount || 0) + 1;
@@ -8902,7 +9068,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   to: email,
-                  subject: `${reminderLabel}: Quotation Request - ${quotation.customerName}`,
+                  subject: `REMINDER #${currentResendCount} Quotation Request from ${activeProfileDomain} to ${supplier.companyName} / ${quotation.outsourcingSeq || 'N/A'}`,
                   html: emailHtml
                 })
               });
@@ -8946,7 +9112,9 @@
         }
 
         await displayOutsourcingQuotations();
+        document.body.removeChild(loadingOverlay);
       } catch (error) {
+        if (document.body.contains(loadingOverlay)) document.body.removeChild(loadingOverlay);
         console.error('Error sending reminders:', error);
         alert('Failed to send reminders: ' + error.message);
       }
@@ -8994,6 +9162,7 @@
                   ${!viewOnly ? '<th style="border:1px solid #000; padding:8px; text-align:center; width:50px;">Select</th>' : ''}
                   <th style="border:1px solid #000; padding:8px; text-align:left;">Supplier</th>
                   <th style="border:1px solid #000; padding:8px; text-align:left;">Contact</th>
+                  <th style="border:1px solid #000; padding:8px; text-align:left;">Email</th>
                   <th style="border:1px solid #000; padding:8px; text-align:right;">Unit Price (HKD)</th>
                   <th style="border:1px solid #000; padding:8px; text-align:right;">Total Price (HKD)</th>
                   <th style="border:1px solid #000; padding:8px; text-align:center;">Delivery Days</th>
@@ -9003,12 +9172,24 @@
               <tbody>
         `;
 
+        const totalPrices = responses.map(r => r.totalPrice).filter(p => p != null && p > 0);
+        const minTotal = totalPrices.length > 0 ? Math.min(...totalPrices) : null;
+        const maxTotal = totalPrices.length > 0 ? Math.max(...totalPrices) : null;
+        const allEqual = minTotal !== null && minTotal === maxTotal;
+
         responses.forEach((r, idx) => {
+          let rowBg = '';
+          if (!allEqual && r.totalPrice != null && r.totalPrice > 0) {
+            if (r.totalPrice === minTotal) rowBg = 'background:#d4edda;';
+            else if (r.totalPrice === maxTotal) rowBg = 'background:#f8d7da;';
+          }
+          const supplierEmail = (r.emailPrefix && r.emailDomain) ? r.emailPrefix + '@' + r.emailDomain : '-';
           tableHtml += `
-            <tr>
+            <tr style="${rowBg}">
               ${!viewOnly ? `<td style="border:1px solid #ccc; padding:8px; text-align:center;"><input type="radio" name="selectedSupplier" value="${idx}" style="cursor:pointer; width:18px; height:18px;"></td>` : ''}
               <td style="border:1px solid #ccc; padding:8px;">${r.companyName}</td>
               <td style="border:1px solid #ccc; padding:8px;">${r.memberName}</td>
+              <td style="border:1px solid #ccc; padding:8px;">${supplierEmail}</td>
               <td style="border:1px solid #ccc; padding:8px; text-align:right;">${r.unitPrice ? r.unitPrice.toFixed(2) : 'N/A'}</td>
               <td style="border:1px solid #ccc; padding:8px; text-align:right;">${r.totalPrice ? r.totalPrice.toFixed(2) : 'N/A'}</td>
               <td style="border:1px solid #ccc; padding:8px; text-align:center;">${r.deliveryDays || 'N/A'}</td>
@@ -9161,13 +9342,15 @@
           return;
         }
 
-        // Update status to "send to customer" first
+        // Update status to "send to customer" first, and store selected supplier
         const updateRes1 = await fetch(`/api/quotations/${quotationId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ...quotation,
-            status: 'send to customer'
+            status: 'send to customer',
+            selectedSupplierId: selectedResponse.supplierId,
+            selectedSupplierResponseId: selectedResponse.id
           })
         });
 

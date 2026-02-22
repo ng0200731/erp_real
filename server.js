@@ -542,6 +542,11 @@ app.get('/supplier-portal/:token', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'supplier-portal.html'));
 });
 
+// Catch-all route for supplier sampling token URLs
+app.get('/supplier-sampling/:token', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'supplier-sampling.html'));
+});
+
 app.listen(Number(PORT), () => {
   // Server started
 });

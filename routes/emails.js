@@ -530,7 +530,7 @@ export function createEmailRoutes(deps) {
           messages.push({
             uid: msg.uid,
             seq: msg.seq,
-            flags: msg.flags,
+            flags: Array.from(msg.flags || []),
             envelope: msg.envelope,
             bodyStructure: msg.bodyStructure,
           });
@@ -646,7 +646,7 @@ export function createEmailRoutes(deps) {
           messages.push({
             uid: msg.uid,
             seq: msg.seq,
-            flags: msg.flags,
+            flags: Array.from(msg.flags || []),
             envelope: msg.envelope,
             bodyStructure: msg.bodyStructure,
             sentFolder: sentFolderName
@@ -734,6 +734,53 @@ export function createEmailRoutes(deps) {
         error: err.message || 'Failed to get sent email',
         code: err.code || 'UNKNOWN',
       });
+    }
+  });
+
+  // Mark sent email as read
+  router.put('/sent-emails/:id/read', async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!id || isNaN(id)) {
+        return res.status(400).json({ success: false, error: 'Invalid sent email id' });
+      }
+      const { getTasksDb } = await import('../db/tasksDb.js');
+      const db = await getTasksDb();
+      await db.run('UPDATE sent_emails SET isRead = 1 WHERE id = ?', [id]);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message || 'Failed to mark as read' });
+    }
+  });
+
+  // Mark all inbox emails as read
+  router.put('/mark-all-read', async (req, res) => {
+    try {
+      const profiles = await getProfilesMemory();
+      const activeProfile = profiles.find(p => p.isActive === 1);
+      if (!activeProfile) {
+        return res.status(400).json({ success: false, error: 'No active email profile found.' });
+      }
+
+      const imapClient = createImapClient(activeProfile);
+      try {
+        await imapClient.connect();
+        const lock = await imapClient.getMailboxLock('INBOX');
+        try {
+          const mailbox = imapClient.mailbox;
+          if (mailbox.exists > 0) {
+            await imapClient.messageFlagsAdd('1:*', ['\\Seen']);
+          }
+          res.json({ success: true, message: 'All emails marked as read' });
+        } finally {
+          lock.release();
+        }
+      } finally {
+        await imapClient.logout();
+      }
+    } catch (err) {
+      console.error('Error marking all emails as read:', err);
+      res.status(500).json({ success: false, error: err.message || 'Failed to mark all as read' });
     }
   });
 

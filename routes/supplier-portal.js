@@ -1,11 +1,76 @@
 import express from 'express';
-import { getTasksDb } from '../db/tasksDb.js';
+import { getTasksDb, getProfiles } from '../db/tasksDb.js';
 import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import nodemailer from 'nodemailer';
 
 const router = express.Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Helper: send notification email to both parties after supplier submits quotation
+async function sendSubmissionNotification(quotation, supplier, supplierMember, submittedData) {
+  try {
+    const profiles = await getProfiles();
+    const activeProfile = profiles.find(p => p.isActive === 1);
+    if (!activeProfile) {
+      console.warn('No active email profile, skipping submission notification');
+      return;
+    }
+
+    const transport = nodemailer.createTransport({
+      host: activeProfile.smtpHost,
+      port: Number(activeProfile.smtpPort),
+      secure: activeProfile.smtpSecure === 'true',
+      auth: { user: activeProfile.mailUser, pass: activeProfile.mailPass },
+      tls: { rejectUnauthorized: true },
+      connectionTimeout: 30000,
+      greetingTimeout: 20000,
+      socketTimeout: 30000,
+    });
+
+    const supplierEmail = (supplierMember.emailPrefix && supplier.emailDomain)
+      ? `${supplierMember.emailPrefix}@${supplier.emailDomain}` : null;
+    const senderEmail = activeProfile.mailUser;
+    const subject = `Quotation Submitted - ${supplier.companyName} / ${quotation.outsourcingSeq || 'N/A'}`;
+
+    const html = `
+      <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
+        <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Quotation Submission Confirmation</h2>
+        <p>A supplier quotation has been submitted with the following details:</p>
+        <table style="width:100%; border-collapse:collapse; margin:20px 0;">
+          <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Supplier</td><td style="padding:8px; border:1px solid #ccc;">${supplier.companyName}</td></tr>
+          <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Contact</td><td style="padding:8px; border:1px solid #ccc;">${supplierMember.name}</td></tr>
+          <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerName || 'N/A'}</td></tr>
+          <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${quotation.productType || 'N/A'}</td></tr>
+          <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Unit Price (HKD)</td><td style="padding:8px; border:1px solid #ccc;">${submittedData.unitPrice != null ? Number(submittedData.unitPrice).toFixed(2) : 'N/A'}</td></tr>
+          <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Total Price (HKD)</td><td style="padding:8px; border:1px solid #ccc;">${submittedData.totalPrice != null ? Number(submittedData.totalPrice).toFixed(2) : 'N/A'}</td></tr>
+          <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Delivery Days</td><td style="padding:8px; border:1px solid #ccc;">${submittedData.deliveryDays || 'N/A'}</td></tr>
+          <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Notes</td><td style="padding:8px; border:1px solid #ccc;">${submittedData.notes || '-'}</td></tr>
+        </table>
+        <p style="font-size:12px; color:#666;">This is an automated notification.</p>
+      </div>
+    `;
+
+    const recipients = [senderEmail];
+    if (supplierEmail && supplierEmail !== senderEmail) {
+      recipients.push(supplierEmail);
+    }
+
+    for (const to of recipients) {
+      try {
+        await transport.sendMail({ from: senderEmail, to, subject, html });
+        console.log(`Submission notification sent to ${to}`);
+      } catch (e) {
+        console.error(`Failed to send notification to ${to}:`, e.message);
+      }
+    }
+
+    transport.close();
+  } catch (err) {
+    console.error('Error sending submission notification:', err);
+  }
+}
 
 // Generate a unique token for supplier access
 export async function generateSupplierToken(quotationId, supplierId, supplierMemberId) {
@@ -116,6 +181,161 @@ router.get('/responses/:quotationId', async (req, res) => {
     res.json({ success: true, responses });
   } catch (error) {
     console.error('Error fetching responses:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// POST /supplier-portal/generate-sampling-token - Generate a sampling token for the selected supplier
+// (must be before /:token to avoid matching as a token)
+router.post('/generate-sampling-token', async (req, res) => {
+  try {
+    const { quotationId } = req.body;
+    const db = await getTasksDb();
+
+    const quotation = await db.get(`SELECT * FROM quotations WHERE id = ?`, [quotationId]);
+    if (!quotation) {
+      return res.status(404).json({ success: false, error: 'Quotation not found' });
+    }
+    if (!quotation.selectedSupplierId) {
+      return res.status(400).json({ success: false, error: 'No supplier selected for this quotation' });
+    }
+
+    const response = quotation.selectedSupplierResponseId
+      ? await db.get(`SELECT * FROM supplier_quotation_responses WHERE id = ?`, [quotation.selectedSupplierResponseId])
+      : null;
+
+    const supplierId = quotation.selectedSupplierId;
+    let memberId = response ? response.supplierMemberId : null;
+    if (!memberId) {
+      const firstMember = await db.get(`SELECT id FROM supplier_members WHERE supplierId = ? ORDER BY id LIMIT 1`, [supplierId]);
+      memberId = firstMember ? firstMember.id : null;
+    }
+    if (!memberId) {
+      return res.status(400).json({ success: false, error: 'No supplier member found' });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const createdAt = new Date().toISOString();
+
+    await db.run(
+      `INSERT INTO supplier_sampling_tokens (token, quotationId, supplierId, supplierMemberId, expiresAt, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [token, quotationId, supplierId, memberId, expiresAt, createdAt]
+    );
+
+    const supplier = await db.get(`SELECT * FROM suppliers WHERE id = ?`, [supplierId]);
+    const member = await db.get(`SELECT * FROM supplier_members WHERE id = ?`, [memberId]);
+    const supplierEmail = (member.emailPrefix && supplier.emailDomain)
+      ? `${member.emailPrefix}@${supplier.emailDomain}` : null;
+
+    res.json({ success: true, token, supplierName: supplier.companyName, supplierEmail });
+  } catch (error) {
+    console.error('Error generating sampling token:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// GET /supplier-portal/sampling/:token - Validate sampling token
+// (must be before /:token to avoid matching "sampling" as a token)
+router.get('/sampling/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const db = await getTasksDb();
+
+    const tokenData = await db.get(`SELECT * FROM supplier_sampling_tokens WHERE token = ?`, [token]);
+    if (!tokenData) {
+      return res.status(404).json({ success: false, error: 'Invalid token' });
+    }
+    if (new Date(tokenData.expiresAt) < new Date()) {
+      return res.status(403).json({ success: false, error: 'Token expired' });
+    }
+
+    const quotation = await db.get(`SELECT * FROM quotations WHERE id = ?`, [tokenData.quotationId]);
+    const supplier = await db.get(`SELECT * FROM suppliers WHERE id = ?`, [tokenData.supplierId]);
+    const member = await db.get(`SELECT * FROM supplier_members WHERE id = ?`, [tokenData.supplierMemberId]);
+
+    res.json({
+      success: true,
+      quotation: {
+        id: quotation.id, customerName: quotation.customerName, productType: quotation.productType,
+        quantity: quotation.quantity, outsourcingSeq: quotation.outsourcingSeq, sampleReadyDate: quotation.sampleReadyDate
+      },
+      supplier: { companyName: supplier.companyName, memberName: member.name },
+      alreadySubmitted: !!tokenData.usedAt
+    });
+  } catch (error) {
+    console.error('Error validating sampling token:', error);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+});
+
+// POST /supplier-portal/sampling/:token/submit - Submit sample ready date
+// (must be before /:token to avoid matching "sampling" as a token)
+router.post('/sampling/:token/submit', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { sampleReadyDate } = req.body;
+    const db = await getTasksDb();
+
+    const tokenData = await db.get(`SELECT * FROM supplier_sampling_tokens WHERE token = ?`, [token]);
+    if (!tokenData) return res.status(404).json({ success: false, error: 'Invalid token' });
+    if (new Date(tokenData.expiresAt) < new Date()) return res.status(403).json({ success: false, error: 'Token expired' });
+    if (tokenData.usedAt) return res.status(400).json({ success: false, error: 'Already submitted' });
+
+    await db.run(`UPDATE quotations SET sampleReadyDate = ? WHERE id = ?`, [sampleReadyDate, tokenData.quotationId]);
+    const usedAt = new Date().toISOString();
+    await db.run(`UPDATE supplier_sampling_tokens SET usedAt = ? WHERE id = ?`, [usedAt, tokenData.id]);
+
+    // Send notification email to both parties (non-blocking)
+    const quotation = await db.get(`SELECT * FROM quotations WHERE id = ?`, [tokenData.quotationId]);
+    const supplier = await db.get(`SELECT * FROM suppliers WHERE id = ?`, [tokenData.supplierId]);
+    const member = await db.get(`SELECT * FROM supplier_members WHERE id = ?`, [tokenData.supplierMemberId]);
+
+    if (quotation && supplier && member) {
+      (async () => {
+        try {
+          const profiles = await getProfiles();
+          const activeProfile = profiles.find(p => p.isActive === 1);
+          if (!activeProfile) return;
+
+          const transport = nodemailer.createTransport({
+            host: activeProfile.smtpHost, port: Number(activeProfile.smtpPort),
+            secure: activeProfile.smtpSecure === 'true',
+            auth: { user: activeProfile.mailUser, pass: activeProfile.mailPass },
+            tls: { rejectUnauthorized: true }, connectionTimeout: 30000, greetingTimeout: 20000, socketTimeout: 30000,
+          });
+
+          const supplierEmail = (member.emailPrefix && supplier.emailDomain) ? `${member.emailPrefix}@${supplier.emailDomain}` : null;
+          const senderEmail = activeProfile.mailUser;
+          const subject = `Sample Ready Date Confirmed - ${supplier.companyName} / ${quotation.outsourcingSeq || 'N/A'}`;
+          const html = `
+            <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
+              <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Sample Ready Date Confirmed</h2>
+              <p>The sample ready date has been submitted:</p>
+              <table style="width:100%; border-collapse:collapse; margin:20px 0;">
+                <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Supplier</td><td style="padding:8px; border:1px solid #ccc;">${supplier.companyName}</td></tr>
+                <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerName || 'N/A'}</td></tr>
+                <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${quotation.productType || 'N/A'}</td></tr>
+                <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">OS Ref</td><td style="padding:8px; border:1px solid #ccc;">${quotation.outsourcingSeq || 'N/A'}</td></tr>
+                <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Sample Ready Date</td><td style="padding:8px; border:1px solid #ccc;">${sampleReadyDate}</td></tr>
+              </table>
+              <p style="font-size:12px; color:#666;">This is an automated notification.</p>
+            </div>`;
+
+          const recipients = [senderEmail];
+          if (supplierEmail && supplierEmail !== senderEmail) recipients.push(supplierEmail);
+          for (const to of recipients) {
+            try { await transport.sendMail({ from: senderEmail, to, subject, html }); } catch (e) { console.error(`Failed to send to ${to}:`, e.message); }
+          }
+          transport.close();
+        } catch (e) { console.error('Error sending sampling notification:', e); }
+      })();
+    }
+
+    res.json({ success: true, message: 'Sample ready date submitted successfully' });
+  } catch (error) {
+    console.error('Error submitting sample ready date:', error);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 });
@@ -247,6 +467,15 @@ router.post('/:token/submit', async (req, res) => {
       `UPDATE supplier_quotation_tokens SET usedAt = ? WHERE id = ?`,
       [submittedAt, tokenData.id]
     );
+
+    // Send notification email to both parties (non-blocking)
+    const quotation = await db.get(`SELECT * FROM quotations WHERE id = ?`, [tokenData.quotationId]);
+    const supplier = await db.get(`SELECT * FROM suppliers WHERE id = ?`, [tokenData.supplierId]);
+    const supplierMember = await db.get(`SELECT * FROM supplier_members WHERE id = ?`, [tokenData.supplierMemberId]);
+    if (quotation && supplier && supplierMember) {
+      sendSubmissionNotification(quotation, supplier, supplierMember, { unitPrice, totalPrice, deliveryDays, notes })
+        .catch(err => console.error('Notification error:', err));
+    }
 
     res.json({
       success: true,
