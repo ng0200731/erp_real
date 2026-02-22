@@ -285,6 +285,14 @@ async function ensureSchema(db) {
       console.warn('Error adding sender_email column:', err);
     }
   }
+
+  try {
+    await db.exec(`ALTER TABLE quotations ADD COLUMN resendCount INTEGER DEFAULT 0;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding resendCount column:', err);
+    }
+  }
 }
 
 export async function getTasksDb() {
@@ -789,7 +797,7 @@ export async function updateQuotation(id, quotationData) {
   await db.run(
     `
       UPDATE quotations
-      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?
+      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?
       WHERE id = ?
     `,
     [
@@ -810,6 +818,7 @@ export async function updateQuotation(id, quotationData) {
       quotationData.profileImagePath || null,
       JSON.stringify(quotationData.attachmentPaths || []),
       quotationData.status || 'draft',
+      quotationData.resendCount || 0,
       id
     ]
   );
