@@ -45,7 +45,8 @@
       "mcp__plugin_playwright_playwright__browser_evaluate",
       "mcp__plugin_playwright_playwright__browser_click",
       "Bash(npx @playwright/mcp@latest --help:*)",
-      "Bash(ping:*)"
+      "Bash(ping:*)",
+      "Bash(xargs:*)"
     ]
   }
 }

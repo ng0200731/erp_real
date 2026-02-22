@@ -32,7 +32,8 @@ async function sendSubmissionNotification(quotation, supplier, supplierMember, s
     const supplierEmail = (supplierMember.emailPrefix && supplier.emailDomain)
       ? `${supplierMember.emailPrefix}@${supplier.emailDomain}` : null;
     const senderEmail = activeProfile.mailUser;
-    const subject = `Quotation Submitted - ${supplier.companyName} / ${quotation.outsourcingSeq || 'N/A'}`;
+    const senderDomain = senderEmail.split('@')[1] || 'longriver.com';
+    const subject = `Quotation Submitted - ${senderDomain} / ${supplier.companyName} / ${quotation.outsourcingSeq || 'N/A'}`;
 
     const html = `
       <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
@@ -308,7 +309,7 @@ router.post('/sampling/:token/submit', async (req, res) => {
 
           const supplierEmail = (member.emailPrefix && supplier.emailDomain) ? `${member.emailPrefix}@${supplier.emailDomain}` : null;
           const senderEmail = activeProfile.mailUser;
-          const subject = `Sample Ready Date Confirmed - ${supplier.companyName} / ${quotation.outsourcingSeq || 'N/A'}`;
+          const subject = `Sample Ready Date Confirmed - ${supplier.companyName} / ${quotation.outsourcingSeq || 'N/A'} / Ready: ${sampleReadyDate}`;
           const html = `
             <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
               <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Sample Ready Date Confirmed</h2>

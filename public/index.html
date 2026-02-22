@@ -8538,22 +8538,31 @@
 
         const statusMap = {
           'pending': { next: 'send to outsourcing supplier', label: 'Send to Supplier' },
+          'compare quotation': { next: null, label: 'Compare Quotation', popup: true },
+          'send to customer': { next: 'await customer confirm price', label: 'Await Confirm' },
           'await customer confirm price': { next: 'price confirmed', label: 'Confirm Price' },
           'price confirmed': { next: 'sampling', label: 'Start Sampling' },
           'sampling': { next: 'sample delivered', label: 'Mark Delivered' },
           'sample delivered': { next: null, label: 'Completed' }
         };
 
+        // Statuses after comparison - show view button alongside action
+        const postCompareStatuses = ['compare quotation', 'send to customer', 'await customer confirm price', 'price confirmed', 'sampling', 'sample delivered'];
+        const viewBtn = (postCompareStatuses.includes(status) && responseCount > 0)
+          ? `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#17a2b8; color:#fff;" onclick="event.stopPropagation(); showCompareQuotationPopup(${quotation.id}, true)">View Quotations</button>`
+          : '';
+
         const action = statusMap[status];
         if (!action || !action.next) {
-          return '<span style="color:#999;">Completed</span>';
+          return `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;"><span style="color:#999;">Completed</span>${viewBtn}</div>`;
         }
 
         if (action.popup) {
           return `<button class="page-btn" style="padding:4px 8px; font-size:12px;" onclick="event.stopPropagation(); showCompareQuotationPopup(${quotation.id})">${action.label}</button>`;
         }
 
-        return `<button class="page-btn" style="padding:4px 8px; font-size:12px;" onclick="event.stopPropagation(); updateOutsourcingStatus(${quotation.id}, '${action.next}')">${action.label}</button>`;
+        const actionBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px;" onclick="event.stopPropagation(); updateOutsourcingStatus(${quotation.id}, '${action.next}')">${action.label}</button>`;
+        return viewBtn ? `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">${actionBtn}${viewBtn}</div>` : actionBtn;
       }
 
       // Fetch suppliers for each quotation and build the rows
@@ -8685,6 +8694,17 @@
 
         // If sending to supplier, email the quotation info to linked suppliers
         if (newStatus === 'send to outsourcing supplier') {
+          // Get active profile domain for email subject
+          let activeProfileDomain = 'longriver.com';
+          try {
+            const profilesRes = await fetch('/api/profiles');
+            const profilesData = await profilesRes.json();
+            const activeProfile = (profilesData.profiles || profilesData || []).find(p => p.isActive === 1);
+            if (activeProfile && activeProfile.mailUser) {
+              activeProfileDomain = activeProfile.mailUser.split('@')[1] || activeProfileDomain;
+            }
+          } catch (e) { console.warn('Could not fetch profile domain:', e); }
+
           // Generate OS sequence number if not already assigned
           if (!quotation.outsourcingSeq) {
             const allQuotRes = await fetch('/api/quotations');
@@ -8729,7 +8749,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   to: t.email,
-                  subject: `Quotation Request - ${quotation.customerName} - ${quotation.productType}`,
+                  subject: `Quotation Request from ${activeProfileDomain} to ${t.supplierName} / ${quotation.outsourcingSeq || 'N/A'}`,
                   html: emailHtml
                 })
               });
@@ -8815,10 +8835,9 @@
                   <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">OS Ref</td><td style="padding:8px; border:1px solid #ccc;">${quotation.outsourcingSeq || 'N/A'}</td></tr>
                 </table>
                 <p>Please click the link below to confirm and provide the expected sample ready date:</p>
-                <p style="margin:20px 0;">
-                  <a href="${samplingLink}" style="display:inline-block; padding:12px 24px; background:#000; color:#fff; text-decoration:none; font-weight:500;">Submit Sample Ready Date</a>
-                </p>
-                <p style="font-size:12px; color:#666;">Or copy this link: ${samplingLink}</p>
+                <table cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;"><tr><td align="center" bgcolor="#000000" style="padding:12px 24px; border-radius:4px;"><a href="${samplingLink}" style="color:#ffffff; text-decoration:none; font-weight:500; font-size:14px;" target="_blank">Submit Sample Ready Date</a></td></tr></table>
+                <p style="font-size:12px; color:#666;">If the button above does not work, copy and paste this link into your browser:</p>
+                <p style="font-size:12px; color:#000; word-break:break-all; background:#f5f5f5; padding:8px; border:1px solid #ddd;">${samplingLink}</p>
                 <p style="font-size:12px; color:#666; margin-top:20px;">This link expires in 30 days.</p>
               </div>
             `;
@@ -8906,10 +8925,9 @@
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity ? quotation.quantity.toLocaleString() : 'N/A'}</td></tr>
           </table>
           <p>Please submit your quotation using the link below:</p>
-          <p style="margin:20px 0;">
-            <a href="${portalLink}" style="display:inline-block; padding:12px 24px; background:#000; color:#fff; text-decoration:none; font-weight:500;">Submit Your Quotation</a>
-          </p>
-          <p style="font-size:12px; color:#666;">Or copy this link: ${portalLink}</p>
+          <table cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;"><tr><td align="center" bgcolor="#000000" style="padding:12px 24px; border-radius:4px;"><a href="${portalLink}" style="color:#ffffff; text-decoration:none; font-weight:500; font-size:14px;" target="_blank">Submit Your Quotation</a></td></tr></table>
+          <p style="font-size:12px; color:#666;">If the button above does not work, copy and paste this link into your browser:</p>
+          <p style="font-size:12px; color:#000; word-break:break-all; background:#f5f5f5; padding:8px; border:1px solid #ddd;">${portalLink}</p>
           <p style="font-size:12px; color:#666; margin-top:20px;">This link is unique to you and expires in 30 days.</p>
         </div>
       `;
@@ -8931,10 +8949,9 @@
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity ? quotation.quantity.toLocaleString() : 'N/A'}</td></tr>
           </table>
           <p><strong>Please submit your quotation as soon as possible:</strong></p>
-          <p style="margin:20px 0;">
-            <a href="${portalLink}" style="display:inline-block; padding:12px 24px; background:#f00; color:#fff; text-decoration:none; font-weight:500;">Submit Your Quotation Now</a>
-          </p>
-          <p style="font-size:12px; color:#666;">Or copy this link: ${portalLink}</p>
+          <table cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;"><tr><td align="center" bgcolor="#ff0000" style="padding:12px 24px; border-radius:4px;"><a href="${portalLink}" style="color:#ffffff; text-decoration:none; font-weight:500; font-size:14px;" target="_blank">Submit Your Quotation Now</a></td></tr></table>
+          <p style="font-size:12px; color:#666;">If the button above does not work, copy and paste this link into your browser:</p>
+          <p style="font-size:12px; color:#000; word-break:break-all; background:#f5f5f5; padding:8px; border:1px solid #ddd;">${portalLink}</p>
         </div>
       `;
     }
@@ -9271,6 +9288,12 @@
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
 
+        // Auto-select radio if only 1 supplier response
+        if (!viewOnly && responses.length === 1) {
+          const radio = content.querySelector('input[name="selectedSupplier"]');
+          if (radio) radio.checked = true;
+        }
+
       } catch (error) {
         console.error('Error showing comparison popup:', error);
         alert('Failed to load supplier responses');
@@ -9321,8 +9344,51 @@
           return;
         }
 
+        // Fetch original email content if this quotation came from an email
+        let originalEmailHtml = '';
+        if (quotation.sourceEmailUid) {
+          try {
+            const emailRes = await fetch(`/api/emails/${quotation.sourceEmailUid}`);
+            if (emailRes.ok) {
+              const emailData = await emailRes.json();
+              if (emailData.source) {
+                // Extract HTML body from raw email source
+                const parser = new DOMParser();
+                // Try to find HTML content between boundaries or in the source
+                const sourceStr = typeof emailData.source === 'string' ? emailData.source : '';
+                const htmlMatch = sourceStr.match(/<html[\s\S]*?<\/html>/i) || sourceStr.match(/<body[\s\S]*?<\/body>/i);
+                if (htmlMatch) {
+                  originalEmailHtml = `
+                    <div style="margin-top:30px; padding-top:20px; border-top:2px solid #ccc;">
+                      <h3 style="color:#666;">Original Email</h3>
+                      <div style="padding:10px; background:#f9f9f9; border:1px solid #eee;">${htmlMatch[0]}</div>
+                    </div>`;
+                } else if (sourceStr) {
+                  // Plain text fallback - extract body content
+                  const lines = sourceStr.split('\n');
+                  let bodyStart = false;
+                  let bodyLines = [];
+                  for (const line of lines) {
+                    if (bodyStart) bodyLines.push(line);
+                    if (line.trim() === '' && !bodyStart) bodyStart = true;
+                  }
+                  if (bodyLines.length > 0) {
+                    originalEmailHtml = `
+                      <div style="margin-top:30px; padding-top:20px; border-top:2px solid #ccc;">
+                        <h3 style="color:#666;">Original Email</h3>
+                        <pre style="padding:10px; background:#f9f9f9; border:1px solid #eee; white-space:pre-wrap; font-family:inherit;">${bodyLines.join('\n')}</pre>
+                      </div>`;
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('Could not fetch original email:', e);
+          }
+        }
+
         // Generate email HTML for the selected supplier
-        const emailHtml = generateCustomerComparisonEmailHtml(quotation, selectedResponse);
+        const emailHtml = generateCustomerComparisonEmailHtml(quotation, selectedResponse) + originalEmailHtml;
 
         // Send email
         const sendRes = await fetch('/api/email/send', {
@@ -9365,7 +9431,9 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ...quotation,
-            status: 'await customer confirm price'
+            status: 'await customer confirm price',
+            selectedSupplierId: selectedResponse.supplierId,
+            selectedSupplierResponseId: selectedResponse.id
           })
         });
 
@@ -11708,6 +11776,20 @@
           return;
         }
 
+        // Auto-generate OS Ref for new outsourcing quotations
+        let outsourcingSeq = null;
+        const isOutsourcing = (tagType === 'other' || tagType === 'others' || tagType === 'outsource');
+        if (isOutsourcing && !window.editingQuotationId) {
+          try {
+            const allQuotRes = await fetch('/api/quotations');
+            const allQuotData = await allQuotRes.json();
+            const allQuotations = allQuotData.success ? allQuotData.quotations : [];
+            const existingSeqs = allQuotations.filter(q => q.outsourcingSeq).map(q => parseInt(q.outsourcingSeq.replace('OS', '')) || 0);
+            const nextSeq = existingSeqs.length > 0 ? Math.max(...existingSeqs) + 1 : 1;
+            outsourcingSeq = 'OS' + String(nextSeq).padStart(7, '0');
+          } catch (e) { console.warn('Failed to generate OS Ref:', e); }
+        }
+
         // Create quotation object first (without files)
         const quotation = {
           ...(window.editingQuotationId && { id: window.editingQuotationId }),
@@ -11721,6 +11803,7 @@
           unitPrice: parseFloat(unitPrice) || 0,
           total: parseFloat(total) || 0,
           notes,
+          outsourcingSeq,
           type: source,
           sourceEmailUid: (source === 'email' && window.currentQuotationEmailMeta) ? window.currentQuotationEmailMeta.uid : null,
           sourceEmailSubject: (source === 'email' && window.currentQuotationEmailMeta) ? window.currentQuotationEmailMeta.subject : null,
@@ -12000,11 +12083,17 @@
 
       // Fetch the original email content
       let originalEmailHtml = '';
+      let originalSubject = emailMeta ? emailMeta.subject : '';
       if (emailMeta && emailMeta.uid) {
         try {
           const response = await fetch(`/api/emails/${emailMeta.uid}`);
           const data = await response.json();
-          if (data.success && data.source) {
+          if (data.success) {
+            // Use envelope subject as the original subject (most reliable)
+            if (data.envelope && data.envelope.subject) {
+              originalSubject = data.envelope.subject;
+            }
+            if (data.source) {
             // Extract the original email body
             const source = data.source;
             const headerEndMatch = source.match(/\n\n|\r\n\r\n/);
@@ -12015,8 +12104,8 @@
               if (bodyPart.includes('Content-Type:') || bodyPart.includes('Content-Transfer-Encoding:')) {
                 console.log('Found MIME content in original email, attempting to decode...');
                 try {
-                  // Split by MIME boundary to get individual parts
-                  const boundaryMatch = bodyPart.match(/------=_NextPart_[A-F0-9_]+/);
+                  // Match any MIME boundary format (------=_NextPart_, ----=_Part_, --boundary, etc.)
+                  const boundaryMatch = bodyPart.match(/^(--[\w=_+-]+)/m);
 
                   if (boundaryMatch) {
                     const boundary = boundaryMatch[0];
@@ -12029,33 +12118,41 @@
                     for (const part of parts) {
                       if (!part.trim() || part.trim() === '--') continue;
 
-                      const isHtml = part.includes('Content-Type: text/html');
-                      const isPlain = part.includes('Content-Type: text/plain');
-                      const isBase64 = part.includes('Content-Transfer-Encoding: base64');
+                      const isHtml = /Content-Type:\s*text\/html/i.test(part);
+                      const isPlain = /Content-Type:\s*text\/plain/i.test(part);
+                      const isBase64 = /Content-Transfer-Encoding:\s*base64/i.test(part);
+                      const isQP = /Content-Transfer-Encoding:\s*quoted-printable/i.test(part);
 
-                      if ((isHtml || isPlain) && isBase64) {
-                        // Extract ONLY valid base64 characters (A-Z, a-z, 0-9, +, /, =, and whitespace)
-                        const base64Match = part.match(/Content-Transfer-Encoding:\s*base64\s+([A-Za-z0-9+\/=\s]+)/i);
+                      if (isHtml || isPlain) {
+                        // Extract content after the headers (blank line separates headers from content)
+                        const contentMatch = part.match(/\r?\n\r?\n([\s\S]+)/);
+                        if (!contentMatch) continue;
+                        let content = contentMatch[1].trim();
 
-                        if (base64Match && base64Match[1]) {
+                        if (isBase64) {
                           try {
-                            // Remove ALL whitespace
-                            const base64String = base64Match[1].replace(/\s+/g, '');
-
+                            const base64String = content.replace(/\s+/g, '');
                             if (base64String.length > 0) {
-                              const decoded = atob(base64String);
-
-                              if (isHtml) {
-                                htmlContent = decoded;
-                                console.log('Successfully decoded HTML content:', decoded.substring(0, 100));
-                              } else if (isPlain) {
-                                plainContent = decoded;
-                                console.log('Successfully decoded plain text content:', decoded.substring(0, 100));
-                              }
+                              content = atob(base64String);
                             }
                           } catch (e) {
                             console.warn('Failed to decode base64:', e);
+                            continue;
                           }
+                        } else if (isQP) {
+                          try {
+                            content = content.replace(/=\r?\n/g, '').replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+                          } catch (e) {
+                            console.warn('Failed to decode quoted-printable:', e);
+                          }
+                        }
+
+                        if (isHtml && !htmlContent) {
+                          htmlContent = content;
+                          console.log('Successfully decoded HTML content:', content.substring(0, 100));
+                        } else if (isPlain && !plainContent) {
+                          plainContent = content;
+                          console.log('Successfully decoded plain text content:', content.substring(0, 100));
                         }
                       }
                     }
@@ -12065,18 +12162,34 @@
                       bodyPart = htmlContent || plainContent;
                       console.log('Using decoded content for original email');
                     } else {
-                      console.log('No MIME content was successfully decoded, using raw body');
+                      console.log('No MIME content was successfully decoded, discarding raw body');
+                      bodyPart = '';
                     }
                   } else {
-                    console.log('No MIME boundary found, using raw body');
+                    console.log('No MIME boundary found, discarding raw MIME body');
+                    bodyPart = '';
                   }
                 } catch (e) {
                   console.warn('Failed to parse MIME content:', e);
+                  bodyPart = '';
                 }
               }
 
               originalEmailHtml = bodyPart;
+
+              // Strip raw MIME content - if it still contains MIME headers, discard it
+              // Only check if it's NOT valid HTML (valid decoded content starts with < tags)
+              const looksLikeHtml = /^\s*</.test(originalEmailHtml);
+              if (originalEmailHtml && !looksLikeHtml && (
+                originalEmailHtml.includes('Content-Transfer-Encoding:') ||
+                originalEmailHtml.includes('Content-Type:') ||
+                /^--[\w=_+-]+/m.test(originalEmailHtml)
+              )) {
+                console.log('Original email body still contains raw MIME, discarding');
+                originalEmailHtml = '';
+              }
             }
+          }
           }
         } catch (err) {
           console.warn('Failed to fetch original email for threading:', err);
@@ -12086,8 +12199,8 @@
       // Generate HTML email content
       const emailHtml = generateQuotationEmailHtml(quotation, emailMeta, originalEmailHtml);
 
-      // Prepare email subject with "Re:" prefix and "- Quotation" suffix
-      const emailSubject = `Re: ${emailMeta.subject} - Quotation`;
+      // Prepare email subject using original subject from envelope
+      const emailSubject = `Re: ${originalSubject} - Quotation`;
 
       // Prepare email data
       const emailData = {

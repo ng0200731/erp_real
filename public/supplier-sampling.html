@@ -122,6 +122,7 @@
           <div class="form-group">
             <label for="sampleReadyDate">Expected Sample Ready Date</label>
             <input type="date" id="sampleReadyDate" required>
+            <button type="button" onclick="document.getElementById('sampleReadyDate').value = new Date(Date.now() + 14*86400000).toISOString().split('T')[0];" style="margin-top:6px; padding:6px 12px; background:#f5f5f5; border:1px solid #000; font-size:12px; cursor:pointer;">Dummy Date (+14 days)</button>
           </div>
         </div>
         <button type="submit" class="btn-submit" id="btnSubmit">Submit Sample Ready Date</button>
