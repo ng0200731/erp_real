@@ -1760,7 +1760,7 @@
       </div>
 
       <!-- Email UI (next step; hidden for now) -->
-      <div id="emails" style="margin:0; display:none; width:100%; flex:1; overflow-y:auto; min-height:0;">
+      <div id="emails" style="margin:0; display:none; width:100%; flex:1; overflow-y:hidden; min-height:0; flex-direction:column;">
         <div class="topbar">
           <button id="composeBtn" class="page-btn">Compose</button>
           <button id="refreshEmailsBtn" class="page-btn">Refresh List</button>
@@ -1779,7 +1779,7 @@
             <button id="dummyFillComposeBtn" class="page-btn" type="button" style="margin-left:auto;">Dummy Fill</button>
           </div>
         </div>
-        <div style="max-height:500px; overflow-y:auto; border:1px solid #000; margin-bottom:15px;">
+        <div style="flex:1; overflow-y:auto; border:1px solid #000; margin-bottom:15px; min-height:0;">
         <table id="emailTable" style="width:100%; border-collapse:collapse;">
           <thead style="position:sticky; top:0; background:#fff; z-index:1;">
             <tr style="background:#fff;">
@@ -2453,7 +2453,7 @@
       // Panels
       welcomePanel.style.display = id === 'welcome' ? 'block' : 'none';
       profilesListPanel.style.display = id === 'profiles' ? 'block' : 'none';
-      document.getElementById('emails').style.display = id === 'emails' ? 'block' : 'none';
+      document.getElementById('emails').style.display = id === 'emails' ? 'flex' : 'none';
       document.getElementById('email-send').style.display = id === 'email-send' ? 'block' : 'none';
       document.getElementById('customerPanel').style.display = id === 'customer' ? 'block' : 'none';
       document.getElementById('customerViewPanel').style.display = id === 'customer-view' ? 'block' : 'none';
@@ -3916,7 +3916,7 @@
 
         let res;
         try {
-          res = await fetch('/api/emails?limit=20', { 
+          res = await fetch('/api/emails', {
             signal: controller.signal,
             cache: 'no-cache' // Prevent caching
           });
@@ -8841,8 +8841,8 @@
                 </table>
                 <p>Please click the link below to confirm and provide the expected sample ready date:</p>
                 <table cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;"><tr><td align="center" bgcolor="#000000" style="padding:12px 24px; border-radius:4px;"><a href="${samplingLink}" style="color:#ffffff; text-decoration:none; font-weight:500; font-size:14px;" target="_blank">Submit Sample Ready Date</a></td></tr></table>
-                <p style="font-size:12px; color:#666;">If the button above does not work, copy and paste this link into your browser:</p>
-                <p style="font-size:12px; color:#000; word-break:break-all; background:#f5f5f5; padding:8px; border:1px solid #ddd;">${samplingLink}</p>
+                <p style="font-size:13px; color:#333; margin-bottom:4px; font-weight:600;">📋 Copy this link to open in your browser:</p>
+                <table cellpadding="0" cellspacing="0" border="0" style="width:100%; margin-bottom:10px;"><tr><td style="padding:10px 12px; background:#f0f0f0; border:2px solid #000; font-size:13px; color:#000; word-break:break-all; font-family:monospace;">${samplingLink}</td></tr></table>
                 <p style="font-size:12px; color:#666; margin-top:20px;">This link expires in 30 days.</p>
               </div>
             `;
@@ -8931,8 +8931,8 @@
           </table>
           <p>Please submit your quotation using the link below:</p>
           <table cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;"><tr><td align="center" bgcolor="#000000" style="padding:12px 24px; border-radius:4px;"><a href="${portalLink}" style="color:#ffffff; text-decoration:none; font-weight:500; font-size:14px;" target="_blank">Submit Your Quotation</a></td></tr></table>
-          <p style="font-size:12px; color:#666;">If the button above does not work, copy and paste this link into your browser:</p>
-          <p style="font-size:12px; color:#000; word-break:break-all; background:#f5f5f5; padding:8px; border:1px solid #ddd;">${portalLink}</p>
+          <p style="font-size:13px; color:#333; margin-bottom:4px; font-weight:600;">📋 Copy this link to open in your browser:</p>
+          <table cellpadding="0" cellspacing="0" border="0" style="width:100%; margin-bottom:10px;"><tr><td style="padding:10px 12px; background:#f0f0f0; border:2px solid #000; font-size:13px; color:#000; word-break:break-all; font-family:monospace;">${portalLink}</td></tr></table>
           <p style="font-size:12px; color:#666; margin-top:20px;">This link is unique to you and expires in 30 days.</p>
         </div>
       `;
@@ -8955,8 +8955,8 @@
           </table>
           <p><strong>Please submit your quotation as soon as possible:</strong></p>
           <table cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;"><tr><td align="center" bgcolor="#ff0000" style="padding:12px 24px; border-radius:4px;"><a href="${portalLink}" style="color:#ffffff; text-decoration:none; font-weight:500; font-size:14px;" target="_blank">Submit Your Quotation Now</a></td></tr></table>
-          <p style="font-size:12px; color:#666;">If the button above does not work, copy and paste this link into your browser:</p>
-          <p style="font-size:12px; color:#000; word-break:break-all; background:#f5f5f5; padding:8px; border:1px solid #ddd;">${portalLink}</p>
+          <p style="font-size:13px; color:#333; margin-bottom:4px; font-weight:600;">📋 Copy this link to open in your browser:</p>
+          <table cellpadding="0" cellspacing="0" border="0" style="width:100%; margin-bottom:10px;"><tr><td style="padding:10px 12px; background:#f0f0f0; border:2px solid #000; font-size:13px; color:#000; word-break:break-all; font-family:monospace;">${portalLink}</td></tr></table>
         </div>
       `;
     }

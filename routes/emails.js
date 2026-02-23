@@ -484,7 +484,7 @@ export function createEmailRoutes(deps) {
         });
       }
 
-      const limit = Math.min(Number(req.query.limit) || 50, 100);
+      const limit = Number(req.query.limit) || 0; // 0 means no limit
       const offset = Math.max(Number(req.query.offset) || 0, 0);
 
       const lock = await imapClient.getMailboxLock('INBOX');
@@ -504,7 +504,8 @@ export function createEmailRoutes(deps) {
           });
         }
 
-        const startSeq = Math.max(1, totalMessages - offset - limit + 1);
+        const effectiveLimit = limit > 0 ? limit : totalMessages;
+        const startSeq = Math.max(1, totalMessages - offset - effectiveLimit + 1);
         const endSeq = Math.max(1, totalMessages - offset);
 
         if (startSeq > endSeq) {

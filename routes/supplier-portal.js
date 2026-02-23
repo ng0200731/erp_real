@@ -60,7 +60,15 @@ async function sendSubmissionNotification(quotation, supplier, supplierMember, s
 
     for (const to of recipients) {
       try {
-        await transport.sendMail({ from: senderEmail, to, subject, html });
+        const mailOptions = { to, subject, html };
+        if (to === senderEmail && supplierEmail) {
+          // Send to admin on behalf of supplier
+          mailOptions.from = `${supplierMember.name} <${senderEmail}>`;
+          mailOptions.replyTo = supplierEmail;
+        } else {
+          mailOptions.from = senderEmail;
+        }
+        await transport.sendMail(mailOptions);
         console.log(`Submission notification sent to ${to}`);
       } catch (e) {
         console.error(`Failed to send notification to ${to}:`, e.message);
