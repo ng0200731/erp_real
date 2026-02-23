@@ -796,10 +796,19 @@ export async function findCustomerByEmail(email) {
 export async function createQuotation(quotationData) {
   const db = await getTasksDb();
 
+  // Auto-generate OS Ref for outsourcing quotations
+  let outsourcingSeq = quotationData.outsourcingSeq || null;
+  const isOutsourcing = (quotationData.productType === 'other' || quotationData.productType === 'others' || quotationData.productType === 'outsource');
+  if (isOutsourcing && !outsourcingSeq) {
+    const row = await db.get(`SELECT MAX(CAST(REPLACE(outsourcingSeq, 'OS', '') AS INTEGER)) as maxSeq FROM quotations WHERE outsourcingSeq IS NOT NULL`);
+    const nextSeq = (row && row.maxSeq ? row.maxSeq : 0) + 1;
+    outsourcingSeq = 'OS' + String(nextSeq).padStart(7, '0');
+  }
+
   const result = await db.run(
     `
-      INSERT INTO quotations (customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO quotations (customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, outsourcingSeq)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       quotationData.customerName,
@@ -819,7 +828,8 @@ export async function createQuotation(quotationData) {
       quotationData.profileImagePath || null,
       JSON.stringify(quotationData.attachmentPaths || []),
       quotationData.dateCreated,
-      quotationData.status || 'draft'
+      quotationData.status || 'draft',
+      outsourcingSeq
     ]
   );
 

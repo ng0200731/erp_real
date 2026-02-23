@@ -1582,6 +1582,9 @@
                   <input type="text" id="outsourcingFilterDate" class="filter-input" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
+                  <div>Sample Ready Date</div>
+                </th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Supplier</div>
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:center;">
@@ -1594,7 +1597,7 @@
             </thead>
             <tbody id="outsourcingTableBody">
               <tr>
-                <td colspan="14" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+                <td colspan="15" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
                   No outsourcing quotations saved yet. Create outsourcing quotations first.
                 </td>
               </tr>
@@ -8604,6 +8607,7 @@
               <td style="border:1px solid #000; padding:8px;">${quotation.type || 'non email'}</td>
               <td style="border:1px solid #000; padding:8px;">${quotation.status || 'pending'}</td>
               <td style="border:1px solid #000; padding:8px;">${formatDate(quotation.dateCreated)}</td>
+              <td style="border:1px solid #000; padding:8px;">${quotation.sampleReadyDate || '-'}</td>
               <td style="border:1px solid #000; padding:8px; color:#999;">No supplier</td>
               <td style="border:1px solid #000; padding:8px; text-align:center;">
                 <button class="page-btn" style="padding:4px 8px; font-size:12px;" onclick="event.stopPropagation(); openLinkSupplierModal(${quotation.id})">Link Supplier</button>
@@ -8637,6 +8641,7 @@
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.type || 'non email'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.status || 'pending'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${formatDate(quotation.dateCreated)}</td>
+                  <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.sampleReadyDate || '-'}</td>
                   <td style="border:1px solid #000; padding:8px;">
                     <strong>${supplier.companyName}</strong><br>
                     <span style="font-size:12px; color:#666;">${memberNames}</span><br>
@@ -9346,37 +9351,78 @@
 
         // Fetch original email content if this quotation came from an email
         let originalEmailHtml = '';
+        let originalSubject = '';
+        let originalMessageId = null;
         if (quotation.sourceEmailUid) {
           try {
             const emailRes = await fetch(`/api/emails/${quotation.sourceEmailUid}`);
             if (emailRes.ok) {
               const emailData = await emailRes.json();
+              // Get original subject from envelope
+              if (emailData.envelope && emailData.envelope.subject) {
+                originalSubject = emailData.envelope.subject;
+              }
+              if (emailData.envelope && emailData.envelope.messageId) {
+                originalMessageId = emailData.envelope.messageId;
+              }
               if (emailData.source) {
-                // Extract HTML body from raw email source
-                const parser = new DOMParser();
-                // Try to find HTML content between boundaries or in the source
                 const sourceStr = typeof emailData.source === 'string' ? emailData.source : '';
-                const htmlMatch = sourceStr.match(/<html[\s\S]*?<\/html>/i) || sourceStr.match(/<body[\s\S]*?<\/body>/i);
-                if (htmlMatch) {
-                  originalEmailHtml = `
-                    <div style="margin-top:30px; padding-top:20px; border-top:2px solid #ccc;">
-                      <h3 style="color:#666;">Original Email</h3>
-                      <div style="padding:10px; background:#f9f9f9; border:1px solid #eee;">${htmlMatch[0]}</div>
-                    </div>`;
-                } else if (sourceStr) {
-                  // Plain text fallback - extract body content
-                  const lines = sourceStr.split('\n');
-                  let bodyStart = false;
-                  let bodyLines = [];
-                  for (const line of lines) {
-                    if (bodyStart) bodyLines.push(line);
-                    if (line.trim() === '' && !bodyStart) bodyStart = true;
+                // Extract body after headers
+                const headerEndMatch = sourceStr.match(/\n\n|\r\n\r\n/);
+                if (headerEndMatch) {
+                  let bodyPart = sourceStr.substring(headerEndMatch.index + headerEndMatch[0].length);
+
+                  // Decode MIME content if present
+                  if (bodyPart.includes('Content-Type:') || bodyPart.includes('Content-Transfer-Encoding:')) {
+                    try {
+                      const boundaryMatch = bodyPart.match(/^(--[\w=_+-]+)/m);
+                      if (boundaryMatch) {
+                        const boundary = boundaryMatch[0];
+                        const parts = bodyPart.split(boundary);
+                        let htmlContent = '';
+                        let plainContent = '';
+                        for (const part of parts) {
+                          if (!part.trim() || part.trim() === '--') continue;
+                          const isHtml = /Content-Type:\s*text\/html/i.test(part);
+                          const isPlain = /Content-Type:\s*text\/plain/i.test(part);
+                          const isBase64 = /Content-Transfer-Encoding:\s*base64/i.test(part);
+                          const isQP = /Content-Transfer-Encoding:\s*quoted-printable/i.test(part);
+                          if (isHtml || isPlain) {
+                            const contentMatch = part.match(/\r?\n\r?\n([\s\S]+)/);
+                            if (!contentMatch) continue;
+                            let content = contentMatch[1].trim();
+                            if (isBase64) {
+                              try { content = atob(content.replace(/\s+/g, '')); } catch (e) { continue; }
+                            } else if (isQP) {
+                              content = content.replace(/=\r?\n/g, '').replace(/=([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+                            }
+                            if (isHtml && !htmlContent) htmlContent = content;
+                            else if (isPlain && !plainContent) plainContent = content;
+                          }
+                        }
+                        bodyPart = htmlContent || plainContent || '';
+                      } else {
+                        bodyPart = '';
+                      }
+                    } catch (e) {
+                      console.warn('Failed to parse MIME:', e);
+                      bodyPart = '';
+                    }
                   }
-                  if (bodyLines.length > 0) {
+
+                  // Final guard: discard if still looks like raw MIME
+                  const looksLikeHtml = /^\s*</.test(bodyPart);
+                  if (bodyPart && !looksLikeHtml && (bodyPart.includes('Content-Transfer-Encoding:') || bodyPart.includes('Content-Type:'))) {
+                    bodyPart = '';
+                  }
+
+                  if (bodyPart) {
                     originalEmailHtml = `
                       <div style="margin-top:30px; padding-top:20px; border-top:2px solid #ccc;">
-                        <h3 style="color:#666;">Original Email</h3>
-                        <pre style="padding:10px; background:#f9f9f9; border:1px solid #eee; white-space:pre-wrap; font-family:inherit;">${bodyLines.join('\n')}</pre>
+                        <div style="font-size:0.9em; color:#666; margin-bottom:10px;">
+                          <strong>---------- Original Message ----------</strong>
+                        </div>
+                        <div style="color:#333; border-left:3px solid #ccc; padding-left:15px; margin-left:10px;">${bodyPart}</div>
                       </div>`;
                   }
                 }
@@ -9390,15 +9436,26 @@
         // Generate email HTML for the selected supplier
         const emailHtml = generateCustomerComparisonEmailHtml(quotation, selectedResponse) + originalEmailHtml;
 
+        // Build subject as reply to original email if available
+        const emailSubject = originalSubject
+          ? `Re: ${originalSubject} - Quotation`
+          : `Supplier Quotation - ${quotation.productType} - ${quotation.customerName}`;
+
         // Send email
+        const sendPayload = {
+          to: quotation.email,
+          subject: emailSubject,
+          html: emailHtml
+        };
+        if (originalMessageId) {
+          sendPayload.inReplyTo = originalMessageId;
+          sendPayload.references = originalMessageId;
+        }
+
         const sendRes = await fetch('/api/email/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: quotation.email,
-            subject: `Supplier Quotation - ${quotation.productType} - ${quotation.customerName}`,
-            html: emailHtml
-          })
+          body: JSON.stringify(sendPayload)
         });
 
         const sendResult = await sendRes.json();
@@ -11776,20 +11833,6 @@
           return;
         }
 
-        // Auto-generate OS Ref for new outsourcing quotations
-        let outsourcingSeq = null;
-        const isOutsourcing = (tagType === 'other' || tagType === 'others' || tagType === 'outsource');
-        if (isOutsourcing && !window.editingQuotationId) {
-          try {
-            const allQuotRes = await fetch('/api/quotations');
-            const allQuotData = await allQuotRes.json();
-            const allQuotations = allQuotData.success ? allQuotData.quotations : [];
-            const existingSeqs = allQuotations.filter(q => q.outsourcingSeq).map(q => parseInt(q.outsourcingSeq.replace('OS', '')) || 0);
-            const nextSeq = existingSeqs.length > 0 ? Math.max(...existingSeqs) + 1 : 1;
-            outsourcingSeq = 'OS' + String(nextSeq).padStart(7, '0');
-          } catch (e) { console.warn('Failed to generate OS Ref:', e); }
-        }
-
         // Create quotation object first (without files)
         const quotation = {
           ...(window.editingQuotationId && { id: window.editingQuotationId }),
@@ -11803,7 +11846,6 @@
           unitPrice: parseFloat(unitPrice) || 0,
           total: parseFloat(total) || 0,
           notes,
-          outsourcingSeq,
           type: source,
           sourceEmailUid: (source === 'email' && window.currentQuotationEmailMeta) ? window.currentQuotationEmailMeta.uid : null,
           sourceEmailSubject: (source === 'email' && window.currentQuotationEmailMeta) ? window.currentQuotationEmailMeta.subject : null,
