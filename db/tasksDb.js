@@ -224,6 +224,17 @@ async function ensureSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_sqt_quotationId ON supplier_quotation_tokens(quotationId);
     CREATE INDEX IF NOT EXISTS idx_sqr_quotationId ON supplier_quotation_responses(quotationId);
     CREATE INDEX IF NOT EXISTS idx_sqr_tokenId ON supplier_quotation_responses(tokenId);
+
+    CREATE TABLE IF NOT EXISTS brands (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      address TEXT,
+      logoPath TEXT,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_brands_name ON brands(name);
   `);
 
   // Add new columns if they don't exist (for database migration)
@@ -1267,3 +1278,44 @@ export async function getQuotationsForSupplier(supplierId) {
 }
 
 
+// ========== BRAND FUNCTIONS ==========
+
+export async function createBrand(brandData) {
+  const db = await getTasksDb();
+  const now = new Date().toISOString();
+
+  const result = await db.run(
+    `INSERT INTO brands (name, address, logoPath, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)`,
+    [brandData.name, brandData.address || null, brandData.logoPath || null, now, now]
+  );
+
+  return result.lastID;
+}
+
+export async function getBrandById(id) {
+  const db = await getTasksDb();
+  return await db.get(`SELECT * FROM brands WHERE id = ?`, [id]);
+}
+
+export async function getAllBrands() {
+  const db = await getTasksDb();
+  return await db.all(`SELECT * FROM brands ORDER BY name`);
+}
+
+export async function updateBrand(id, brandData) {
+  const db = await getTasksDb();
+  const now = new Date().toISOString();
+
+  await db.run(
+    `UPDATE brands SET name = ?, address = ?, logoPath = ?, updatedAt = ? WHERE id = ?`,
+    [brandData.name, brandData.address || null, brandData.logoPath || null, now, id]
+  );
+
+  return true;
+}
+
+export async function deleteBrand(id) {
+  const db = await getTasksDb();
+  await db.run(`DELETE FROM brands WHERE id = ?`, [id]);
+  return true;
+}

@@ -19,7 +19,9 @@ import {
   // Quotation-Supplier linking functions
   linkSupplierToQuotation, unlinkSupplierFromQuotation, getSuppliersForQuotation, getQuotationsForSupplier,
   // Skills functions
-  getAllSkills, getSkillsStats, getSkillByName, getSkillById, createSkill, updateSkill, deleteSkill
+  getAllSkills, getSkillsStats, getSkillByName, getSkillById, createSkill, updateSkill, deleteSkill,
+  // Brand functions
+  getAllBrands, getBrandById, createBrand, updateBrand, deleteBrand
 } from './db/tasksDb.js';
 import SkillManager from './skills/skillManager.js';
 import { getNormalizedRelativePath } from './utils/pathUtils.js';
@@ -31,6 +33,7 @@ import { createSupplierRoutes } from './routes/suppliers.js';
 import { createQuotationRoutes } from './routes/quotations.js';
 import { createSkillRoutes } from './routes/skills.js';
 import { createEmailRoutes } from './routes/emails.js';
+import { createBrandRoutes } from './routes/brands.js';
 import supplierPortalRouter from './routes/supplier-portal.js';
 
 // ---------- ENV ----------
@@ -453,6 +456,16 @@ const emailRoutes = createEmailRoutes({
   }
 });
 app.use('/api', emailRoutes);
+
+// Brand routes
+const brandRoutes = createBrandRoutes({
+  getAllBrands,
+  getBrandById,
+  createBrand,
+  updateBrand,
+  deleteBrand
+});
+app.use('/api/brands', brandRoutes);
 
 // Supplier portal routes
 app.use('/api/supplier-portal', supplierPortalRouter);

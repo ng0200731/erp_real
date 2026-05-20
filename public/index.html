@@ -1106,6 +1106,7 @@
           <button id="emailSendBtn" class="submenu-btn" data-testid="email-send-btn">Send</button>
         </div>
       </div>
+      <button id="menuBrand" class="page-btn" data-short="B" data-full="Brand">B</button>
       <div class="menu-group">
         <button id="menuCustomer" class="page-btn" data-short="C" data-full="Customer">C</button>
         <div id="customerSubmenu" class="submenu" style="display:none;">
@@ -2247,6 +2248,46 @@
           <div id="sentEmailsEmpty" style="text-align:center; padding:20px; color:#666; display:none;">No sent emails found from m.yau.01@longriverlabel.com</div>
         </div>
       </div>
+
+      <!-- Brand Panel -->
+      <div id="brandPanel" style="margin:0; display:none; width:100%;">
+        <div style="border:1px solid #000; padding:20px; margin-bottom:20px;">
+          <h3>Brand</h3>
+          <div style="display:flex; gap:20px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:300px;">
+              <div style="margin-bottom:15px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">Brand Name</label>
+                <input type="text" id="brandName" placeholder="Enter brand name" style="width:100%; padding:8px; border:1px solid #000;">
+              </div>
+              <div style="margin-bottom:15px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">Brand Address</label>
+                <textarea id="brandAddress" placeholder="Enter brand address" rows="3" style="width:100%; padding:8px; border:1px solid #000; resize:vertical;"></textarea>
+              </div>
+              <div style="margin-bottom:15px;">
+                <label style="display:block; font-weight:bold; margin-bottom:5px;">Logo</label>
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <input type="file" id="brandLogo" accept="image/*" style="border:1px solid #000; padding:5px;">
+                  <button id="brandUploadLogoBtn" class="page-btn" type="button">Upload</button>
+                </div>
+                <div id="brandLogoPreview" style="margin-top:10px; display:none;">
+                  <img id="brandLogoImg" src="" alt="Logo" style="max-width:150px; max-height:150px; border:1px solid #000;">
+                </div>
+              </div>
+              <div style="display:flex; gap:10px;">
+                <button id="brandSaveBtn" class="page-btn">Save</button>
+                <button id="brandClearBtn" class="page-btn">Clear</button>
+              </div>
+              <input type="hidden" id="brandEditId" value="">
+            </div>
+            <div style="flex:1; min-width:300px;">
+              <h4 style="margin-bottom:10px;">Saved Brands</h4>
+              <div id="brandList" style="max-height:calc(100vh - 280px); overflow-y:auto;">
+                <p style="color:#666;">No brands yet.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <script>
@@ -2260,6 +2301,7 @@
     const menuSkillsBtn = document.getElementById('menuSkills');
     const menuQuotationBtn = document.getElementById('menuQuotation');
     const menuOutsourcingBtn = document.getElementById('menuOutsourcing');
+    const menuBrandBtn = document.getElementById('menuBrand');
     const addProfileBtn = document.getElementById('addProfileBtn');
     const profilesListEl = document.getElementById('profilesList');
     const settingsNoteEl = document.getElementById('settingsNote');
@@ -3106,6 +3148,11 @@
             outsourcingDistribution.classList.add('fade-in');
             bottomLeft.classList.add('fade-in');
             bottomRight.classList.add('fade-in');
+            // Re-render charts to fit the original grid size
+            setTimeout(() => {
+              renderDashboard();
+              renderOutsourcingDashboard();
+            }, 50);
           }, 50);
         }, 200);
 
@@ -3248,45 +3295,18 @@
         },
         options: {
           responsive: true,
-          maintainAspectRatio: true,
+          maintainAspectRatio: false,
           aspectRatio: 1,
-          cutout: '65%',
+          cutout: '55%',
           layout: {
-            padding: 80
+            padding: 50
           },
           plugins: {
             legend: {
               display: false
             },
             tooltip: {
-              enabled: true,
-              backgroundColor: '#000',
-              titleColor: '#fff',
-              bodyColor: '#fff',
-              borderColor: '#000',
-              borderWidth: 1,
-              padding: 12,
-              displayColors: false,
-              titleFont: {
-                size: 11,
-                weight: '600',
-                family: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
-              },
-              bodyFont: {
-                size: 13,
-                weight: '300',
-                family: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
-              },
-              callbacks: {
-                title: function(context) {
-                  return context[0].label.toUpperCase();
-                },
-                label: function(context) {
-                  const value = context.parsed || 0;
-                  const percentage = ((value / dashboardData.total) * 100).toFixed(1);
-                  return `${value} (${percentage}%)`;
-                }
-              }
+              enabled: false
             }
           },
           animation: {
@@ -3332,70 +3352,95 @@
             const meta = chart.getDatasetMeta(0);
             const centerX = (chart.chartArea.left + chart.chartArea.right) / 2;
             const centerY = (chart.chartArea.top + chart.chartArea.bottom) / 2;
+            const activeEls = chart.getActiveElements();
+            const hoveredIndex = activeEls.length > 0 ? activeEls[0].index : -1;
 
             meta.data.forEach((arc, i) => {
               const value = chart.data.datasets[0].data[i];
               if (value === 0) return;
               const statusName = dashboardData.statuses[i].name;
-              const startAngle = arc.startAngle;
-              const endAngle = arc.endAngle;
-              const midAngle = (startAngle + endAngle) / 2;
+              const percentage = ((value / dashboardData.total) * 100).toFixed(1);
+              const midAngle = (arc.startAngle + arc.endAngle) / 2;
               const outerRadius = arc.outerRadius;
-
-              // Point on pie edge
               const edgeX = centerX + Math.cos(midAngle) * outerRadius;
               const edgeY = centerY + Math.sin(midAngle) * outerRadius;
-
-              // Label position outside the pie
               const labelDist = outerRadius + 15;
               const labelX = centerX + Math.cos(midAngle) * labelDist;
               const labelY = centerY + Math.sin(midAngle) * labelDist;
+              const isHovered = (i === hoveredIndex);
 
               ctx.save();
-              // Dotted leader line from edge to label
-              ctx.beginPath();
-              ctx.setLineDash([3, 3]);
-              ctx.moveTo(edgeX, edgeY);
-              ctx.lineTo(labelX, labelY);
-              ctx.strokeStyle = '#000';
-              ctx.lineWidth = 1;
-              ctx.stroke();
-              ctx.setLineDash([]);
 
-              // Small dot at the edge point
               ctx.beginPath();
               ctx.arc(edgeX, edgeY, 2, 0, Math.PI * 2);
               ctx.fillStyle = '#000';
               ctx.fill();
 
-              // Rounded rect label
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
-              ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-              const textWidth = ctx.measureText(statusName).width;
-              const padX = 6, padY = 4, rad = 4;
-              const rx = labelX - textWidth / 2 - padX;
-              const ry = labelY - 6 - padY;
-              const rw = textWidth + padX * 2;
-              const rh = 12 + padY * 2;
-              ctx.beginPath();
-              ctx.moveTo(rx + rad, ry);
-              ctx.lineTo(rx + rw - rad, ry);
-              ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
-              ctx.lineTo(rx + rw, ry + rh - rad);
-              ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
-              ctx.lineTo(rx + rad, ry + rh);
-              ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
-              ctx.lineTo(rx, ry + rad);
-              ctx.quadraticCurveTo(rx, ry, rx + rad, ry);
-              ctx.closePath();
-              ctx.fillStyle = '#fff';
-              ctx.fill();
-              ctx.strokeStyle = '#000';
-              ctx.lineWidth = 1;
-              ctx.stroke();
-              ctx.fillStyle = '#000';
-              ctx.fillText(statusName, labelX, labelY);
+
+              if (isHovered) {
+                // Draw black tooltip above chart
+                const line1 = statusName.toUpperCase();
+                const line2 = value + '  (' + percentage + '%)';
+                ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                const l1W = ctx.measureText(line1).width;
+                ctx.font = '300 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                const l2W = ctx.measureText(line2).width;
+                const maxW = Math.max(l1W, l2W);
+                const pad = 10;
+                const boxW = maxW + pad * 2;
+                const boxH = 36;
+                const bx = centerX - boxW / 2;
+                const by = chart.chartArea.top - boxH - 4;
+                const br = 4;
+                ctx.beginPath();
+                ctx.moveTo(bx + br, by);
+                ctx.lineTo(bx + boxW - br, by);
+                ctx.quadraticCurveTo(bx + boxW, by, bx + boxW, by + br);
+                ctx.lineTo(bx + boxW, by + boxH - br);
+                ctx.quadraticCurveTo(bx + boxW, by + boxH, bx + boxW - br, by + boxH);
+                ctx.lineTo(bx + br, by + boxH);
+                ctx.quadraticCurveTo(bx, by + boxH, bx, by + boxH - br);
+                ctx.lineTo(bx, by + br);
+                ctx.quadraticCurveTo(bx, by, bx + br, by);
+                ctx.closePath();
+                ctx.fillStyle = '#000';
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                ctx.fillText(line1, centerX, by + boxH / 2 - 7);
+                ctx.font = '300 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                ctx.fillText(line2, centerX, by + boxH / 2 + 7);
+              } else {
+                ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                const textWidth = ctx.measureText(statusName).width;
+                const padX = 6, padY = 4, rad = 4;
+                const rw = textWidth + padX * 2;
+                const rh = 12 + padY * 2;
+                const rx = labelX - rw / 2;
+                const ry = labelY - rh / 2;
+                ctx.beginPath();
+                ctx.moveTo(rx + rad, ry);
+                ctx.lineTo(rx + rw - rad, ry);
+                ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
+                ctx.lineTo(rx + rw, ry + rh - rad);
+                ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
+                ctx.lineTo(rx + rad, ry + rh);
+                ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
+                ctx.lineTo(rx, ry + rad);
+                ctx.quadraticCurveTo(rx, ry, rx + rad, ry);
+                ctx.closePath();
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.fillStyle = '#000';
+                ctx.fillText(statusName, labelX, labelY);
+              }
               ctx.restore();
             });
           }
@@ -3660,6 +3705,7 @@
             statusColumn.classList.add('fade-in');
             metricsColumn.classList.add('fade-in');
             insightsColumn.classList.add('fade-in');
+            setTimeout(() => { renderOutsourcingDashboard(); }, 50);
           }, 50);
         }, 200);
 
@@ -3694,6 +3740,11 @@
             quotationDistribution.classList.add('fade-in');
             bottomLeft.classList.add('fade-in');
             bottomRight.classList.add('fade-in');
+            // Re-render charts to fit the original grid size
+            setTimeout(() => {
+              renderDashboard();
+              renderOutsourcingDashboard();
+            }, 50);
           }, 50);
         }, 200);
 
@@ -3814,35 +3865,18 @@
         },
         options: {
           responsive: true,
-          maintainAspectRatio: true,
+          maintainAspectRatio: false,
           aspectRatio: 1,
-          cutout: '65%',
+          cutout: '55%',
           layout: {
-            padding: 80
+            padding: 50
           },
           plugins: {
             legend: {
               display: false
             },
             tooltip: {
-              enabled: true,
-              backgroundColor: '#000',
-              titleColor: '#fff',
-              bodyColor: '#fff',
-              borderColor: '#000',
-              borderWidth: 1,
-              padding: 12,
-              displayColors: false,
-              callbacks: {
-                title: function(context) {
-                  return context[0].label.toUpperCase();
-                },
-                label: function(context) {
-                  const value = context.parsed || 0;
-                  const percentage = ((value / outsourcingDashboardData.total) * 100).toFixed(1);
-                  return `${value} (${percentage}%)`;
-                }
-              }
+              enabled: false
             }
           }
         },
@@ -3882,32 +3916,24 @@
             const meta = chart.getDatasetMeta(0);
             const centerX = (chart.chartArea.left + chart.chartArea.right) / 2;
             const centerY = (chart.chartArea.top + chart.chartArea.bottom) / 2;
+            const activeEls = chart.getActiveElements();
+            const hoveredIndex = activeEls.length > 0 ? activeEls[0].index : -1;
 
             meta.data.forEach((arc, i) => {
               const value = chart.data.datasets[0].data[i];
               if (value === 0) return;
               const statusName = outsourcingDashboardData.statuses[i].name;
-              const startAngle = arc.startAngle;
-              const endAngle = arc.endAngle;
-              const midAngle = (startAngle + endAngle) / 2;
+              const percentage = ((value / outsourcingDashboardData.total) * 100).toFixed(1);
+              const midAngle = (arc.startAngle + arc.endAngle) / 2;
               const outerRadius = arc.outerRadius;
-
               const edgeX = centerX + Math.cos(midAngle) * outerRadius;
               const edgeY = centerY + Math.sin(midAngle) * outerRadius;
-
               const labelDist = outerRadius + 15;
               const labelX = centerX + Math.cos(midAngle) * labelDist;
               const labelY = centerY + Math.sin(midAngle) * labelDist;
+              const isHovered = (i === hoveredIndex);
 
               ctx.save();
-              ctx.beginPath();
-              ctx.setLineDash([3, 3]);
-              ctx.moveTo(edgeX, edgeY);
-              ctx.lineTo(labelX, labelY);
-              ctx.strokeStyle = '#000';
-              ctx.lineWidth = 1;
-              ctx.stroke();
-              ctx.setLineDash([]);
 
               ctx.beginPath();
               ctx.arc(edgeX, edgeY, 2, 0, Math.PI * 2);
@@ -3916,31 +3942,69 @@
 
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
-              ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-              const textWidth = ctx.measureText(statusName).width;
-              const padX = 6, padY = 4, rad = 4;
-              const rx = labelX - textWidth / 2 - padX;
-              const ry = labelY - 6 - padY;
-              const rw = textWidth + padX * 2;
-              const rh = 12 + padY * 2;
-              ctx.beginPath();
-              ctx.moveTo(rx + rad, ry);
-              ctx.lineTo(rx + rw - rad, ry);
-              ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
-              ctx.lineTo(rx + rw, ry + rh - rad);
-              ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
-              ctx.lineTo(rx + rad, ry + rh);
-              ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
-              ctx.lineTo(rx, ry + rad);
-              ctx.quadraticCurveTo(rx, ry, rx + rad, ry);
-              ctx.closePath();
-              ctx.fillStyle = '#fff';
-              ctx.fill();
-              ctx.strokeStyle = '#000';
-              ctx.lineWidth = 1;
-              ctx.stroke();
-              ctx.fillStyle = '#000';
-              ctx.fillText(statusName, labelX, labelY);
+
+              if (isHovered) {
+                // Draw black tooltip above chart
+                const line1 = statusName.toUpperCase();
+                const line2 = value + '  (' + percentage + '%)';
+                ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                const l1W = ctx.measureText(line1).width;
+                ctx.font = '300 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                const l2W = ctx.measureText(line2).width;
+                const maxW = Math.max(l1W, l2W);
+                const pad = 10;
+                const boxW = maxW + pad * 2;
+                const boxH = 36;
+                const bx = centerX - boxW / 2;
+                const by = chart.chartArea.top - boxH - 4;
+                const br = 4;
+                ctx.beginPath();
+                ctx.moveTo(bx + br, by);
+                ctx.lineTo(bx + boxW - br, by);
+                ctx.quadraticCurveTo(bx + boxW, by, bx + boxW, by + br);
+                ctx.lineTo(bx + boxW, by + boxH - br);
+                ctx.quadraticCurveTo(bx + boxW, by + boxH, bx + boxW - br, by + boxH);
+                ctx.lineTo(bx + br, by + boxH);
+                ctx.quadraticCurveTo(bx, by + boxH, bx, by + boxH - br);
+                ctx.lineTo(bx, by + br);
+                ctx.quadraticCurveTo(bx, by, bx + br, by);
+                ctx.closePath();
+                ctx.fillStyle = '#000';
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                ctx.fillText(line1, centerX, by + boxH / 2 - 7);
+                ctx.font = '300 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                ctx.fillText(line2, centerX, by + boxH / 2 + 7);
+              } else {
+                ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                const textWidth = ctx.measureText(statusName).width;
+                const padX = 6, padY = 4, rad = 4;
+                const rw = textWidth + padX * 2;
+                const rh = 12 + padY * 2;
+                const rx = labelX - rw / 2;
+                const ry = labelY - rh / 2;
+                ctx.beginPath();
+                ctx.moveTo(rx + rad, ry);
+                ctx.lineTo(rx + rw - rad, ry);
+                ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
+                ctx.lineTo(rx + rw, ry + rh - rad);
+                ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
+                ctx.lineTo(rx + rad, ry + rh);
+                ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
+                ctx.lineTo(rx, ry + rad);
+                ctx.quadraticCurveTo(rx, ry, rx + rad, ry);
+                ctx.closePath();
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.fillStyle = '#000';
+                ctx.fillText(statusName, labelX, labelY);
+              }
               ctx.restore();
             });
           }
@@ -4458,6 +4522,7 @@
       menuSkillsBtn.textContent = menuSkillsBtn.dataset.full || 'Skills';
       menuQuotationBtn.textContent = menuQuotationBtn.dataset.full || 'Quotation';
       menuOutsourcingBtn.textContent = menuOutsourcingBtn.dataset.full || 'Outsourcing';
+      menuBrandBtn.textContent = menuBrandBtn.dataset.full || 'Brand';
     };
     sidebar.onmouseleave = () => {
       menuEmailBtn.textContent = menuEmailBtn.dataset.short || 'E';
@@ -4468,6 +4533,7 @@
       menuSkillsBtn.textContent = menuSkillsBtn.dataset.short || 'K';
       menuQuotationBtn.textContent = menuQuotationBtn.dataset.short || 'Q';
       menuOutsourcingBtn.textContent = menuOutsourcingBtn.dataset.short || 'O';
+      menuBrandBtn.textContent = menuBrandBtn.dataset.short || 'B';
       // Hide submenus on mouse leave
       document.querySelectorAll('.submenu').forEach(sub => {
         sub.style.display = 'none';
@@ -4479,6 +4545,12 @@
       ensureTab('profiles', 'Setting');
       activateTab('profiles');
       loadProfilesList();
+    };
+
+    // Menu click: show brand
+    menuBrandBtn.onclick = () => {
+      ensureTab('brand', 'Brand');
+      activateTab('brand');
     };
 
     // Menu click: show tasks
@@ -6119,18 +6191,6 @@
       if (brandNameField) {
         const brands = brandNamesList.length > 0 ? brandNamesList : ['Nike', 'Adidas', 'Uniqlo', 'Zara', 'H&M', 'Gucci', 'Prada', 'Burberry'];
         brandNameField.value = brands[Math.floor(Math.random() * brands.length)];
-      }
-      const brandRefField = document.getElementById('quotationBrandRef');
-      if (brandRefField) {
-        brandRefField.value = brandRefs[Math.floor(Math.random() * brandRefs.length)];
-      }
-      const brandColorField = document.getElementById('quotationBrandColor');
-      if (brandColorField) {
-        brandColorField.value = brandColors[Math.floor(Math.random() * brandColors.length)];
-      }
-      const brandLogoField = document.getElementById('quotationBrandLogo');
-      if (brandLogoField) {
-        brandLogoField.value = 'brand_logo_' + Math.floor(Math.random() * 9000 + 1000) + '.png';
       }
 
       console.log('Dummy quotation data filled (customer info preserved)');
@@ -10754,9 +10814,6 @@
         const unitPrice = document.getElementById('quotationUnitPrice')?.value;
         const notes = document.getElementById('quotationNotes')?.value.trim();
         const brandName = document.getElementById('quotationBrandName')?.value.trim() || '';
-        const brandRef = document.getElementById('quotationBrandRef')?.value.trim() || '';
-        const brandColor = document.getElementById('quotationBrandColor')?.value.trim() || '';
-        const brandLogo = document.getElementById('quotationBrandLogo')?.value.trim() || '';
 
         // Validation
         if (!customerName) {
@@ -10794,10 +10851,7 @@
           unitPrice: parseFloat(unitPrice) || 0,
           total: total,
           notes,
-          brandName,
-          brandRef,
-          brandColor,
-          brandLogo
+          brandName
         };
 
         console.log('Updated quotation:', updatedQuotation);
@@ -11835,25 +11889,9 @@
 
             '<div style="margin-bottom:20px;">' +
               '<h4>Brand Detail</h4>' +
-              '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">' +
-                '<div>' +
-                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Brand Name</label>' +
-                  getBrandNameSelectHtml(quotation.brandName || '') +
-                '</div>' +
-                '<div>' +
-                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Brand Reference</label>' +
-                  '<input type="text" id="quotationBrandRef" style="width:100%; padding:8px; border:1px solid #000;" placeholder="Style/Season ref" value="' + (quotation.brandRef || '') + '">' +
-                '</div>' +
-              '</div>' +
-              '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:15px;">' +
-                '<div>' +
-                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Color Code #</label>' +
-                  '<input type="text" id="quotationBrandColor" style="width:100%; padding:8px; border:1px solid #000;" placeholder="#FFFFFF" value="' + (quotation.brandColor || '') + '">' +
-                '</div>' +
-                '<div>' +
-                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Logo</label>' +
-                  '<input type="text" id="quotationBrandLogo" style="width:100%; padding:8px; border:1px solid #000;" placeholder="Logo filename" value="' + (quotation.brandLogo || '') + '">' +
-                '</div>' +
+              '<div>' +
+                '<label style="display:block; margin-bottom:5px; font-weight:600;">Brand Name</label>' +
+                getBrandNameSelectHtml(quotation.brandName || '') +
               '</div>' +
             '</div>' +
 
@@ -11984,25 +12022,9 @@
 
             '<div style="margin-bottom:20px;">' +
               '<h4>Brand Detail</h4>' +
-              '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">' +
-                '<div>' +
-                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Brand Name</label>' +
-                  getBrandNameSelectHtml() +
-                '</div>' +
-                '<div>' +
-                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Brand Reference</label>' +
-                  '<input type="text" id="quotationBrandRef" style="width:100%; padding:8px; border:1px solid #000;" placeholder="Style/Season ref">' +
-                '</div>' +
-              '</div>' +
-              '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:15px;">' +
-                '<div>' +
-                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Color Code #</label>' +
-                  '<input type="text" id="quotationBrandColor" style="width:100%; padding:8px; border:1px solid #000;" placeholder="#FFFFFF">' +
-                '</div>' +
-                '<div>' +
-                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Logo</label>' +
-                  '<input type="text" id="quotationBrandLogo" style="width:100%; padding:8px; border:1px solid #000;" placeholder="Logo filename">' +
-                '</div>' +
+              '<div>' +
+                '<label style="display:block; margin-bottom:5px; font-weight:600;">Brand Name</label>' +
+                getBrandNameSelectHtml() +
               '</div>' +
             '</div>' +
 
@@ -12656,9 +12678,6 @@
         const total = document.getElementById('quotationTotal').value;
         const notes = document.getElementById('quotationNotes').value.trim();
         const brandName = document.getElementById('quotationBrandName')?.value.trim() || '';
-        const brandRef = document.getElementById('quotationBrandRef')?.value.trim() || '';
-        const brandColor = document.getElementById('quotationBrandColor')?.value.trim() || '';
-        const brandLogo = document.getElementById('quotationBrandLogo')?.value.trim() || '';
 
         console.log('Saving quotation with data:', {
           customerName, contactPerson, email, phone, quantity, unitPrice, total, notes, tagType, source
@@ -12699,9 +12718,6 @@
           total: parseFloat(total) || 0,
           notes,
           brandName,
-          brandRef,
-          brandColor,
-          brandLogo,
           type: source,
           sourceEmailUid: (source === 'email' && window.currentQuotationEmailMeta) ? window.currentQuotationEmailMeta.uid : null,
           sourceEmailSubject: (source === 'email' && window.currentQuotationEmailMeta) ? window.currentQuotationEmailMeta.subject : null,
@@ -14021,6 +14037,148 @@
     document.getElementById('skillCategoryFilter').addEventListener('change', () => displayAgentSkills());
     document.getElementById('skillSearch').addEventListener('input', () => displayAgentSkills());
     
+    // ========== Brand Functions ==========
+    function loadBrands() {
+      fetch('/api/brands')
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            renderBrandList(data.brands);
+          }
+        })
+        .catch(err => console.error('Error loading brands:', err));
+    }
+
+    function renderBrandList(brands) {
+      const container = document.getElementById('brandList');
+      if (!brands || brands.length === 0) {
+        container.innerHTML = '<p style="color:#666;">No brands yet.</p>';
+        return;
+      }
+      let html = '<table style="width:100%; border-collapse:collapse;">';
+      html += '<thead><tr style="background:#f0f0f0;"><th style="border:1px solid #000; padding:8px; text-align:left;">Logo</th><th style="border:1px solid #000; padding:8px; text-align:left;">Name</th><th style="border:1px solid #000; padding:8px; text-align:left;">Address</th><th style="border:1px solid #000; padding:8px;">Actions</th></tr></thead><tbody>';
+      brands.forEach(brand => {
+        const logoImg = brand.logoPath ? '<img src="' + brand.logoPath + '" style="max-width:50px; max-height:50px;">' : '<span style="color:#999;">-</span>';
+        html += '<tr>';
+        html += '<td style="border:1px solid #000; padding:8px;">' + logoImg + '</td>';
+        html += '<td style="border:1px solid #000; padding:8px;">' + escapeHtml(brand.name) + '</td>';
+        html += '<td style="border:1px solid #000; padding:8px;">' + escapeHtml(brand.address || '-') + '</td>';
+        html += '<td style="border:1px solid #000; padding:8px; text-align:center;">';
+        html += '<button class="page-btn" onclick="editBrand(' + brand.id + ')" style="margin-right:5px;">Edit</button>';
+        html += '<button class="page-btn" onclick="deleteBrand(' + brand.id + ')">Delete</button>';
+        html += '</td></tr>';
+      });
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function editBrand(id) {
+      fetch('/api/brands/' + id)
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.brand) {
+            document.getElementById('brandEditId').value = data.brand.id;
+            document.getElementById('brandName').value = data.brand.name;
+            document.getElementById('brandAddress').value = data.brand.address || '';
+            if (data.brand.logoPath) {
+              document.getElementById('brandLogoImg').src = data.brand.logoPath;
+              document.getElementById('brandLogoPreview').style.display = 'block';
+            } else {
+              document.getElementById('brandLogoPreview').style.display = 'none';
+            }
+            document.getElementById('brandSaveBtn').textContent = 'Update';
+          }
+        })
+        .catch(err => console.error('Error loading brand:', err));
+    }
+
+    window.editBrand = editBrand;
+
+    function deleteBrand(id) {
+      if (!confirm('Delete this brand?')) return;
+      fetch('/api/brands/' + id, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            loadBrands();
+          } else {
+            alert('Error: ' + data.error);
+          }
+        })
+        .catch(err => console.error('Error deleting brand:', err));
+    }
+
+    window.deleteBrand = deleteBrand;
+
+    function clearBrandForm() {
+      document.getElementById('brandEditId').value = '';
+      document.getElementById('brandName').value = '';
+      document.getElementById('brandAddress').value = '';
+      document.getElementById('brandLogo').value = '';
+      document.getElementById('brandLogoPreview').style.display = 'none';
+      document.getElementById('brandSaveBtn').textContent = 'Save';
+    }
+
+    document.getElementById('brandSaveBtn').onclick = () => {
+      const editId = document.getElementById('brandEditId').value;
+      const name = document.getElementById('brandName').value.trim();
+      const address = document.getElementById('brandAddress').value.trim();
+      const logoFile = document.getElementById('brandLogo').files[0];
+
+      if (!name) {
+        alert('Brand name is required.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('name', name);
+      formData.append('address', address);
+      if (logoFile) {
+        formData.append('logo', logoFile);
+      }
+
+      const url = editId ? '/api/brands/' + editId : '/api/brands';
+      const method = editId ? 'PUT' : 'POST';
+
+      fetch(url, { method, body: formData })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            clearBrandForm();
+            loadBrands();
+          } else {
+            alert('Error: ' + data.error);
+          }
+        })
+        .catch(err => console.error('Error saving brand:', err));
+    };
+
+    document.getElementById('brandClearBtn').onclick = () => {
+      clearBrandForm();
+    };
+
+    document.getElementById('brandUploadLogoBtn').onclick = () => {
+      document.getElementById('brandLogo').click();
+    };
+
+    document.getElementById('brandLogo').onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          document.getElementById('brandLogoImg').src = ev.target.result;
+          document.getElementById('brandLogoPreview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+
     load();
   </script>
 </body>
