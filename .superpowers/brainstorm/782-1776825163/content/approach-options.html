@@ -1,0 +1,49 @@
+<h2>Two approaches to polish your CRM</h2>
+<p class="subtitle">Both use the Minimal & Clean monochrome direction you chose</p>
+
+<div class="options">
+  <div class="option" data-choice="systematic" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Systematic Polish (Recommended)</h3>
+      <p>Introduce CSS variables for consistency, then apply fixes uniformly across all elements. Most reliable, prevents future drift.</p>
+      <div style="margin-top: 8px; font-size: 13px; color: #666;">
+        <strong>What changes:</strong>
+        <ul style="margin-top: 6px; padding-left: 18px; list-style: disc;">
+          <li>Add ~15 CSS variables (colors, radius, shadows, spacing)</li>
+          <li>Unify border-radius: 6px for cards, 4px for inputs/buttons</li>
+          <li>Add subtle box-shadow to cards, modals, dropdowns</li>
+          <li>Standardize hover states (0.2s ease, consistent feedback)</li>
+          <li>Add active/pressed states to all buttons</li>
+          <li>Clean up z-index scale (10, 20, 30...)</li>
+          <li>Soften borders from harsh #000 to #e0e0e0/#ddd</li>
+        </ul>
+      </div>
+      <div class="pros-cons" style="margin-top: 12px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Consistent, maintainable</li><li>Future changes are one-line edits</li><li>Catches all issues</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>More CSS changes overall</li><li>Takes slightly longer</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="targeted" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Targeted Fixes</h3>
+      <p>Fix only the visible inconsistencies directly — no CSS variables, just patch the problems where they are.</p>
+      <div style="margin-top: 8px; font-size: 13px; color: #666;">
+        <strong>What changes:</strong>
+        <ul style="margin-top: 6px; padding-left: 18px; list-style: disc;">
+          <li>Add border-radius to buttons, inputs, modals inline</li>
+          <li>Add shadows to cards and modals inline</li>
+          <li>Standardize hover transitions where broken</li>
+          <li>Fix the worst z-index conflicts</li>
+        </ul>
+      </div>
+      <div class="pros-cons" style="margin-top: 12px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Smaller change set</li><li>Quicker to apply</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Problems can creep back</li><li>Less maintainable</li><li>May miss some issues</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

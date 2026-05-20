@@ -336,7 +336,7 @@
 
     /* ========== END DASHBOARD STYLES ========== */
 
-    #emails {max-width:800px; margin:0; background:#fff; border:1px solid #000; padding:24px;}
+    #emails {margin:0; background:#fff; border:1px solid #000; padding:24px; box-sizing:border-box;}
     ul {list-style:none; padding:0; margin:0;}
     li {padding:16px; border-bottom:1px solid #e0e0e0; cursor:pointer; transition: all 0.15s ease;}
     li:hover {background:#000; color:#fff; transform: translateX(4px);}
@@ -568,6 +568,75 @@
     .email-modal input[type="date"]:focus {
       outline: none;
       box-shadow: none;
+    }
+
+    /* Email reading pane (replaces modal for received emails) */
+    .email-split-container {
+      display: flex;
+      gap: 15px;
+      width: 100%;
+      flex: 1;
+      min-height: 0;
+      box-sizing: border-box;
+    }
+    .email-inbox-panel {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .email-reading-pane {
+      flex: 1;
+      min-width: 0;
+      border: 2px solid #000;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 400px;
+    }
+    .email-reading-pane.empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #666;
+      font-size: 15px;
+    }
+    .email-reading-pane-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #000;
+      background: #fafafa;
+      font-size: 13px;
+    }
+    .email-reading-pane-subject {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 8px;
+    }
+    .email-reading-pane-meta {
+      margin-bottom: 4px;
+    }
+    .email-reading-pane-body {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.5;
+      word-wrap: break-word;
+    }
+    .email-reading-pane-actions {
+      border-top: 1px solid #000;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .email-row-selected {
+      background: #e3f2fd !important;
+    }
+    .email-row-selected td {
+      font-weight: normal !important;
     }
     .btn{
       appearance:none;
@@ -1760,13 +1829,11 @@
       </div>
 
       <!-- Email UI (next step; hidden for now) -->
-      <div id="emails" style="margin:0; display:none; width:100%; flex:1; overflow-y:hidden; min-height:0; flex-direction:column;">
+      <div id="emails" style="margin:0; display:none; width:100%;">
         <div class="topbar">
           <button id="composeBtn" class="page-btn">Compose</button>
-          <button id="refreshEmailsBtn" class="page-btn">Refresh List</button>
+          <button id="refreshEmailsBtn" class="page-btn">Refresh</button>
           <button id="readAllEmailsBtn" class="page-btn">Read All</button>
-          <button id="testSendBtn" class="page-btn">Send Test Email</button>
-          <button id="testSmtpBtn" class="page-btn">Test SMTP Connection</button>
         </div>
         <div id="composeForm" style="display:none; background:#fff; padding:15px; border:1px solid #000; margin-bottom:15px;">
           <h3>Compose Email</h3>
@@ -1779,42 +1846,47 @@
             <button id="dummyFillComposeBtn" class="page-btn" type="button" style="margin-left:auto;">Dummy Fill</button>
           </div>
         </div>
-        <div style="flex:1; overflow-y:auto; border:1px solid #000; margin-bottom:15px; min-height:0;">
-        <table id="emailTable" style="width:100%; border-collapse:collapse;">
-          <thead style="position:sticky; top:0; background:#fff; z-index:1;">
-            <tr style="background:#fff;">
-              <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Date</th>
-              <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Sender</th>
-              <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Subject</th>
-              <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Context</th>
-              <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Attachment</th>
-            </tr>
-            <tr style="background:#fff;">
-              <th style="padding:8px; border:1px solid #000;">
-                <input type="text" id="dateSearch" placeholder="Search date..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
-              </th>
-              <th style="padding:8px; border:1px solid #000;">
-                <input type="text" id="senderSearch" placeholder="Search sender..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
-              </th>
-              <th style="padding:8px; border:1px solid #000;">
-                <input type="text" id="subjectSearch" placeholder="Search subject..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
-              </th>
-              <th style="padding:8px; border:1px solid #000;">
-                <input type="text" id="contextSearch" placeholder="Search content..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
-              </th>
-              <th style="padding:8px; border:1px solid #000;">
-                <input type="text" id="attachmentSearch" placeholder="Search attachments..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
-              </th>
-            </tr>
-          </thead>
-          <tbody id="emailTableBody"></tbody>
-        </table>
+        <div style="border:1px solid #000; padding:15px; margin-bottom:15px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3>Inbox Emails</h3>
+          </div>
+          <div style="max-height:calc(100vh - 280px); overflow-y:auto; border:1px solid #000; margin-bottom:15px;">
+          <table id="emailTable" style="width:100%; border-collapse:collapse;">
+            <thead style="position:sticky; top:0; background:#fff; z-index:1;">
+              <tr style="background:#fff;">
+                <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Date</th>
+                <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Sender</th>
+                <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Subject</th>
+                <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Context</th>
+                <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Attachment</th>
+              </tr>
+              <tr style="background:#fff;">
+                <th style="padding:8px; border:1px solid #000;">
+                  <input type="text" id="dateSearch" placeholder="Search date..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
+                </th>
+                <th style="padding:8px; border:1px solid #000;">
+                  <input type="text" id="senderSearch" placeholder="Search sender..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
+                </th>
+                <th style="padding:8px; border:1px solid #000;">
+                  <input type="text" id="subjectSearch" placeholder="Search subject..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
+                </th>
+                <th style="padding:8px; border:1px solid #000;">
+                  <input type="text" id="contextSearch" placeholder="Search content..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
+                </th>
+                <th style="padding:8px; border:1px solid #000;">
+                  <input type="text" id="attachmentSearch" placeholder="Search attachments..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
+                </th>
+              </tr>
+            </thead>
+            <tbody id="emailTableBody"></tbody>
+          </table>
+          </div>
         </div>
 
-        <!-- Email Reader Modal (Microsoft Outlook style) -->
+        <!-- Email Reader Modal -->
         <div id="emailModal" class="email-modal-overlay" style="display:none;">
           <div class="email-modal">
-            <!-- Left content area (80%) -->
+            <!-- Left content area -->
             <div class="email-modal-content">
               <div class="email-modal-header">
                 <h2 id="emailModalSubject" class="email-modal-title">Email Subject</h2>
@@ -1826,7 +1898,7 @@
                 <div id="emailModalDate" class="email-modal-date">Date: 2024-01-15</div>
                 <!-- Customer Information Display -->
                 <div id="emailCustomerInfo" style="margin-top:10px; padding:10px; border:1px solid #000; background:#f0f0f0; display:none;">
-                  <div style="font-weight:bold; margin-bottom:5px;">📋 Customer Information</div>
+                  <div style="font-weight:bold; margin-bottom:5px;">Customer Information</div>
                   <div id="customerInfoContent" style="font-size:14px;"></div>
                 </div>
               </div>
@@ -1835,7 +1907,7 @@
               </div>
             </div>
 
-            <!-- Right action panel (20%) -->
+            <!-- Right action panel -->
             <div class="email-modal-actions">
               <button class="action-btn expandable" id="quotationBtn" data-testid="email-quotation-btn">Quotation</button>
               <div class="sub-options" id="quotationSubOptions">
@@ -2453,7 +2525,7 @@
       // Panels
       welcomePanel.style.display = id === 'welcome' ? 'block' : 'none';
       profilesListPanel.style.display = id === 'profiles' ? 'block' : 'none';
-      document.getElementById('emails').style.display = id === 'emails' ? 'flex' : 'none';
+      document.getElementById('emails').style.display = id === 'emails' ? 'block' : 'none';
       document.getElementById('email-send').style.display = id === 'email-send' ? 'block' : 'none';
       document.getElementById('customerPanel').style.display = id === 'customer' ? 'block' : 'none';
       document.getElementById('customerViewPanel').style.display = id === 'customer-view' ? 'block' : 'none';
@@ -4007,6 +4079,13 @@
       // Show loading state in modal
       document.getElementById('emailModalBody').textContent = 'Loading email...';
 
+      // Show loading state in reading pane
+      const readingPane = document.getElementById('emailReadingPane');
+      if (readingPane) {
+        readingPane.classList.remove('empty');
+        readingPane.innerHTML = '<div style="text-align:center; padding:40px; color:#666;">Loading email...</div>';
+      }
+
       async function fetchEmailOnce(attempt){
         
 
@@ -4104,22 +4183,20 @@
             // Show error in modal
             console.warn('Email fetch failed after retry:', err2);
             document.getElementById('emailModalBody').textContent = 'Failed to load email. Please try again.';
+            const rp = document.getElementById('emailReadingPane');
+            if (rp) rp.innerHTML = '<div style="text-align:center; padding:40px; color:#c00;">Failed to load email. Please try again.</div>';
             return;
           }
         } else if (err1?.__fullError) {
           hideLoadingSpinner();
           showCopyableError(err1.__isHttpError ? 'Fetch Email Error' : 'Email Error', err1.__fullError);
           console.error('Fetch email error:', err1);
-          document.getElementById('emailModal').style.display='none';
-          document.body.classList.remove('modal-open');
           return;
         } else {
           hideLoadingSpinner();
           const fullError = `Error fetching email: ${err1.message}\n\nUID: ${uid}\n\nStack trace:\n${err1.stack || 'N/A'}`;
           showCopyableError('Network Error', fullError);
           console.error('Fetch error:', err1);
-          document.getElementById('emailModal').style.display='none';
-          document.body.classList.remove('modal-open');
           return;
         }
       }
@@ -4430,7 +4507,7 @@
 
       // Show email modal
       populateEmailModal(subject, from, date, bodyContent, currentEmailMeta);
-      // Ensure modal is attached to document.body so it's visible even when the emails panel is hidden
+      // Ensure modal is attached to document.body
       try {
         const modalEl = document.getElementById('emailModal');
         if (modalEl && modalEl.parentNode !== document.body) {
@@ -4948,7 +5025,73 @@
       // Store current email meta for task creation
       currentEmailModalMeta = emailMeta;
     }
-    
+
+    // Populate the reading pane instead of modal for received emails
+    function showInReadingPane(subject, from, date, body, emailMeta) {
+      const pane = document.getElementById('emailReadingPane');
+      if (!pane) return;
+
+      // Build customer info HTML
+      let customerHtml = '';
+      if (currentCustomerData) {
+        customerHtml = `
+          <div style="margin-top:8px; padding:8px; border:1px solid #000; background:#f0f0f0;">
+            <div style="font-weight:bold; margin-bottom:4px;">Customer Information</div>
+            <div style="font-size:13px;">${currentCustomerData.companyName || ''} | ${currentCustomerData.emailDomain || ''}</div>
+          </div>`;
+      }
+
+      pane.classList.remove('empty');
+      pane.innerHTML = `
+        <div class="email-reading-pane-header">
+          <div class="email-reading-pane-subject">${escapeHtml(subject || '(No subject)')}</div>
+          <div class="email-reading-pane-meta"><strong>From:</strong> ${escapeHtml(from || 'Unknown')}</div>
+          <div class="email-reading-pane-meta"><strong>To:</strong> ${escapeHtml(emailMeta?.to || '(unknown)')}</div>
+          <div class="email-reading-pane-meta"><strong>Date:</strong> ${escapeHtml(date || 'Unknown')}</div>
+          ${customerHtml}
+        </div>
+        <div class="email-reading-pane-body">${body || 'No content available'}</div>
+        <div class="email-reading-pane-actions">
+          <button class="action-btn expandable" id="paneQuotationBtn">Quotation</button>
+          <div class="sub-options" id="paneQuotationSubOptions">
+            <button class="sub-option-btn" data-type="hang-tag">Hang Tag</button>
+            <button class="sub-option-btn" data-type="woven-label">Woven Label</button>
+            <button class="sub-option-btn" data-type="care-label">Care Label</button>
+            <button class="sub-option-btn" data-type="transfer">Transfer</button>
+            <button class="sub-option-btn" data-type="outsource">Outsource</button>
+          </div>
+          <button class="action-btn" id="paneImageLibBtn">Image Lib</button>
+        </div>`;
+
+      // Bind Quotation button toggle
+      const quotationBtn = pane.querySelector('#paneQuotationBtn');
+      const subOptions = pane.querySelector('#paneQuotationSubOptions');
+      if (quotationBtn) {
+        quotationBtn.onclick = () => {
+          quotationBtn.classList.toggle('expanded');
+          subOptions.classList.toggle('expanded');
+        };
+      }
+
+      // Bind sub-option buttons
+      pane.querySelectorAll('.sub-option-btn').forEach(btn => {
+        btn.onclick = () => {
+          const quotationType = btn.getAttribute('data-type');
+          const quotationName = btn.textContent;
+          window.isDummy2Mode = true;
+          openEmailQuotationModal(quotationType, quotationName, currentEmailMeta);
+        };
+      });
+
+      // Bind Image Lib button
+      const imageLibBtn = pane.querySelector('#paneImageLibBtn');
+      if (imageLibBtn) {
+        imageLibBtn.onclick = () => {
+          console.log('Image Lib button clicked');
+        };
+      }
+    }
+
     // Helper function to render email list
     function renderEmailList(emails) {
       const tableBody = document.getElementById('emailTableBody');
@@ -4995,20 +5138,19 @@
 
         tableBody.appendChild(row);
 
-        // Add event listeners after appending to DOM
-        row.onmouseover = () => row.style.background = 'rgba(0, 0, 0, 0.3)';
-        row.onmouseout = () => row.style.background = '#fff';
-
-        // Only make the "Click to view" cell clickable
-        const viewCell = row.querySelector('.email-view-cell');
-        viewCell.onclick = (event) => {
-          console.log('View cell clicked for email UID:', e.uid);
+        // Make entire row clickable
+        row.onclick = (event) => {
+          console.log('Email row clicked, UID:', e.uid);
           // Mark row as read visually
           if (!isSeen) {
             row.querySelectorAll('td').forEach(td => td.style.fontWeight = 'normal');
             e.flags = e.flags || [];
             e.flags.push('\\Seen');
           }
+          // Highlight selected row
+          const prev = tableBody.querySelector('.email-row-selected');
+          if (prev) prev.classList.remove('email-row-selected');
+          row.classList.add('email-row-selected');
           show(e.uid);
         };
       });
@@ -5189,6 +5331,7 @@
     
     // Test SMTP connection
     const testSmtpBtn = document.getElementById('testSmtpBtn');
+    if (testSmtpBtn) {
     testSmtpBtn.onclick = async () => {
       try {
         testSmtpBtn.disabled = true;
@@ -5216,8 +5359,9 @@
         testSmtpBtn.textContent = '?? Test SMTP Connection';
       }
     };
-    
+    }
     // Test send email to eric.brilliant@gmail.com
+    if (testSendBtn) {
     testSendBtn.onclick = async () => {
       const ok = await showModal({
         title: 'Send test email',
@@ -5247,6 +5391,7 @@
         testSendBtn.textContent = '?�� Send Test Email';
       }
     };
+    }
 
     // Email modal event listeners
     document.getElementById('emailModalClose').onclick = () => {
@@ -5288,7 +5433,6 @@
     // Image Lib button click handler
     document.getElementById('imageLibBtn').onclick = () => {
       console.log('Image Lib button clicked');
-      // TODO: Implement image library logic
     };
 
     // Fill quotation form with random data (optionally keeping customer info fixed)
@@ -8779,9 +8923,9 @@
           const linksHtml = sentLinks.map((l, i) => `
             <div style="margin-bottom:10px; padding:8px; border:1px solid #ddd; background:#f9f9f9;">
               <div style="font-size:13px; font-weight:600; margin-bottom:4px;">${l.supplier} - ${l.name} (${l.email})</div>
-              <div style="display:flex; gap:6px;">
-                <input type="text" value="${l.link}" id="portalLinkCopy${i}" readonly style="flex:1; padding:6px; border:1px solid #000; font-size:11px; font-family:monospace;">
-                <button onclick="document.getElementById('portalLinkCopy${i}').select(); document.execCommand('copy'); this.textContent='Copied!';" style="padding:6px 12px; background:#000; color:#fff; border:none; cursor:pointer; font-size:11px; white-space:nowrap;">Copy</button>
+              <div style="display:flex; gap:6px; flex-direction:column;">
+                <div style="font-family:monospace; font-size:11px; margin-bottom:4px; word-break:break-all; border:1px solid #eee; padding:4px;">${l.link}</div>
+                <button onclick="const el=document.createElement('textarea'); el.value='${l.link}'; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); this.textContent='Copied!';" style="align-self:flex-start; padding:4px 12px; background:#000; color:#fff; border:none; cursor:pointer; font-size:11px;">Copy Link</button>
               </div>
             </div>
           `).join('');
