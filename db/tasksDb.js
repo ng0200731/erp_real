@@ -364,6 +364,14 @@ async function ensureSchema(db) {
   } catch (err) {
     console.warn('Error creating supplier_sampling_tokens table:', err);
   }
+
+  try {
+    await db.exec(`ALTER TABLE quotations ADD COLUMN brandId INTEGER;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding brandId column:', err);
+    }
+  }
 }
 
 export async function getTasksDb() {
@@ -818,8 +826,8 @@ export async function createQuotation(quotationData) {
 
   const result = await db.run(
     `
-      INSERT INTO quotations (customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, outsourcingSeq)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO quotations (customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, outsourcingSeq, brandId)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       quotationData.customerName,
@@ -840,7 +848,8 @@ export async function createQuotation(quotationData) {
       JSON.stringify(quotationData.attachmentPaths || []),
       quotationData.dateCreated,
       quotationData.status || 'draft',
-      outsourcingSeq
+      outsourcingSeq,
+      quotationData.brandId || null
     ]
   );
 
@@ -878,7 +887,7 @@ export async function updateQuotation(id, quotationData) {
   await db.run(
     `
       UPDATE quotations
-      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?, outsourcingSeq = ?, selectedSupplierId = ?, selectedSupplierResponseId = ?, sampleReadyDate = ?
+      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?, outsourcingSeq = ?, selectedSupplierId = ?, selectedSupplierResponseId = ?, sampleReadyDate = ?, brandId = ?
       WHERE id = ?
     `,
     [
@@ -904,6 +913,7 @@ export async function updateQuotation(id, quotationData) {
       quotationData.selectedSupplierId || null,
       quotationData.selectedSupplierResponseId || null,
       quotationData.sampleReadyDate || null,
+      quotationData.brandId || null,
       id
     ]
   );

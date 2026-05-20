@@ -6208,10 +6208,10 @@
       }
 
       // Fill brand detail
-      const brandNameField = document.getElementById('quotationBrandName');
-      if (brandNameField) {
-        const brands = brandNamesList.length > 0 ? brandNamesList : ['Nike', 'Adidas', 'Uniqlo', 'Zara', 'H&M', 'Gucci', 'Prada', 'Burberry'];
-        brandNameField.value = brands[Math.floor(Math.random() * brands.length)];
+      const brandIdField = document.getElementById('quotationBrandId');
+      if (brandIdField && cachedBrands.length > 0) {
+        const randomBrand = cachedBrands[Math.floor(Math.random() * cachedBrands.length)];
+        brandIdField.value = randomBrand.id;
       }
 
       console.log('Dummy quotation data filled (customer info preserved)');
@@ -10834,7 +10834,7 @@
         const quantity = document.getElementById('quotationQuantity')?.value;
         const unitPrice = document.getElementById('quotationUnitPrice')?.value;
         const notes = document.getElementById('quotationNotes')?.value.trim();
-        const brandName = document.getElementById('quotationBrandName')?.value.trim() || '';
+        const brandId = document.getElementById('quotationBrandId')?.value || null;
 
         // Validation
         if (!customerName) {
@@ -10872,7 +10872,7 @@
           unitPrice: parseFloat(unitPrice) || 0,
           total: total,
           notes,
-          brandName
+          brandId
         };
 
         console.log('Updated quotation:', updatedQuotation);
@@ -11284,9 +11284,10 @@
       // Update title
       subBoardTitle.textContent = `${tagName} Quotation`;
 
-      // Generate content based on tag type
-      const content = generateQuotationContent(tagType, tagName, 'non email');
-      subBoardContent.innerHTML = content;
+      // Refresh brands cache then generate content
+      loadBrandsCache().then(() => {
+        const content = generateQuotationContent(tagType, tagName, 'non email');
+        subBoardContent.innerHTML = content;
 
       // Initialize autocomplete for customer field and file upload functionality
       setTimeout(() => {
@@ -11363,6 +11364,7 @@
 
       // Show sub-board
       subBoard.style.display = 'block';
+      });
     }
 
     function initializeFileUploads(tagType) {
@@ -11848,13 +11850,28 @@
     }
 
     // Helper to generate Brand Name dropdown from saved defaults
+    let cachedBrands = [];
+
+    async function loadBrandsCache() {
+      try {
+        const r = await fetch('/api/brands');
+        const data = await r.json();
+        if (data.success) cachedBrands = data.brands;
+      } catch (e) { console.error('Error loading brands cache:', e); }
+    }
+
     function getBrandNameSelectHtml(selectedValue = '') {
-      const options = brandNamesList.map(b =>
-        '<option value="' + escapeHtml(b) + '"' + (b === selectedValue ? ' selected' : '') + '>' + escapeHtml(b) + '</option>'
+      const options = cachedBrands.map(b =>
+        '<option value="' + b.id + '"' + (String(b.id) === String(selectedValue) ? ' selected' : '') + '>' + escapeHtml(b.name) + '</option>'
       ).join('');
-      return '<select id="quotationBrandName" style="width:100%; padding:8px; border:1px solid #000; background:#fff;">' +
+      return '<div style="display:flex; gap:10px; align-items:center;">' +
+        '<select id="quotationBrandId" style="flex:1; padding:8px; border:1px solid #000; background:#fff;">' +
         '<option value="">Select brand...</option>' + options +
-        '</select>';
+        '</select>' +
+        '<div id="quotationBrandPreview" style="display:none;">' +
+        '<img id="quotationBrandLogo" src="" style="max-width:40px; max-height:40px; border:1px solid #000;">' +
+        '</div>' +
+        '</div>';
     }
 
     // Helper to generate Product Type dropdown from saved defaults
@@ -11912,7 +11929,7 @@
               '<h4>Brand Detail</h4>' +
               '<div>' +
                 '<label style="display:block; margin-bottom:5px; font-weight:600;">Brand Name</label>' +
-                getBrandNameSelectHtml(quotation.brandName || '') +
+                getBrandNameSelectHtml(quotation.brandId || '') +
               '</div>' +
             '</div>' +
 
@@ -12698,7 +12715,7 @@
         const unitPrice = document.getElementById('quotationUnitPrice').value;
         const total = document.getElementById('quotationTotal').value;
         const notes = document.getElementById('quotationNotes').value.trim();
-        const brandName = document.getElementById('quotationBrandName')?.value.trim() || '';
+        const brandId = document.getElementById('quotationBrandId')?.value || null;
 
         console.log('Saving quotation with data:', {
           customerName, contactPerson, email, phone, quantity, unitPrice, total, notes, tagType, source
@@ -12738,7 +12755,7 @@
           unitPrice: parseFloat(unitPrice) || 0,
           total: parseFloat(total) || 0,
           notes,
-          brandName,
+          brandId,
           type: source,
           sourceEmailUid: (source === 'email' && window.currentQuotationEmailMeta) ? window.currentQuotationEmailMeta.uid : null,
           sourceEmailSubject: (source === 'email' && window.currentQuotationEmailMeta) ? window.currentQuotationEmailMeta.subject : null,
@@ -14064,6 +14081,7 @@
         .then(r => r.json())
         .then(data => {
           if (data.success) {
+            cachedBrands = data.brands;
             renderBrandList(data.brands);
           }
         })
@@ -14258,6 +14276,7 @@
       window._clearBrandLogoFile = () => { droppedFile = null; };
     })();
 
+    loadBrandsCache();
     load();
   </script>
 </body>
