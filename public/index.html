@@ -139,7 +139,7 @@
       background: #fff;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      overflow: visible;
       cursor: pointer;
       transition: all 0.3s ease;
       position: relative;
@@ -206,13 +206,9 @@
 
     .quadrant-action {
       font-size: 11px;
-      color: #999;
+      color: #000;
       font-style: italic;
       transition: color 0.2s ease;
-    }
-
-    .dashboard-quadrant:hover .quadrant-action {
-      color: #000;
     }
 
     .quadrant-content {
@@ -222,7 +218,7 @@
       justify-content: center;
       padding: 20px;
       min-height: 0;
-      overflow: hidden;
+      overflow: visible;
     }
 
     .chart-container {
@@ -908,6 +904,192 @@
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
+    }
+
+    /* ========== COLLAPSIBLE SETTINGS SECTIONS ========== */
+    .settings-section {
+      border: 1px solid #000;
+      margin-bottom: 16px;
+      background: #fff;
+    }
+    .settings-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: #000;
+      color: #fff;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .settings-section-header:hover {
+      background: #222;
+    }
+    .settings-section-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin: 0;
+    }
+    .settings-section-arrow {
+      font-size: 12px;
+      transition: transform 0.25s ease;
+      display: inline-block;
+    }
+    .settings-section.collapsed .settings-section-arrow {
+      transform: rotate(-90deg);
+    }
+    .settings-section-body {
+      padding: 20px;
+      overflow: hidden;
+      transition: max-height 0.35s ease, padding 0.35s ease, opacity 0.25s ease;
+      max-height: 2000px;
+      opacity: 1;
+    }
+    .settings-section.collapsed .settings-section-body {
+      max-height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      opacity: 0;
+    }
+
+    /* Brand detail items */
+    .brand-item {
+      border: 1px solid #000;
+      margin-bottom: 8px;
+      background: #fff;
+    }
+    .brand-item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 1px solid transparent;
+      transition: background 0.12s;
+    }
+    .brand-item-header:hover {
+      background: #f5f5f5;
+    }
+    .brand-item.expanded .brand-item-header {
+      border-bottom-color: #000;
+    }
+    .brand-item-name {
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .brand-item-ref {
+      font-size: 12px;
+      color: #666;
+      margin-left: 12px;
+    }
+    .brand-item-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .brand-item-arrow {
+      font-size: 10px;
+      transition: transform 0.2s ease;
+    }
+    .brand-item.expanded .brand-item-arrow {
+      transform: rotate(90deg);
+    }
+    .brand-item-body {
+      overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+      max-height: 0;
+      padding: 0 14px;
+    }
+    .brand-item.expanded .brand-item-body {
+      max-height: 400px;
+      padding: 14px;
+    }
+    .brand-remove-btn {
+      background: none;
+      border: 1px solid #000;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 2px 8px;
+      color: #000;
+      transition: all 0.12s;
+      width: auto;
+    }
+    .brand-remove-btn:hover {
+      background: #000;
+      color: #fff;
+    }
+
+    /* Product type chips */
+    .product-type-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .product-type-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border: 1px solid #000;
+      font-size: 13px;
+      background: #fff;
+      cursor: default;
+      transition: all 0.12s;
+    }
+    .product-type-chip.preset {
+      background: #f5f5f5;
+    }
+    .product-type-chip-remove {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0;
+      color: #999;
+      transition: color 0.12s;
+      width: auto;
+    }
+    .product-type-chip-remove:hover {
+      color: #000;
+    }
+    .product-type-chip .chip-remove-preset {
+      display: none;
+    }
+    .product-type-chip:hover .chip-remove-preset {
+      display: inline;
+    }
+    .add-type-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .add-type-input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #000;
+      font-size: 13px;
+    }
+    .add-type-btn {
+      padding: 8px 16px;
+      border: 1px solid #000;
+      background: #000;
+      color: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.12s;
+      width: auto;
+    }
+    .add-type-btn:hover {
+      background: #333;
     }
   </style>
   <!-- Chart.js library for better chart layout and responsiveness -->
@@ -1763,69 +1945,128 @@
       </div>
 
       <!-- Settings board (IMAP/SMTP profile edit form) -->
-      <div id="settingsPanel" style="border:1px solid #000; padding:20px; margin-bottom:20px; display:none;">
-        <form id="settingsForm">
-        <h3>Profile &amp; Connection Settings</h3>
-        <div class="row" style="margin-bottom:10px;">
-          <div style="flex:1;">
-            <label for="cfgMailUser">MAIL_USER</label>
-            <input id="cfgMailUser" type="email" autocomplete="username">
+      <div id="settingsPanel" style="border:0; padding:0; margin-bottom:20px; display:none;">
+
+        <!-- Email Profile Section (collapsible) -->
+        <div class="settings-section" id="sectionEmailProfile">
+          <div class="settings-section-header" onclick="toggleSettingsSection('sectionEmailProfile')">
+            <h3 class="settings-section-title">
+              <span class="settings-section-arrow">▼</span>
+              Email Profile
+            </h3>
+            <span style="font-size:11px; opacity:0.6; letter-spacing:0.08em;">CLICK TO TOGGLE</span>
           </div>
-          <div style="flex:1;">
-            <label for="cfgMailPass">MAIL_PASS</label>
-            <div style="position:relative;">
-              <input id="cfgMailPass" type="password" autocomplete="current-password" style="padding-right:30px;">
-              <button id="togglePassword" type="button" style="position:absolute; right:5px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#000; font-size:14px;">👁️</button>
+          <div class="settings-section-body">
+            <form id="settingsForm">
+              <div class="row" style="margin-bottom:10px;">
+                <div style="flex:1;">
+                  <label for="cfgMailUser">MAIL_USER</label>
+                  <input id="cfgMailUser" type="email" autocomplete="username">
+                </div>
+                <div style="flex:1;">
+                  <label for="cfgMailPass">MAIL_PASS</label>
+                  <div style="position:relative;">
+                    <input id="cfgMailPass" type="password" autocomplete="current-password" style="padding-right:30px;">
+                    <button id="togglePassword" type="button" style="position:absolute; right:5px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#000; font-size:14px;">👁️</button>
+                  </div>
+                </div>
+              </div>
+
+              <h4>IMAP (incoming)</h4>
+              <div class="row" style="margin-bottom:10px;">
+                <div style="flex:2;">
+                  <label for="cfgImapHost">IMAP_HOST</label>
+                  <input id="cfgImapHost" type="text">
+                </div>
+                <div style="flex:1;">
+                  <label for="cfgImapPort">IMAP_PORT</label>
+                  <input id="cfgImapPort" type="number">
+                </div>
+                <div style="flex:1;">
+                  <label for="cfgImapTls">IMAP_TLS (true/false)</label>
+                  <input id="cfgImapTls" type="text">
+                </div>
+              </div>
+
+              <h4>SMTP (outgoing)</h4>
+              <div class="row" style="margin-bottom:10px;">
+                <div style="flex:2;">
+                  <label for="cfgSmtpHost">SMTP_HOST</label>
+                  <input id="cfgSmtpHost" type="text">
+                </div>
+                <div style="flex:1;">
+                  <label for="cfgSmtpPort">SMTP_PORT</label>
+                  <input id="cfgSmtpPort" type="number">
+                </div>
+                <div style="flex:1;">
+                  <label for="cfgSmtpSecure">SMTP_SECURE (true/false)</label>
+                  <input id="cfgSmtpSecure" type="text">
+                </div>
+              </div>
+
+              <h4>Server</h4>
+              <div class="row" style="margin-bottom:10px;">
+                <div style="flex:1;">
+                  <label for="cfgPort">PORT</label>
+                  <input id="cfgPort" type="number">
+                </div>
+              </div>
+
+              <div class="row">
+                <button id="saveConfigBtn" class="page-btn">Save Settings</button>
+                <button id="dummyFillSettingsBtn" class="page-btn" type="button">Auto Fill (Random)</button>
+              </div>
+              <p class="meta" id="settingsNote"></p>
+            </form>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Quotation Defaults Panel (always visible on Settings page) -->
+      <div id="quotationDefaultsPanel" style="border:0; padding:0; margin-bottom:20px; display:none;">
+        <div class="settings-section" id="sectionQuotationDefaults">
+          <div class="settings-section-header" onclick="toggleSettingsSection('sectionQuotationDefaults')">
+            <h3 class="settings-section-title">
+              <span class="settings-section-arrow">▼</span>
+              Quotation Defaults
+            </h3>
+            <span style="font-size:11px; opacity:0.6; letter-spacing:0.08em;">CLICK TO TOGGLE</span>
+          </div>
+          <div class="settings-section-body">
+
+            <!-- Brand Details -->
+            <div style="margin-bottom:24px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <h4 style="margin:0;">Brand Details</h4>
+                <button class="page-btn" type="button" onclick="addBrandItem()" style="font-size:12px; padding:6px 14px;">+ Add Brand</button>
+              </div>
+              <div id="brandDetailsList">
+                <!-- Brand items rendered here dynamically -->
+              </div>
+              <div id="brandDetailsEmpty" style="padding:20px; text-align:center; border:1px dashed #000; color:#999; font-size:13px;">
+                No brands added yet. Click "+ Add Brand" to get started.
+              </div>
             </div>
-          </div>
-        </div>
 
-        <h4>IMAP (incoming)</h4>
-        <div class="row" style="margin-bottom:10px;">
-          <div style="flex:2;">
-            <label for="cfgImapHost">IMAP_HOST</label>
-            <input id="cfgImapHost" type="text">
-          </div>
-          <div style="flex:1;">
-            <label for="cfgImapPort">IMAP_PORT</label>
-            <input id="cfgImapPort" type="number">
-          </div>
-          <div style="flex:1;">
-            <label for="cfgImapTls">IMAP_TLS (true/false)</label>
-            <input id="cfgImapTls" type="text">
-          </div>
-        </div>
+            <!-- Product Types -->
+            <div style="margin-bottom:24px;">
+              <h4 style="margin:0 0 12px 0;">Product Types</h4>
+              <div id="productTypeChips" class="product-type-chips">
+                <!-- Chips rendered here dynamically -->
+              </div>
+              <div class="add-type-row">
+                <input type="text" id="addProductTypeInput" class="add-type-input" placeholder="Type custom product type..." style="font-family:inherit;">
+                <button type="button" class="add-type-btn" onclick="addCustomProductType()">Add</button>
+              </div>
+            </div>
 
-        <h4>SMTP (outgoing)</h4>
-        <div class="row" style="margin-bottom:10px;">
-          <div style="flex:2;">
-            <label for="cfgSmtpHost">SMTP_HOST</label>
-            <input id="cfgSmtpHost" type="text">
-          </div>
-          <div style="flex:1;">
-            <label for="cfgSmtpPort">SMTP_PORT</label>
-            <input id="cfgSmtpPort" type="number">
-          </div>
-          <div style="flex:1;">
-            <label for="cfgSmtpSecure">SMTP_SECURE (true/false)</label>
-            <input id="cfgSmtpSecure" type="text">
+            <div class="row">
+              <button id="saveQuotationDefaultsBtn" class="page-btn">Save Quotation Defaults</button>
+            </div>
+            <p class="meta" id="quotationDefaultsNote"></p>
           </div>
         </div>
-
-        <h4>Server</h4>
-        <div class="row" style="margin-bottom:10px;">
-          <div style="flex:1;">
-            <label for="cfgPort">PORT</label>
-            <input id="cfgPort" type="number">
-          </div>
-        </div>
-
-        <div class="row">
-          <button id="saveConfigBtn" class="page-btn">Save Settings</button>
-          <button id="dummyFillSettingsBtn" class="page-btn" type="button">Auto Fill (Random)</button>
-        </div>
-        <p class="meta" id="settingsNote"></p>
-        </form>
       </div>
 
       <!-- Email UI (next step; hidden for now) -->
@@ -2454,6 +2695,206 @@
     let settingsHasUnsavedChanges = false;
     let currentEditingProfileId = null; // null means creating new profile
 
+    // ========== COLLAPSIBLE SETTINGS SECTIONS ==========
+    function toggleSettingsSection(sectionId) {
+      const section = document.getElementById(sectionId);
+      if (section) section.classList.toggle('collapsed');
+    }
+
+    // ========== BRAND DETAILS MANAGEMENT ==========
+    let brandDetailsData = [];
+    const PRESET_PRODUCT_TYPES = ['Hang Tag', 'Woven Label', 'Care Label', 'Heat Transfer', 'Outsource'];
+    let customProductTypes = [];
+
+    function renderBrandItems() {
+      const list = document.getElementById('brandDetailsList');
+      const empty = document.getElementById('brandDetailsEmpty');
+      if (!list) return;
+      list.innerHTML = '';
+      if (brandDetailsData.length === 0) {
+        if (empty) empty.style.display = 'block';
+        return;
+      }
+      if (empty) empty.style.display = 'none';
+
+      brandDetailsData.forEach((brand, idx) => {
+        const item = document.createElement('div');
+        item.className = 'brand-item' + (brand._expanded ? ' expanded' : '');
+        item.innerHTML =
+          '<div class="brand-item-header" onclick="toggleBrandItem(' + idx + ')">' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
+              '<span class="brand-item-arrow">▶</span>' +
+              '<span class="brand-item-name">' + (brand.name || '(untitled)') + '</span>' +
+              '<span class="brand-item-ref">' + (brand.ref || '') + '</span>' +
+            '</div>' +
+            '<div class="brand-item-actions">' +
+              '<button type="button" class="brand-remove-btn" onclick="event.stopPropagation();removeBrandItem(' + idx + ')">✕ Remove</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="brand-item-body">' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+              '<div>' +
+                '<label style="display:block;margin-bottom:4px;font-weight:600;font-size:12px;">Brand Name</label>' +
+                '<input type="text" value="' + escapeHtml(brand.name || '') + '" onchange="updateBrandField(' + idx + ',\'name\',this.value)" placeholder="Enter brand name" style="padding:8px;border:1px solid #000;width:100%;">' +
+              '</div>' +
+              '<div>' +
+                '<label style="display:block;margin-bottom:4px;font-weight:600;font-size:12px;">Brand Reference</label>' +
+                '<input type="text" value="' + escapeHtml(brand.ref || '') + '" onchange="updateBrandField(' + idx + ',\'ref\',this.value)" placeholder="Style/Season ref" style="padding:8px;border:1px solid #000;width:100%;">' +
+              '</div>' +
+              '<div>' +
+                '<label style="display:block;margin-bottom:4px;font-weight:600;font-size:12px;">Color Code #</label>' +
+                '<input type="text" value="' + escapeHtml(brand.color || '') + '" onchange="updateBrandField(' + idx + ',\'color\',this.value)" placeholder="#FFFFFF" style="padding:8px;border:1px solid #000;width:100%;">' +
+              '</div>' +
+              '<div>' +
+                '<label style="display:block;margin-bottom:4px;font-weight:600;font-size:12px;">Logo</label>' +
+                '<input type="text" value="' + escapeHtml(brand.logo || '') + '" onchange="updateBrandField(' + idx + ',\'logo\',this.value)" placeholder="Logo filename" style="padding:8px;border:1px solid #000;width:100%;">' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+        list.appendChild(item);
+      });
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function toggleBrandItem(idx) {
+      brandDetailsData[idx]._expanded = !brandDetailsData[idx]._expanded;
+      renderBrandItems();
+    }
+
+    function updateBrandField(idx, field, value) {
+      brandDetailsData[idx][field] = value;
+      // Update header display without full re-render
+      const list = document.getElementById('brandDetailsList');
+      const item = list.children[idx];
+      if (item) {
+        const nameEl = item.querySelector('.brand-item-name');
+        const refEl = item.querySelector('.brand-item-ref');
+        if (nameEl) nameEl.textContent = brandDetailsData[idx].name || '(untitled)';
+        if (refEl) refEl.textContent = brandDetailsData[idx].ref || '';
+      }
+    }
+
+    function addBrandItem() {
+      brandDetailsData.push({ name: '', ref: '', color: '', logo: '', _expanded: true });
+      renderBrandItems();
+    }
+
+    function removeBrandItem(idx) {
+      brandDetailsData.splice(idx, 1);
+      renderBrandItems();
+    }
+
+    // ========== PRODUCT TYPE MANAGEMENT ==========
+    function getAllProductTypes() {
+      return [...PRESET_PRODUCT_TYPES, ...customProductTypes];
+    }
+
+    function renderProductTypeChips() {
+      const container = document.getElementById('productTypeChips');
+      if (!container) return;
+      container.innerHTML = '';
+      getAllProductTypes().forEach((type, idx) => {
+        const isPreset = idx < PRESET_PRODUCT_TYPES.length;
+        const chip = document.createElement('div');
+        chip.className = 'product-type-chip' + (isPreset ? ' preset' : '');
+        chip.innerHTML =
+          '<span>' + escapeHtml(type) + '</span>' +
+          (isPreset
+            ? '<button type="button" class="product-type-chip-remove chip-remove-preset" onclick="removePresetType(' + idx + ')">✕</button>'
+            : '<button type="button" class="product-type-chip-remove" onclick="removeCustomType(' + (idx - PRESET_PRODUCT_TYPES.length) + ')">✕</button>');
+        container.appendChild(chip);
+      });
+    }
+
+    function addCustomProductType() {
+      const input = document.getElementById('addProductTypeInput');
+      const val = (input.value || '').trim();
+      if (!val) return;
+      const all = getAllProductTypes();
+      if (all.some(t => t.toLowerCase() === val.toLowerCase())) {
+        input.value = '';
+        return;
+      }
+      customProductTypes.push(val);
+      input.value = '';
+      renderProductTypeChips();
+    }
+
+    function removeCustomType(customIdx) {
+      customProductTypes.splice(customIdx, 1);
+      renderProductTypeChips();
+    }
+
+    function removePresetType(presetIdx) {
+      PRESET_PRODUCT_TYPES.splice(presetIdx, 1);
+      renderProductTypeChips();
+    }
+
+    // Allow Enter key to add product type
+    document.getElementById('addProductTypeInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); addCustomProductType(); }
+    });
+
+    // ========== QUOTATION DEFAULTS SAVE/LOAD ==========
+    document.getElementById('saveQuotationDefaultsBtn').onclick = async () => {
+      try {
+        const brands = brandDetailsData.map(b => ({
+          name: b.name, ref: b.ref, color: b.color, logo: b.logo
+        }));
+        const productTypes = getAllProductTypes();
+        const res = await fetch('/api/quotation-defaults', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ brands, productTypes })
+        });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('quotationDefaultsNote').textContent = 'Quotation defaults saved.';
+          setTimeout(() => { document.getElementById('quotationDefaultsNote').textContent = ''; }, 3000);
+        } else {
+          await showModal({ title: 'Error', body: 'Failed to save: ' + (data.error || 'Unknown error') });
+        }
+      } catch (err) {
+        await showModal({ title: 'Error', body: 'Error saving quotation defaults: ' + err.message });
+      }
+    };
+
+    async function loadQuotationDefaults() {
+      try {
+        const res = await fetch('/api/quotation-defaults', { cache: 'no-cache' });
+        const data = await res.json();
+        if (data.success && data.defaults) {
+          brandDetailsData = (data.defaults.brands || []).map(b => ({ ...b, _expanded: false }));
+          // Rebuild product types
+          PRESET_PRODUCT_TYPES.length = 0;
+          customProductTypes.length = 0;
+          const savedTypes = data.defaults.productTypes || [];
+          savedTypes.forEach(t => {
+            const isPreset = ['Hang Tag','Woven Label','Care Label','Heat Transfer','Outsource'].includes(t);
+            if (isPreset) PRESET_PRODUCT_TYPES.push(t);
+            else customProductTypes.push(t);
+          });
+          // If no saved types, restore defaults
+          if (PRESET_PRODUCT_TYPES.length === 0 && customProductTypes.length === 0) {
+            PRESET_PRODUCT_TYPES.push('Hang Tag','Woven Label','Care Label','Heat Transfer','Outsource');
+          }
+          renderBrandItems();
+          renderProductTypeChips();
+        }
+      } catch (err) {
+        // First load may fail if no defaults saved yet - that's fine
+        console.log('No quotation defaults saved yet');
+      }
+    }
+
+    // Initialize on page load
+    renderProductTypeChips();
+    renderBrandItems();
+    loadQuotationDefaults();
+
     // --- Tabs handling (welcome + future boards) ---
     function ensureTab(id, label) {
       let tab = tabsBar.querySelector(`[data-tab-id="${id}"]`);
@@ -2498,6 +2939,7 @@
       // Hide all panels first
       settingsPanel.style.display = 'none';
       profilesListPanel.style.display = 'none';
+      document.getElementById('quotationDefaultsPanel').style.display = 'none';
       
       // Remove tab
       const tab = tabsBar.querySelector(`[data-tab-id="${id}"]`);
@@ -2525,6 +2967,7 @@
       // Panels
       welcomePanel.style.display = id === 'welcome' ? 'block' : 'none';
       profilesListPanel.style.display = id === 'profiles' ? 'block' : 'none';
+      document.getElementById('quotationDefaultsPanel').style.display = id === 'profiles' ? 'block' : 'none';
       document.getElementById('emails').style.display = id === 'emails' ? 'block' : 'none';
       document.getElementById('email-send').style.display = id === 'email-send' ? 'block' : 'none';
       document.getElementById('customerPanel').style.display = id === 'customer' ? 'block' : 'none';
@@ -2802,7 +3245,7 @@
           aspectRatio: 1,
           cutout: '65%',
           layout: {
-            padding: 10
+            padding: 40
           },
           plugins: {
             legend: {
@@ -2874,6 +3317,80 @@
             ctx.fillText(label, labelX, labelY);
 
             ctx.save();
+          }
+        }, {
+          id: 'sliceLabels',
+          afterDraw: function(chart) {
+            const ctx = chart.ctx;
+            const meta = chart.getDatasetMeta(0);
+            const centerX = (chart.chartArea.left + chart.chartArea.right) / 2;
+            const centerY = (chart.chartArea.top + chart.chartArea.bottom) / 2;
+
+            meta.data.forEach((arc, i) => {
+              const value = chart.data.datasets[0].data[i];
+              if (value === 0) return;
+              const statusName = dashboardData.statuses[i].name;
+              const startAngle = arc.startAngle;
+              const endAngle = arc.endAngle;
+              const midAngle = (startAngle + endAngle) / 2;
+              const outerRadius = arc.outerRadius;
+
+              // Point on pie edge
+              const edgeX = centerX + Math.cos(midAngle) * outerRadius;
+              const edgeY = centerY + Math.sin(midAngle) * outerRadius;
+
+              // Label position outside the pie
+              const labelDist = outerRadius + 20;
+              const labelX = centerX + Math.cos(midAngle) * labelDist;
+              const labelY = centerY + Math.sin(midAngle) * labelDist;
+
+              ctx.save();
+              // Dotted leader line from edge to label
+              ctx.beginPath();
+              ctx.setLineDash([3, 3]);
+              ctx.moveTo(edgeX, edgeY);
+              ctx.lineTo(labelX, labelY);
+              ctx.strokeStyle = '#000';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+              ctx.setLineDash([]);
+
+              // Small dot at the edge point
+              ctx.beginPath();
+              ctx.arc(edgeX, edgeY, 2, 0, Math.PI * 2);
+              ctx.fillStyle = '#000';
+              ctx.fill();
+
+              // Rounded rect label
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+              const textWidth = ctx.measureText(statusName).width;
+              const padX = 6, padY = 4, rad = 4;
+              const rx = labelX - textWidth / 2 - padX;
+              const ry = labelY - 6 - padY;
+              const rw = textWidth + padX * 2;
+              const rh = 12 + padY * 2;
+              ctx.beginPath();
+              ctx.moveTo(rx + rad, ry);
+              ctx.lineTo(rx + rw - rad, ry);
+              ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
+              ctx.lineTo(rx + rw, ry + rh - rad);
+              ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
+              ctx.lineTo(rx + rad, ry + rh);
+              ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
+              ctx.lineTo(rx, ry + rad);
+              ctx.quadraticCurveTo(rx, ry, rx + rad, ry);
+              ctx.closePath();
+              ctx.fillStyle = '#fff';
+              ctx.fill();
+              ctx.strokeStyle = '#000';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+              ctx.fillStyle = '#000';
+              ctx.fillText(statusName, labelX, labelY);
+              ctx.restore();
+            });
           }
         }]
       });
@@ -2996,12 +3513,9 @@
       const legendContainer = document.getElementById('dashboardLegend');
       if (!legendContainer) return;
 
-      // Black and white gradient shades
-      const bwColors = ['#000000', '#333333', '#666666', '#999999', '#cccccc', '#e5e5e5'];
-
       const legendItems = dashboardData.statuses.map((status, index) => `
         <div style="display:flex; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:1px solid #f0f0f0;">
-          <div style="width:50px; height:50px; background:${bwColors[index]}; border:1px solid #000; flex-shrink:0; margin-top:1px;"></div>
+          <div style="width:50px; height:50px; background:${status.color}; border:1px solid #000; flex-shrink:0; margin-top:1px;"></div>
           <div style="flex:1;">
             <div style="font-size:19px; letter-spacing:0.1em; text-transform:uppercase; font-weight:600; margin-bottom:2px;">${status.name}</div>
             <div style="font-size:38px; font-weight:300; letter-spacing:-0.02em; line-height:1; margin-bottom:2px;">${status.count}</div>
@@ -3297,7 +3811,7 @@
           aspectRatio: 1,
           cutout: '65%',
           layout: {
-            padding: 10
+            padding: 40
           },
           plugins: {
             legend: {
@@ -3353,6 +3867,75 @@
             ctx.fillText(label, labelX, labelY);
 
             ctx.save();
+          }
+        }, {
+          id: 'outsourcingSliceLabels',
+          afterDraw: function(chart) {
+            const ctx = chart.ctx;
+            const meta = chart.getDatasetMeta(0);
+            const centerX = (chart.chartArea.left + chart.chartArea.right) / 2;
+            const centerY = (chart.chartArea.top + chart.chartArea.bottom) / 2;
+
+            meta.data.forEach((arc, i) => {
+              const value = chart.data.datasets[0].data[i];
+              if (value === 0) return;
+              const statusName = outsourcingDashboardData.statuses[i].name;
+              const startAngle = arc.startAngle;
+              const endAngle = arc.endAngle;
+              const midAngle = (startAngle + endAngle) / 2;
+              const outerRadius = arc.outerRadius;
+
+              const edgeX = centerX + Math.cos(midAngle) * outerRadius;
+              const edgeY = centerY + Math.sin(midAngle) * outerRadius;
+
+              const labelDist = outerRadius + 20;
+              const labelX = centerX + Math.cos(midAngle) * labelDist;
+              const labelY = centerY + Math.sin(midAngle) * labelDist;
+
+              ctx.save();
+              ctx.beginPath();
+              ctx.setLineDash([3, 3]);
+              ctx.moveTo(edgeX, edgeY);
+              ctx.lineTo(labelX, labelY);
+              ctx.strokeStyle = '#000';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+              ctx.setLineDash([]);
+
+              ctx.beginPath();
+              ctx.arc(edgeX, edgeY, 2, 0, Math.PI * 2);
+              ctx.fillStyle = '#000';
+              ctx.fill();
+
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+              const textWidth = ctx.measureText(statusName).width;
+              const padX = 6, padY = 4, rad = 4;
+              const rx = labelX - textWidth / 2 - padX;
+              const ry = labelY - 6 - padY;
+              const rw = textWidth + padX * 2;
+              const rh = 12 + padY * 2;
+              ctx.beginPath();
+              ctx.moveTo(rx + rad, ry);
+              ctx.lineTo(rx + rw - rad, ry);
+              ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
+              ctx.lineTo(rx + rw, ry + rh - rad);
+              ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
+              ctx.lineTo(rx + rad, ry + rh);
+              ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
+              ctx.lineTo(rx, ry + rad);
+              ctx.quadraticCurveTo(rx, ry, rx + rad, ry);
+              ctx.closePath();
+              ctx.fillStyle = '#fff';
+              ctx.fill();
+              ctx.strokeStyle = '#000';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+              ctx.fillStyle = '#000';
+              ctx.fillText(statusName, labelX, labelY);
+              ctx.restore();
+            });
           }
         }]
       });
@@ -5523,6 +6106,27 @@
       const notesField = document.getElementById('quotationNotes');
       if (notesField) {
         notesField.value = notes[Math.floor(Math.random() * notes.length)];
+      }
+
+      // Fill brand detail
+      const brandNames = ['Nike', 'Adidas', 'Uniqlo', 'Zara', 'H&M', 'Gucci', 'Prada', 'Burberry'];
+      const brandRefs = ['SS2026', 'FW2025', 'RESORT26', 'PRE-FALL25', 'CRUISE26', 'SPRING26'];
+      const brandColors = ['#1A1A2E', '#E94560', '#0F3460', '#16213E', '#533483', '#2B2D42'];
+      const brandNameField = document.getElementById('quotationBrandName');
+      if (brandNameField) {
+        brandNameField.value = brandNames[Math.floor(Math.random() * brandNames.length)];
+      }
+      const brandRefField = document.getElementById('quotationBrandRef');
+      if (brandRefField) {
+        brandRefField.value = brandRefs[Math.floor(Math.random() * brandRefs.length)];
+      }
+      const brandColorField = document.getElementById('quotationBrandColor');
+      if (brandColorField) {
+        brandColorField.value = brandColors[Math.floor(Math.random() * brandColors.length)];
+      }
+      const brandLogoField = document.getElementById('quotationBrandLogo');
+      if (brandLogoField) {
+        brandLogoField.value = 'brand_logo_' + Math.floor(Math.random() * 9000 + 1000) + '.png';
       }
 
       console.log('Dummy quotation data filled (customer info preserved)');
@@ -10145,6 +10749,10 @@
         const quantity = document.getElementById('quotationQuantity')?.value;
         const unitPrice = document.getElementById('quotationUnitPrice')?.value;
         const notes = document.getElementById('quotationNotes')?.value.trim();
+        const brandName = document.getElementById('quotationBrandName')?.value.trim() || '';
+        const brandRef = document.getElementById('quotationBrandRef')?.value.trim() || '';
+        const brandColor = document.getElementById('quotationBrandColor')?.value.trim() || '';
+        const brandLogo = document.getElementById('quotationBrandLogo')?.value.trim() || '';
 
         // Validation
         if (!customerName) {
@@ -10181,7 +10789,11 @@
           quantity: parseInt(quantity),
           unitPrice: parseFloat(unitPrice) || 0,
           total: total,
-          notes
+          notes,
+          brandName,
+          brandRef,
+          brandColor,
+          brandLogo
         };
 
         console.log('Updated quotation:', updatedQuotation);
@@ -11193,6 +11805,30 @@
             '</div>' +
 
             '<div style="margin-bottom:20px;">' +
+              '<h4>Brand Detail</h4>' +
+              '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">' +
+                '<div>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Brand Name</label>' +
+                  '<input type="text" id="quotationBrandName" style="width:100%; padding:8px; border:1px solid #000;" placeholder="Enter brand name" value="' + (quotation.brandName || '') + '">' +
+                '</div>' +
+                '<div>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Brand Reference</label>' +
+                  '<input type="text" id="quotationBrandRef" style="width:100%; padding:8px; border:1px solid #000;" placeholder="Style/Season ref" value="' + (quotation.brandRef || '') + '">' +
+                '</div>' +
+              '</div>' +
+              '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:15px;">' +
+                '<div>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Color Code #</label>' +
+                  '<input type="text" id="quotationBrandColor" style="width:100%; padding:8px; border:1px solid #000;" placeholder="#FFFFFF" value="' + (quotation.brandColor || '') + '">' +
+                '</div>' +
+                '<div>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Logo</label>' +
+                  '<input type="text" id="quotationBrandLogo" style="width:100%; padding:8px; border:1px solid #000;" placeholder="Logo filename" value="' + (quotation.brandLogo || '') + '">' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+
+            '<div style="margin-bottom:20px;">' +
               '<h4>Product Specifications</h4>' +
               getProductSpecificFieldsForView(tagType, quotation.productDetails || {}) +
             '</div>' +
@@ -11313,6 +11949,30 @@
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Phone</label>' +
                   '<input type="tel" id="quotationPhone" style="width:100%; padding:8px; border:1px solid #000; ' + disabledStyle + '" placeholder="+852 1234 5678" ' + disabledAttr + '>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+
+            '<div style="margin-bottom:20px;">' +
+              '<h4>Brand Detail</h4>' +
+              '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">' +
+                '<div>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Brand Name</label>' +
+                  '<input type="text" id="quotationBrandName" style="width:100%; padding:8px; border:1px solid #000;" placeholder="Enter brand name">' +
+                '</div>' +
+                '<div>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Brand Reference</label>' +
+                  '<input type="text" id="quotationBrandRef" style="width:100%; padding:8px; border:1px solid #000;" placeholder="Style/Season ref">' +
+                '</div>' +
+              '</div>' +
+              '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:15px;">' +
+                '<div>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Color Code #</label>' +
+                  '<input type="text" id="quotationBrandColor" style="width:100%; padding:8px; border:1px solid #000;" placeholder="#FFFFFF">' +
+                '</div>' +
+                '<div>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Logo</label>' +
+                  '<input type="text" id="quotationBrandLogo" style="width:100%; padding:8px; border:1px solid #000;" placeholder="Logo filename">' +
                 '</div>' +
               '</div>' +
             '</div>' +
@@ -11972,6 +12632,10 @@
         const unitPrice = document.getElementById('quotationUnitPrice').value;
         const total = document.getElementById('quotationTotal').value;
         const notes = document.getElementById('quotationNotes').value.trim();
+        const brandName = document.getElementById('quotationBrandName')?.value.trim() || '';
+        const brandRef = document.getElementById('quotationBrandRef')?.value.trim() || '';
+        const brandColor = document.getElementById('quotationBrandColor')?.value.trim() || '';
+        const brandLogo = document.getElementById('quotationBrandLogo')?.value.trim() || '';
 
         console.log('Saving quotation with data:', {
           customerName, contactPerson, email, phone, quantity, unitPrice, total, notes, tagType, source
@@ -12011,6 +12675,10 @@
           unitPrice: parseFloat(unitPrice) || 0,
           total: parseFloat(total) || 0,
           notes,
+          brandName,
+          brandRef,
+          brandColor,
+          brandLogo,
           type: source,
           sourceEmailUid: (source === 'email' && window.currentQuotationEmailMeta) ? window.currentQuotationEmailMeta.uid : null,
           sourceEmailSubject: (source === 'email' && window.currentQuotationEmailMeta) ? window.currentQuotationEmailMeta.subject : null,

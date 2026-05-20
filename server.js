@@ -460,6 +460,30 @@ app.use('/api/supplier-portal', supplierPortalRouter);
 // Serve uploaded files
 app.use('/uploads', express.static(uploadsDir));
 
+// ---------- Quotation Defaults API ----------
+const quotationDefaultsPath = path.join(__dirname, 'data', 'quotation-defaults.json');
+
+app.get('/api/quotation-defaults', async (req, res) => {
+  try {
+    const content = await fs.readFile(quotationDefaultsPath, 'utf-8').catch(() => '{}');
+    const defaults = JSON.parse(content);
+    res.json({ success: true, defaults });
+  } catch (err) {
+    res.json({ success: true, defaults: {} });
+  }
+});
+
+app.post('/api/quotation-defaults', async (req, res) => {
+  try {
+    const { brands, productTypes } = req.body || {};
+    await fs.mkdir(path.dirname(quotationDefaultsPath), { recursive: true });
+    await fs.writeFile(quotationDefaultsPath, JSON.stringify({ brands, productTypes }, null, 2));
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ---------- POST /api/config endpoint (for updating env file) ----------
 app.post('/api/config', async (req, res) => {
   try {
