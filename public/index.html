@@ -233,6 +233,7 @@
     .chart-container canvas {
       max-width: 100%;
       max-height: 100%;
+      overflow: visible;
     }
 
     .chart-loading {
@@ -1932,12 +1933,8 @@
 
       <!-- Quotation board -->
       <div id="quotationPanel" style="border:1px solid #000; padding:20px; margin-bottom:20px; display:none;">
-        <div class="row" style="gap:10px; flex-wrap:wrap; margin-bottom:20px;">
-          <button class="quotation-tag-btn page-btn" id="hangTagBtn" data-tag="hang-tag" data-testid="hang-tag-btn">Hang Tag</button>
-          <button class="quotation-tag-btn page-btn" id="wovenLabelBtn" data-tag="woven-label" data-testid="woven-label-btn">Woven Label</button>
-          <button class="quotation-tag-btn page-btn" id="careLabelBtn" data-tag="care-label" data-testid="care-label-btn">Care Label</button>
-          <button class="quotation-tag-btn page-btn" id="heatTransferBtn" data-tag="heat-transfer" data-testid="heat-transfer-btn">Heat Transfer</button>
-          <button class="quotation-tag-btn page-btn" id="othersBtn" data-tag="others" data-testid="others-btn">Others</button>
+        <div id="quotationTagButtons" class="row" style="gap:10px; flex-wrap:wrap; margin-bottom:20px;">
+          <!-- Populated dynamically -->
         </div>
 
         <!-- Quotation Sub-board -->
@@ -2843,6 +2840,8 @@
           }
           renderBrandChips();
           renderProductTypeChips();
+          populateQuotationSubOptions();
+          populateQuotationTagButtons();
         }
       } catch (err) {
         // First load may fail if no defaults saved yet - that's fine
@@ -2853,7 +2852,55 @@
     // Initialize on page load
     renderProductTypeChips();
     renderBrandChips();
+    populateQuotationSubOptions();
+    populateQuotationTagButtons();
     loadQuotationDefaults();
+
+    // Populate quotation sub-options buttons in email modal
+    function populateQuotationSubOptions() {
+      const subOptions = document.getElementById('quotationSubOptions');
+      if (!subOptions) return;
+      const types = getAllProductTypes();
+      subOptions.innerHTML = types.map(t => {
+        const key = t.toLowerCase().replace(/ /g, '-');
+        return '<button class="sub-option-btn" data-type="' + key + '">' + escapeHtml(t) + '</button>';
+      }).join('');
+      // Re-bind click handlers
+      subOptions.querySelectorAll('.sub-option-btn').forEach(btn => {
+        btn.onclick = () => {
+          const quotationType = btn.getAttribute('data-type');
+          const quotationName = btn.textContent;
+          window.isDummy2Mode = true;
+          openEmailQuotationModal(quotationType, quotationName, currentEmailMeta);
+        };
+      });
+    }
+
+    // Populate quotation tag buttons in quotation create panel
+    function populateQuotationTagButtons() {
+      const container = document.getElementById('quotationTagButtons');
+      if (!container) return;
+      const types = getAllProductTypes();
+      container.innerHTML = types.map(t => {
+        const key = t.toLowerCase().replace(/ /g, '-');
+        return '<button class="quotation-tag-btn page-btn" data-tag="' + key + '">' + escapeHtml(t) + '</button>';
+      }).join('');
+      // Bind click handlers
+      container.querySelectorAll('.quotation-tag-btn').forEach(button => {
+        button.addEventListener('click', () => {
+          const tagType = button.dataset.tag;
+          const tagName = button.textContent;
+          // Remove selected class from all buttons
+          container.querySelectorAll('.quotation-tag-btn').forEach(btn => btn.classList.remove('selected'));
+          // Add selected class to clicked button
+          button.classList.add('selected');
+          // Update selected tag
+          selectedQuotationTag = tagType;
+          // Show sub-board with content
+          showQuotationSubBoard(tagType, tagName);
+        });
+      });
+    }
 
     // --- Tabs handling (welcome + future boards) ---
     function ensureTab(id, label) {
@@ -3012,7 +3059,7 @@
           bottomRight.classList.remove('fade-out');
 
           // Change grid layout
-          grid.style.gridTemplateColumns = 'repeat(4, 1fr)';
+          grid.style.gridTemplateColumns = '1.5fr 1fr 1fr 1fr';
           grid.style.gridTemplateRows = '1fr';
 
           // Show expanded columns
@@ -3205,7 +3252,7 @@
           aspectRatio: 1,
           cutout: '65%',
           layout: {
-            padding: 40
+            padding: 80
           },
           plugins: {
             legend: {
@@ -3300,7 +3347,7 @@
               const edgeY = centerY + Math.sin(midAngle) * outerRadius;
 
               // Label position outside the pie
-              const labelDist = outerRadius + 20;
+              const labelDist = outerRadius + 15;
               const labelX = centerX + Math.cos(midAngle) * labelDist;
               const labelY = centerY + Math.sin(midAngle) * labelDist;
 
@@ -3600,7 +3647,7 @@
           bottomRight.classList.remove('fade-out');
 
           // Change grid layout
-          grid.style.gridTemplateColumns = 'repeat(4, 1fr)';
+          grid.style.gridTemplateColumns = '1.5fr 1fr 1fr 1fr';
           grid.style.gridTemplateRows = '1fr';
 
           // Show expanded columns
@@ -3771,7 +3818,7 @@
           aspectRatio: 1,
           cutout: '65%',
           layout: {
-            padding: 40
+            padding: 80
           },
           plugins: {
             legend: {
@@ -3848,7 +3895,7 @@
               const edgeX = centerX + Math.cos(midAngle) * outerRadius;
               const edgeY = centerY + Math.sin(midAngle) * outerRadius;
 
-              const labelDist = outerRadius + 20;
+              const labelDist = outerRadius + 15;
               const labelX = centerX + Math.cos(midAngle) * labelDist;
               const labelY = centerY + Math.sin(midAngle) * labelDist;
 
@@ -5597,11 +5644,10 @@
         <div class="email-reading-pane-actions">
           <button class="action-btn expandable" id="paneQuotationBtn">Quotation</button>
           <div class="sub-options" id="paneQuotationSubOptions">
-            <button class="sub-option-btn" data-type="hang-tag">Hang Tag</button>
-            <button class="sub-option-btn" data-type="woven-label">Woven Label</button>
-            <button class="sub-option-btn" data-type="care-label">Care Label</button>
-            <button class="sub-option-btn" data-type="transfer">Transfer</button>
-            <button class="sub-option-btn" data-type="outsource">Outsource</button>
+            ${getAllProductTypes().map(t => {
+              const key = t.toLowerCase().replace(/ /g, '-');
+              return '<button class="sub-option-btn" data-type="' + key + '">' + escapeHtml(t) + '</button>';
+            }).join('\n            ')}
           </div>
           <button class="action-btn" id="paneImageLibBtn">Image Lib</button>
         </div>`;
@@ -6069,12 +6115,10 @@
       }
 
       // Fill brand detail
-      const brandNames = ['Nike', 'Adidas', 'Uniqlo', 'Zara', 'H&M', 'Gucci', 'Prada', 'Burberry'];
-      const brandRefs = ['SS2026', 'FW2025', 'RESORT26', 'PRE-FALL25', 'CRUISE26', 'SPRING26'];
-      const brandColors = ['#1A1A2E', '#E94560', '#0F3460', '#16213E', '#533483', '#2B2D42'];
       const brandNameField = document.getElementById('quotationBrandName');
       if (brandNameField) {
-        brandNameField.value = brandNames[Math.floor(Math.random() * brandNames.length)];
+        const brands = brandNamesList.length > 0 ? brandNamesList : ['Nike', 'Adidas', 'Uniqlo', 'Zara', 'H&M', 'Gucci', 'Prada', 'Burberry'];
+        brandNameField.value = brands[Math.floor(Math.random() * brands.length)];
       }
       const brandRefField = document.getElementById('quotationBrandRef');
       if (brandRefField) {
@@ -11728,6 +11772,31 @@
       }
     }
 
+    // Helper to generate Brand Name dropdown from saved defaults
+    function getBrandNameSelectHtml(selectedValue = '') {
+      const options = brandNamesList.map(b =>
+        '<option value="' + escapeHtml(b) + '"' + (b === selectedValue ? ' selected' : '') + '>' + escapeHtml(b) + '</option>'
+      ).join('');
+      return '<select id="quotationBrandName" style="width:100%; padding:8px; border:1px solid #000; background:#fff;">' +
+        '<option value="">Select brand...</option>' + options +
+        '</select>';
+    }
+
+    // Helper to generate Product Type dropdown from saved defaults
+    function getProductTypeSelectHtml(tagType) {
+      const types = getAllProductTypes();
+      const valueMap = {};
+      types.forEach(t => {
+        const key = t.toLowerCase().replace(/ /g, '-').replace(/_/g, '-');
+        valueMap[key] = t;
+      });
+      const options = types.map(t => {
+        const key = t.toLowerCase().replace(/ /g, '-').replace(/_/g, '-');
+        return '<option value="' + key + '"' + (key === tagType ? ' selected' : '') + '>' + escapeHtml(t) + '</option>';
+      }).join('');
+      return '<select id="quotationProductType" style="width:100%; padding:8px; border:1px solid #000; background:#fff;">' + options + '</select>';
+    }
+
     function generateQuotationContentForView(tagType, tagName, quotation) {
       // Same split layout as create form but for view mode (form left, files right)
       return '<div style="display:flex; height:650px;">' +
@@ -11769,7 +11838,7 @@
               '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Brand Name</label>' +
-                  '<input type="text" id="quotationBrandName" style="width:100%; padding:8px; border:1px solid #000;" placeholder="Enter brand name" value="' + (quotation.brandName || '') + '">' +
+                  getBrandNameSelectHtml(quotation.brandName || '') +
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Brand Reference</label>' +
@@ -11918,7 +11987,7 @@
               '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Brand Name</label>' +
-                  '<input type="text" id="quotationBrandName" style="width:100%; padding:8px; border:1px solid #000;" placeholder="Enter brand name">' +
+                  getBrandNameSelectHtml() +
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Brand Reference</label>' +
@@ -11941,13 +12010,7 @@
               '<h4>Product Specifications</h4>' +
               '<div style="margin-bottom:15px;">' +
                 '<label style="display:block; margin-bottom:5px; font-weight:600;">Product Type *</label>' +
-                '<select id="quotationProductType" style="width:100%; padding:8px; border:1px solid #000; background:#fff;">' +
-                  '<option value="hang-tag"' + (tagType === 'hang-tag' ? ' selected' : '') + '>Hang Tag</option>' +
-                  '<option value="woven-label"' + (tagType === 'woven-label' ? ' selected' : '') + '>Woven Label</option>' +
-                  '<option value="care-label"' + (tagType === 'care-label' ? ' selected' : '') + '>Care Label</option>' +
-                  '<option value="heat-transfer"' + (tagType === 'heat-transfer' ? ' selected' : '') + '>Heat Transfer</option>' +
-                  '<option value="outsource"' + (tagType === 'outsource' || tagType === 'other' || tagType === 'others' ? ' selected' : '') + '>Outsource</option>' +
-                '</select>' +
+                getProductTypeSelectHtml(tagType) +
               '</div>' +
               getProductSpecificFields(tagType) +
             '</div>' +
