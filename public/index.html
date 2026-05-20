@@ -1719,6 +1719,12 @@
                   <input type="text" id="quotationFilterPhone" class="filter-input" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
+                  <div>Brand</div>
+                  <select id="quotationFilterBrand" class="filter-input" style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
+                    <option value="">All Brands</option>
+                  </select>
+                </th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Product Type</div>
                   <select id="quotationFilterType" class="filter-input" style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
                     <option value="">All Types</option>
@@ -1816,6 +1822,9 @@
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Phone</div>
                   <input type="text" id="outsourcingFilterPhone" class="filter-input" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
+                </th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">
+                  <div>Brand</div>
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Product Type</div>
@@ -9289,6 +9298,7 @@
     // Display outsourcing quotations (only 'other' type)
     async function displayOutsourcingQuotations() {
       console.log('displayOutsourcingQuotations called');
+      await loadBrandsCache();
       const tbody = document.getElementById('outsourcingTableBody');
 
       // Load only 'other' type quotations from separate API endpoint
@@ -9434,6 +9444,7 @@
               <td style="border:1px solid #000; padding:8px;">${quotation.contactPerson || 'N/A'}</td>
               <td style="border:1px solid #000; padding:8px;">${quotation.email || 'N/A'}</td>
               <td style="border:1px solid #000; padding:8px;">${quotation.phone || 'N/A'}</td>
+              <td style="border:1px solid #000; padding:8px;">${getBrandCellHtml(quotation.brandId)}</td>
               <td style="border:1px solid #000; padding:8px;">${getProductTypeDisplayName(quotation.productType)}</td>
               <td style="border:1px solid #000; padding:8px; text-align:right;">${quotation.quantity.toLocaleString()}</td>
               <td style="border:1px solid #000; padding:8px; text-align:right;">${quotation.total.toFixed(2)}</td>
@@ -9468,6 +9479,7 @@
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.contactPerson || 'N/A'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.email || 'N/A'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.phone || 'N/A'}</td>
+                  <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${getBrandCellHtml(quotation.brandId)}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${getProductTypeDisplayName(quotation.productType)}</td>
                   <td style="border:1px solid #000; padding:8px; text-align:right;" rowspan="${suppliers.length}">${quotation.quantity.toLocaleString()}</td>
                   <td style="border:1px solid #000; padding:8px; text-align:right;" rowspan="${suppliers.length}">${quotation.total.toFixed(2)}</td>
@@ -10391,6 +10403,7 @@
     // Display all quotations
     async function displayQuotations() {
       console.log('displayQuotations called');
+      await loadBrandsCache();
       const tbody = document.getElementById('quotationsTableBody');
       const quotations = await loadQuotationsFromStorage();
       console.log('Loaded quotations:', quotations);
@@ -10463,6 +10476,7 @@
           <td style="border:1px solid #000; padding:8px;">${quotation.contactPerson || 'N/A'}</td>
           <td style="border:1px solid #000; padding:8px;">${quotation.email || 'N/A'}</td>
           <td style="border:1px solid #000; padding:8px;">${quotation.phone || 'N/A'}</td>
+          <td style="border:1px solid #000; padding:8px;">${getBrandCellHtml(quotation.brandId)}</td>
           <td style="border:1px solid #000; padding:8px;">${getProductTypeDisplayName(quotation.productType)}</td>
           <td style="border:1px solid #000; padding:8px; text-align:right;">${quotation.quantity.toLocaleString()}</td>
           <td style="border:1px solid #000; padding:8px; text-align:right;">${quotation.total.toFixed(2)}</td>
@@ -11856,7 +11870,14 @@
       try {
         const r = await fetch('/api/brands');
         const data = await r.json();
-        if (data.success) cachedBrands = data.brands;
+        if (data.success) {
+          cachedBrands = data.brands;
+          const filterEl = document.getElementById('quotationFilterBrand');
+          if (filterEl) {
+            const currentVal = filterEl.value;
+            filterEl.innerHTML = '<option value="">All Brands</option>' + cachedBrands.map(b => '<option value="' + b.id + '"' + (String(b.id) === currentVal ? ' selected' : '') + '>' + escapeHtml(b.name) + '</option>').join('');
+          }
+        }
       } catch (e) { console.error('Error loading brands cache:', e); }
     }
 
@@ -14086,6 +14107,14 @@
           }
         })
         .catch(err => console.error('Error loading brands:', err));
+    }
+
+    function getBrandCellHtml(brandId) {
+      if (!brandId) return '<span style="color:#999;">-</span>';
+      const brand = cachedBrands.find(b => b.id === brandId);
+      if (!brand) return '<span style="color:#999;">-</span>';
+      const logoHtml = brand.logoPath ? '<img src="' + brand.logoPath + '" style="max-width:24px; max-height:24px; vertical-align:middle; margin-right:6px;">' : '';
+      return logoHtml + escapeHtml(brand.name);
     }
 
     function renderBrandList(brands) {
