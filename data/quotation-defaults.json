@@ -1,12 +1,5 @@
 {
-  "brands": [
-    "under armour",
-    "nike",
-    "lululemon",
-    "Samsonite",
-    "adidas",
-    "carhartt"
-  ],
+  "brands": [],
   "productTypes": [
     "Hang Tag",
     "Woven Label",

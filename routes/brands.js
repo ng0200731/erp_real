@@ -79,8 +79,11 @@ export function createBrandRoutes(deps) {
         return res.status(404).json({ success: false, error: 'Brand not found' });
       }
 
+      // Keep existing logo if no new file uploaded
       if (req.file) {
         brandData.logoPath = '/uploads/brands/' + req.file.filename;
+      } else {
+        brandData.logoPath = existing.logoPath;
       }
 
       await updateBrand(id, brandData);

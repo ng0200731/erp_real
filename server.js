@@ -45,11 +45,13 @@ dotenv.config({ path: envPath, override: true });
 const uploadsDir = path.join(__dirname, 'uploads');
 const profileImagesDir = path.join(uploadsDir, 'profile-images');
 const attachmentsDir = path.join(uploadsDir, 'attachments');
+const brandsDir = path.join(uploadsDir, 'brands');
 
 // Ensure upload directories exist
 await fs.mkdir(uploadsDir, { recursive: true });
 await fs.mkdir(profileImagesDir, { recursive: true });
 await fs.mkdir(attachmentsDir, { recursive: true });
+await fs.mkdir(brandsDir, { recursive: true });
 
 // Multer configuration
 const storage = multer.diskStorage({

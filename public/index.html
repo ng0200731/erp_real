@@ -1106,7 +1106,13 @@
           <button id="emailSendBtn" class="submenu-btn" data-testid="email-send-btn">Send</button>
         </div>
       </div>
-      <button id="menuBrand" class="page-btn" data-short="B" data-full="Brand">B</button>
+      <div class="menu-group">
+        <button id="menuBrand" class="page-btn" data-short="B" data-full="Brand">B</button>
+        <div id="brandSubmenu" class="submenu" style="display:none;">
+          <button id="brandCreateBtn" class="submenu-btn">Create</button>
+          <button id="brandViewBtn" class="submenu-btn">View</button>
+        </div>
+      </div>
       <div class="menu-group">
         <button id="menuCustomer" class="page-btn" data-short="C" data-full="Customer">C</button>
         <div id="customerSubmenu" class="submenu" style="display:none;">
@@ -2249,42 +2255,44 @@
         </div>
       </div>
 
-      <!-- Brand Panel -->
-      <div id="brandPanel" style="margin:0; display:none; width:100%;">
+      <!-- Brand Create Panel -->
+      <div id="brandCreatePanel" style="margin:0; display:none; width:100%;">
         <div style="border:1px solid #000; padding:20px; margin-bottom:20px;">
-          <h3>Brand</h3>
-          <div style="display:flex; gap:20px; flex-wrap:wrap;">
-            <div style="flex:1; min-width:300px;">
-              <div style="margin-bottom:15px;">
-                <label style="display:block; font-weight:bold; margin-bottom:5px;">Brand Name</label>
-                <input type="text" id="brandName" placeholder="Enter brand name" style="width:100%; padding:8px; border:1px solid #000;">
-              </div>
-              <div style="margin-bottom:15px;">
-                <label style="display:block; font-weight:bold; margin-bottom:5px;">Brand Address</label>
-                <textarea id="brandAddress" placeholder="Enter brand address" rows="3" style="width:100%; padding:8px; border:1px solid #000; resize:vertical;"></textarea>
-              </div>
-              <div style="margin-bottom:15px;">
-                <label style="display:block; font-weight:bold; margin-bottom:5px;">Logo</label>
-                <div style="display:flex; align-items:center; gap:10px;">
-                  <input type="file" id="brandLogo" accept="image/*" style="border:1px solid #000; padding:5px;">
-                  <button id="brandUploadLogoBtn" class="page-btn" type="button">Upload</button>
-                </div>
+          <h3>Brand - Create</h3>
+          <div style="max-width:500px;">
+            <div style="margin-bottom:15px;">
+              <label style="display:block; font-weight:bold; margin-bottom:5px;">Brand Name</label>
+              <input type="text" id="brandName" placeholder="Enter brand name" style="width:100%; padding:8px; border:1px solid #000;">
+            </div>
+            <div style="margin-bottom:15px;">
+              <label style="display:block; font-weight:bold; margin-bottom:5px;">Brand Address</label>
+              <textarea id="brandAddress" placeholder="Enter brand address" rows="3" style="width:100%; padding:8px; border:1px solid #000; resize:vertical;"></textarea>
+            </div>
+            <div style="margin-bottom:15px;">
+              <label style="display:block; font-weight:bold; margin-bottom:5px;">Logo</label>
+              <div id="brandLogoDropZone" style="border:2px dashed #000; padding:20px; text-align:center; cursor:pointer; background:#fafafa; transition:background 0.2s;">
+                <div id="brandLogoDropText">Drag & drop logo here<br>or click to browse</div>
+                <input type="file" id="brandLogo" accept="image/*" style="display:none;">
                 <div id="brandLogoPreview" style="margin-top:10px; display:none;">
                   <img id="brandLogoImg" src="" alt="Logo" style="max-width:150px; max-height:150px; border:1px solid #000;">
                 </div>
               </div>
-              <div style="display:flex; gap:10px;">
-                <button id="brandSaveBtn" class="page-btn">Save</button>
-                <button id="brandClearBtn" class="page-btn">Clear</button>
-              </div>
-              <input type="hidden" id="brandEditId" value="">
             </div>
-            <div style="flex:1; min-width:300px;">
-              <h4 style="margin-bottom:10px;">Saved Brands</h4>
-              <div id="brandList" style="max-height:calc(100vh - 280px); overflow-y:auto;">
-                <p style="color:#666;">No brands yet.</p>
-              </div>
+            <div style="display:flex; gap:10px;">
+              <button id="brandSaveBtn" class="page-btn">Save</button>
+              <button id="brandClearBtn" class="page-btn">Clear</button>
             </div>
+            <input type="hidden" id="brandEditId" value="">
+          </div>
+        </div>
+      </div>
+
+      <!-- Brand View Panel -->
+      <div id="brandViewPanel" style="margin:0; display:none; width:100%;">
+        <div style="border:1px solid #000; padding:20px; margin-bottom:20px;">
+          <h3>Brand - View</h3>
+          <div id="brandList" style="max-height:calc(100vh - 200px); overflow-y:auto;">
+            <p style="color:#666;">No brands yet.</p>
           </div>
         </div>
       </div>
@@ -3028,6 +3036,8 @@
       document.getElementById('quotationPanel').style.display = (id === 'quotation' || id === 'outsourcing') ? 'block' : 'none';
       document.getElementById('quotationViewPanel').style.display = id === 'quotation-view' ? 'block' : 'none';
       document.getElementById('outsourcingViewPanel').style.display = id === 'outsourcing-view' ? 'block' : 'none';
+      document.getElementById('brandCreatePanel').style.display = id === 'brand-create' ? 'block' : 'none';
+      document.getElementById('brandViewPanel').style.display = id === 'brand-view' ? 'block' : 'none';
       // settingsPanel is shown inline within profiles when a profile is clicked
       settingsPanel.style.display = 'none';
 
@@ -3038,6 +3048,10 @@
       if (id === 'welcome') {
         loadDashboardQuotations().catch(() => {});
         loadDashboardOutsourcing().catch(() => {});
+      }
+
+      if (id === 'brand-view') {
+        loadBrands();
       }
     }
 
@@ -3148,11 +3162,6 @@
             outsourcingDistribution.classList.add('fade-in');
             bottomLeft.classList.add('fade-in');
             bottomRight.classList.add('fade-in');
-            // Re-render charts to fit the original grid size
-            setTimeout(() => {
-              renderDashboard();
-              renderOutsourcingDashboard();
-            }, 50);
           }, 50);
         }, 200);
 
@@ -3295,7 +3304,7 @@
         },
         options: {
           responsive: true,
-          maintainAspectRatio: false,
+          maintainAspectRatio: true,
           aspectRatio: 1,
           cutout: '55%',
           layout: {
@@ -3705,7 +3714,6 @@
             statusColumn.classList.add('fade-in');
             metricsColumn.classList.add('fade-in');
             insightsColumn.classList.add('fade-in');
-            setTimeout(() => { renderOutsourcingDashboard(); }, 50);
           }, 50);
         }, 200);
 
@@ -3740,11 +3748,6 @@
             quotationDistribution.classList.add('fade-in');
             bottomLeft.classList.add('fade-in');
             bottomRight.classList.add('fade-in');
-            // Re-render charts to fit the original grid size
-            setTimeout(() => {
-              renderDashboard();
-              renderOutsourcingDashboard();
-            }, 50);
           }, 50);
         }, 200);
 
@@ -3865,7 +3868,7 @@
         },
         options: {
           responsive: true,
-          maintainAspectRatio: false,
+          maintainAspectRatio: true,
           aspectRatio: 1,
           cutout: '55%',
           layout: {
@@ -4549,8 +4552,26 @@
 
     // Menu click: show brand
     menuBrandBtn.onclick = () => {
-      ensureTab('brand', 'Brand');
-      activateTab('brand');
+      const submenu = document.getElementById('brandSubmenu');
+      const isVisible = submenu.style.display !== 'none';
+      document.querySelectorAll('.submenu').forEach(sub => {
+        sub.style.display = 'none';
+      });
+      submenu.style.display = isVisible ? 'none' : 'block';
+    };
+
+    const brandCreateBtn = document.getElementById('brandCreateBtn');
+    brandCreateBtn.onclick = () => {
+      document.getElementById('brandSubmenu').style.display = 'none';
+      ensureTab('brand-create', 'Brand (create)');
+      activateTab('brand-create');
+    };
+
+    const brandViewBtn = document.getElementById('brandViewBtn');
+    brandViewBtn.onclick = () => {
+      document.getElementById('brandSubmenu').style.display = 'none';
+      ensureTab('brand-view', 'Brand (view)');
+      activateTab('brand-view');
     };
 
     // Menu click: show tasks
@@ -14089,10 +14110,15 @@
             if (data.brand.logoPath) {
               document.getElementById('brandLogoImg').src = data.brand.logoPath;
               document.getElementById('brandLogoPreview').style.display = 'block';
+              document.getElementById('brandLogoDropText').style.display = 'none';
             } else {
               document.getElementById('brandLogoPreview').style.display = 'none';
+              document.getElementById('brandLogoDropText').style.display = 'block';
             }
+            if (window._clearBrandLogoFile) window._clearBrandLogoFile();
             document.getElementById('brandSaveBtn').textContent = 'Update';
+            ensureTab('brand-create', 'Brand (edit)');
+            activateTab('brand-create');
           }
         })
         .catch(err => console.error('Error loading brand:', err));
@@ -14122,14 +14148,17 @@
       document.getElementById('brandAddress').value = '';
       document.getElementById('brandLogo').value = '';
       document.getElementById('brandLogoPreview').style.display = 'none';
+      document.getElementById('brandLogoDropText').style.display = 'block';
       document.getElementById('brandSaveBtn').textContent = 'Save';
+      if (window._clearBrandLogoFile) window._clearBrandLogoFile();
     }
 
     document.getElementById('brandSaveBtn').onclick = () => {
       const editId = document.getElementById('brandEditId').value;
       const name = document.getElementById('brandName').value.trim();
       const address = document.getElementById('brandAddress').value.trim();
-      const logoFile = document.getElementById('brandLogo').files[0];
+      const logoFile = window._getBrandLogoFile ? window._getBrandLogoFile() : null;
+      console.log('Brand save:', { editId, name, address, hasLogo: !!logoFile });
 
       if (!name) {
         alert('Brand name is required.');
@@ -14147,37 +14176,87 @@
       const method = editId ? 'PUT' : 'POST';
 
       fetch(url, { method, body: formData })
-        .then(r => r.json())
+        .then(r => {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
         .then(data => {
           if (data.success) {
             clearBrandForm();
-            loadBrands();
+            ensureTab('brand-view', 'Brand (view)');
+            activateTab('brand-view');
           } else {
-            alert('Error: ' + data.error);
+            alert('Error: ' + (data.error || 'Unknown error'));
           }
         })
-        .catch(err => console.error('Error saving brand:', err));
+        .catch(err => {
+          console.error('Error saving brand:', err);
+          alert('Failed to save brand: ' + err.message);
+        });
     };
 
     document.getElementById('brandClearBtn').onclick = () => {
       clearBrandForm();
     };
 
-    document.getElementById('brandUploadLogoBtn').onclick = () => {
-      document.getElementById('brandLogo').click();
-    };
+    // Logo drag & drop + click to browse
+    (function() {
+      const dropZone = document.getElementById('brandLogoDropZone');
+      const fileInput = document.getElementById('brandLogo');
+      const preview = document.getElementById('brandLogoPreview');
+      const previewImg = document.getElementById('brandLogoImg');
+      const dropText = document.getElementById('brandLogoDropText');
 
-    document.getElementById('brandLogo').onchange = (e) => {
-      const file = e.target.files[0];
-      if (file) {
+      function showPreview(file) {
+        if (!file || !file.type.startsWith('image/')) return;
         const reader = new FileReader();
         reader.onload = (ev) => {
-          document.getElementById('brandLogoImg').src = ev.target.result;
-          document.getElementById('brandLogoPreview').style.display = 'block';
+          previewImg.src = ev.target.result;
+          preview.style.display = 'block';
+          dropText.style.display = 'none';
         };
         reader.readAsDataURL(file);
       }
-    };
+
+      // Track dropped file separately (since file input is hidden)
+      let droppedFile = null;
+
+      dropZone.onclick = () => fileInput.click();
+
+      fileInput.onchange = (e) => {
+        if (e.target.files[0]) {
+          droppedFile = e.target.files[0];
+          showPreview(droppedFile);
+        }
+      };
+
+      dropZone.ondragover = (e) => {
+        e.preventDefault();
+        dropZone.style.background = '#e8f0fe';
+        dropZone.style.borderColor = '#1a73e8';
+      };
+
+      dropZone.ondragleave = (e) => {
+        e.preventDefault();
+        dropZone.style.background = '#fafafa';
+        dropZone.style.borderColor = '#000';
+      };
+
+      dropZone.ondrop = (e) => {
+        e.preventDefault();
+        dropZone.style.background = '#fafafa';
+        dropZone.style.borderColor = '#000';
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+          droppedFile = file;
+          showPreview(file);
+        }
+      };
+
+      // Expose getter for the save function
+      window._getBrandLogoFile = () => droppedFile;
+      window._clearBrandLogoFile = () => { droppedFile = null; };
+    })();
 
     load();
   </script>
