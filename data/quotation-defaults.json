@@ -1,0 +1,15 @@
+{
+  "brands": [
+    "under armour",
+    "nike"
+  ],
+  "productTypes": [
+    "Hang Tag",
+    "Woven Label",
+    "Care Label",
+    "Heat Transfer",
+    "Outsource",
+    "Silicon Patch",
+    "Embriodery Patch"
+  ]
+}
