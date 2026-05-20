@@ -1321,12 +1321,12 @@
             <div id="brandDistributionColumn" class="dashboard-quadrant" onclick="toggleBrandDashboardExpansion()">
               <div class="quadrant-header">
                 <span class="quadrant-number">03</span>
-                <h2 class="quadrant-title">Brand VS No Development</h2>
+                <h2 class="quadrant-title">Brand Distribution</h2>
                 <span id="brandExpandHint" class="quadrant-action">Click to expand →</span>
               </div>
-              <div class="quadrant-content">
-                <div style="padding:4px 20px 0; flex-shrink:0;">
-                  <select id="brandStatusFilter" onclick="event.stopPropagation()" style="width:100%; padding:4px; font-size:11px; border:1px solid #ccc; font-family:inherit; cursor:pointer;">
+              <div class="quadrant-content" style="position:relative;">
+                <div style="position:absolute; top:8px; right:12px; z-index:10; background:#fff; border:1px solid #000; padding:3px 8px;">
+                  <select id="brandStatusFilter" onclick="event.stopPropagation()" style="padding:3px 6px; font-size:11px; border:none; font-family:inherit; cursor:pointer; outline:none; background:transparent;">
                     <option value="">All Statuses</option>
                     <option value="pending">Pending</option>
                     <option value="send to customer">Send to Customer</option>
@@ -1342,15 +1342,27 @@
               </div>
             </div>
 
-            <!-- Quadrant 4: Bottom Right Space -->
-            <div id="bottomRightSpace" class="dashboard-quadrant placeholder-quadrant">
+            <!-- Quadrant 4: Brand VS Total (HKD) -->
+            <div id="brandValueColumn" class="dashboard-quadrant" onclick="toggleBrandValueExpansion()">
               <div class="quadrant-header">
                 <span class="quadrant-number">04</span>
-                <h2 class="quadrant-title">—</h2>
+                <h2 class="quadrant-title">Brand VS Total (HKD)</h2>
+                <span id="brandValueExpandHint" class="quadrant-action">Click to expand →</span>
               </div>
-              <div class="quadrant-content">
-                <div class="placeholder-content">
-                  <span class="placeholder-text">Reserved</span>
+              <div class="quadrant-content" style="position:relative;">
+                <div style="position:absolute; top:8px; right:12px; z-index:10; background:#fff; border:1px solid #000; padding:3px 8px;">
+                  <select id="brandValueStatusFilter" onclick="event.stopPropagation()" style="padding:3px 6px; font-size:11px; border:none; font-family:inherit; cursor:pointer; outline:none; background:transparent;">
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="send to customer">Send to Customer</option>
+                    <option value="price confirmed">Price Confirmed</option>
+                    <option value="sampling">Sampling</option>
+                    <option value="sample delivered">Sample Delivered</option>
+                  </select>
+                </div>
+                <div id="brandValueDashboardChart" class="chart-container">
+                  <canvas id="brandValueChartCanvas"></canvas>
+                  <div id="brandValueChartLoading" class="chart-loading">Loading...</div>
                 </div>
               </div>
             </div>
@@ -2189,6 +2201,10 @@
                 <button class="sub-option-btn" data-type="outsource" data-testid="quotation-outsource-btn">Outsource</button>
               </div>
               <button class="action-btn" id="imageLibBtn">Image Lib</button>
+              <button class="action-btn" id="erpDataBtn" style="margin-top:5px;">ERP data</button>
+              <button class="action-btn" id="replacementRecordBtn" style="margin-top:5px;">Replacement Record</button>
+              <button class="action-btn" id="shipmentRecordBtn" style="margin-top:5px;">Shipment Record</button>
+              <button class="action-btn" id="invoiceRecordBtn" style="margin-top:5px;">Invoice Record</button>
             </div>
           </div>
         </div>
@@ -3067,9 +3083,12 @@
       }
 
       if (id === 'welcome') {
-        loadDashboardQuotations().catch(() => {});
-        loadDashboardOutsourcing().catch(() => {});
-        loadDashboardBrand().catch(() => {});
+        loadBrandsCache().then(() => {
+          loadDashboardQuotations().catch(() => {});
+          loadDashboardOutsourcing().catch(() => {});
+          loadDashboardBrand().catch(() => {});
+          loadDashboardBrandValue().catch(() => {});
+        }).catch(() => {});
       }
 
       if (id === 'brand-view') {
@@ -3094,6 +3113,9 @@
         }
         if (brandDashboardData) {
           renderBrandDashboard();
+        }
+        if (brandValueDashboardData) {
+          renderBrandValueDashboard();
         }
       }, 150);
     });
@@ -3120,6 +3142,12 @@
         document.getElementById('brandExpandHint').textContent = 'Click to expand →';
       }
 
+      // Reset brand value expansion when toggling quotation
+      if (dashboardExpanded && brandValueDashboardExpanded) {
+        brandValueDashboardExpanded = false;
+        document.getElementById('brandValueExpandHint').textContent = 'Click to expand →';
+      }
+
       const grid = document.getElementById('dashboardGrid');
       const quotationDistribution = document.getElementById('quotationDistributionColumn');
       const statusColumn = document.getElementById('statusColumn');
@@ -3128,7 +3156,7 @@
       const expandHint = document.getElementById('expandHint');
       const outsourcingDistribution = document.getElementById('outsourcingDistributionColumn');
       const brandDistribution = document.getElementById('brandDistributionColumn');
-      const bottomRight = document.getElementById('bottomRightSpace');
+      const bottomRight = document.getElementById('brandValueColumn');
 
       if (dashboardExpanded) {
         // Expand: Fade out other quadrants first
@@ -3254,6 +3282,7 @@
             renderDashboard();
             renderOutsourcingDashboard();
             renderBrandDashboard();
+            renderBrandValueDashboard();
           };
 
           barBtn.onclick = () => {
@@ -3263,6 +3292,7 @@
             renderDashboard();
             renderOutsourcingDashboard();
             renderBrandDashboard();
+            renderBrandValueDashboard();
           };
 
           // Set initial button states
@@ -3708,6 +3738,18 @@
         qInsightsCol.classList.add('hidden-quadrant');
       }
 
+      // Reset brand expansion when toggling outsourcing
+      if (outsourcingDashboardExpanded && brandDashboardExpanded) {
+        brandDashboardExpanded = false;
+        document.getElementById('brandExpandHint').textContent = 'Click to expand →';
+      }
+
+      // Reset brand value expansion when toggling outsourcing
+      if (outsourcingDashboardExpanded && brandValueDashboardExpanded) {
+        brandValueDashboardExpanded = false;
+        document.getElementById('brandValueExpandHint').textContent = 'Click to expand →';
+      }
+
       const grid = document.getElementById('dashboardGrid');
       const outsourcingDistribution = document.getElementById('outsourcingDistributionColumn');
       const statusColumn = document.getElementById('outsourcingStatusColumn');
@@ -3716,7 +3758,7 @@
       const expandHint = document.getElementById('outsourcingExpandHint');
       const quotationDistribution = document.getElementById('quotationDistributionColumn');
       const brandDistribution = document.getElementById('brandDistributionColumn');
-      const bottomRight = document.getElementById('bottomRightSpace');
+      const bottomRight = document.getElementById('brandValueColumn');
 
       if (outsourcingDashboardExpanded) {
         // Expand: Fade out other quadrants first
@@ -4274,7 +4316,7 @@
       const brandDistribution = document.getElementById('brandDistributionColumn');
       const quotationDistribution = document.getElementById('quotationDistributionColumn');
       const outsourcingDistribution = document.getElementById('outsourcingDistributionColumn');
-      const bottomRight = document.getElementById('bottomRightSpace');
+      const bottomRight = document.getElementById('brandValueColumn');
       const expandHint = document.getElementById('brandExpandHint');
 
       if (brandDashboardExpanded) {
@@ -4374,7 +4416,7 @@
         }
       });
 
-      const bwColors = ['#000000', '#1a1a1a', '#333333', '#4d4d4d', '#666666', '#808080', '#999999', '#b3b3b3'];
+      const bwColors = ['#5B8DEF', '#FF7EB3', '#7ED6A5', '#FFD166', '#A78BFA', '#F9A870', '#67D5E2', '#F4845F'];
 
       const statuses = [];
       let colorIdx = 0;
@@ -4398,7 +4440,7 @@
           name: 'No Brand',
           key: 'no_brand',
           count: noBrandCount,
-          color: '#cccccc',
+          color: '#E0E0E0',
           logoPath: null
         });
       }
@@ -4754,6 +4796,389 @@
       `).join('');
 
       legendContainer.innerHTML = legendItems;
+    }
+
+    // Brand VS Total (HKD) Dashboard
+    let brandValueDashboardData = null;
+    let brandValueChartInstance = null;
+    let brandValueDashboardExpanded = false;
+    let brandValueQuotations = null;
+
+    function toggleBrandValueExpansion() {
+      brandValueDashboardExpanded = !brandValueDashboardExpanded;
+
+      if (brandValueDashboardExpanded && dashboardExpanded) {
+        dashboardExpanded = false;
+        document.getElementById('expandHint').textContent = 'Click to expand →';
+        document.getElementById('statusColumn').classList.add('hidden-quadrant');
+        document.getElementById('metricsColumn').classList.add('hidden-quadrant');
+        document.getElementById('insightsColumn').classList.add('hidden-quadrant');
+      }
+
+      if (brandValueDashboardExpanded && outsourcingDashboardExpanded) {
+        outsourcingDashboardExpanded = false;
+        document.getElementById('outsourcingExpandHint').textContent = 'Click to expand →';
+        document.getElementById('outsourcingStatusColumn').classList.add('hidden-quadrant');
+        document.getElementById('outsourcingMetricsColumn').classList.add('hidden-quadrant');
+        document.getElementById('outsourcingInsightsColumn').classList.add('hidden-quadrant');
+      }
+
+      if (brandValueDashboardExpanded && brandDashboardExpanded) {
+        brandDashboardExpanded = false;
+        document.getElementById('brandExpandHint').textContent = 'Click to expand →';
+      }
+
+      const grid = document.getElementById('dashboardGrid');
+      const brandValueCol = document.getElementById('brandValueColumn');
+      const quotationDistribution = document.getElementById('quotationDistributionColumn');
+      const outsourcingDistribution = document.getElementById('outsourcingDistributionColumn');
+      const brandDistribution = document.getElementById('brandDistributionColumn');
+      const expandHint = document.getElementById('brandValueExpandHint');
+
+      if (brandValueDashboardExpanded) {
+        quotationDistribution.classList.add('fade-out');
+        outsourcingDistribution.classList.add('fade-out');
+        brandDistribution.classList.add('fade-out');
+
+        setTimeout(() => {
+          quotationDistribution.classList.add('hidden-quadrant');
+          outsourcingDistribution.classList.add('hidden-quadrant');
+          brandDistribution.classList.add('hidden-quadrant');
+          quotationDistribution.classList.remove('fade-out');
+          outsourcingDistribution.classList.remove('fade-out');
+          brandDistribution.classList.remove('fade-out');
+
+          grid.style.gridTemplateColumns = '2fr 1fr';
+          grid.style.gridTemplateRows = '1fr 1fr';
+          brandValueCol.style.gridColumn = '1';
+          brandValueCol.style.gridRow = '1 / 3';
+
+          setTimeout(() => { brandValueCol.classList.add('fade-in'); }, 50);
+        }, 200);
+
+        expandHint.textContent = '← Click to collapse';
+      } else {
+        brandValueCol.style.gridColumn = '';
+        brandValueCol.style.gridRow = '';
+        brandValueCol.classList.remove('fade-in');
+
+        setTimeout(() => {
+          grid.style.gridTemplateColumns = '1fr 1fr';
+          grid.style.gridTemplateRows = '1fr 1fr';
+          quotationDistribution.classList.remove('hidden-quadrant');
+          outsourcingDistribution.classList.remove('hidden-quadrant');
+          brandDistribution.classList.remove('hidden-quadrant');
+          setTimeout(() => {
+            quotationDistribution.classList.add('fade-in');
+            outsourcingDistribution.classList.add('fade-in');
+            brandDistribution.classList.add('fade-in');
+          }, 50);
+        }, 200);
+
+        expandHint.textContent = 'Click to expand →';
+      }
+
+      if (brandValueDashboardData) renderBrandValueDashboard();
+    }
+
+    async function loadDashboardBrandValue() {
+      try {
+        brandValueQuotations = await loadQuotationsFromStorage();
+        const filterEl = document.getElementById('brandValueStatusFilter');
+        if (filterEl) filterEl.onchange = updateBrandValueChart;
+        updateBrandValueChart();
+      } catch (error) {
+        console.error('Error loading brand value dashboard:', error);
+        const chartContainer = document.getElementById('brandValueDashboardChart');
+        if (chartContainer) {
+          chartContainer.innerHTML = '<div style="text-align:center; padding:50px; color:#dc3545;">Error loading brand value data</div>';
+        }
+      }
+    }
+
+    function updateBrandValueChart() {
+      if (!brandValueQuotations) return;
+
+      const filterEl = document.getElementById('brandValueStatusFilter');
+      const statusFilter = filterEl ? filterEl.value : '';
+
+      let quotations = brandValueQuotations;
+      if (statusFilter) {
+        quotations = quotations.filter(q => (q.status || '').toLowerCase() === statusFilter);
+      }
+
+      const brandTotals = {};
+      let noBrandTotal = 0;
+
+      quotations.forEach(q => {
+        const val = parseFloat(q.total) || 0;
+        if (q.brandId) {
+          const bid = String(q.brandId);
+          brandTotals[bid] = (brandTotals[bid] || 0) + val;
+        } else {
+          noBrandTotal += val;
+        }
+      });
+
+      const valColors = ['#E8575A', '#3DC1C1', '#F0932B', '#6C5CE7', '#A3CB38', '#ED4C67', '#1289A7', '#D980FA'];
+
+      const statuses = [];
+      let colorIdx = 0;
+      for (const [bid, total] of Object.entries(brandTotals)) {
+        const brand = cachedBrands.find(b => String(b.id) === bid);
+        statuses.push({
+          name: brand ? brand.name : 'Unknown Brand',
+          key: bid,
+          count: total,
+          color: valColors[colorIdx % valColors.length],
+          logoPath: brand && brand.logoPath ? brand.logoPath : null
+        });
+        colorIdx++;
+      }
+
+      const grandTotal = statuses.reduce((s, x) => s + x.count, 0) + noBrandTotal;
+
+      if (noBrandTotal > 0) {
+        statuses.push({ name: 'No Brand', key: 'no_brand', count: noBrandTotal, color: '#E0E0E0', logoPath: null });
+      }
+
+      statuses.forEach(s => {
+        s.percentage = grandTotal > 0 ? ((s.count / grandTotal) * 100).toFixed(1) : 0;
+      });
+
+      // Preload logos
+      let logosToLoad = 0;
+      statuses.forEach(s => {
+        if (s.logoPath && !s._logoImg) {
+          logosToLoad++;
+          const img = new Image();
+          img.onload = img.onerror = () => { logosToLoad--; if (logosToLoad === 0) renderBrandValueDashboard(); };
+          img.src = s.logoPath;
+          s._logoImg = img;
+        }
+      });
+
+      brandValueDashboardData = { statuses: statuses, total: grandTotal };
+      if (logosToLoad === 0) renderBrandValueDashboard();
+    }
+
+    function renderBrandValueDashboard() {
+      if (!brandValueDashboardData) return;
+      if (currentDashboardView === 'pie') {
+        renderBrandValuePieChart();
+      } else {
+        renderBrandValueBarChart();
+      }
+    }
+
+    function renderBrandValuePieChart() {
+      const canvas = document.getElementById('brandValueChartCanvas');
+      const loading = document.getElementById('brandValueChartLoading');
+      if (!canvas) return;
+
+      if (brandValueDashboardData.total === 0) {
+        canvas.style.display = 'none';
+        if (loading) { loading.style.display = 'block'; loading.innerHTML = 'No data'; }
+        return;
+      }
+
+      canvas.style.display = 'block';
+      if (loading) loading.style.display = 'none';
+      if (brandValueChartInstance) brandValueChartInstance.destroy();
+
+      const labels = brandValueDashboardData.statuses.map(s => s.name);
+      const data = brandValueDashboardData.statuses.map(s => s.count);
+      const colors = brandValueDashboardData.statuses.map(s => s.color);
+
+      const ctx = canvas.getContext('2d');
+      brandValueChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{ data: data, backgroundColor: colors, borderColor: '#fff', borderWidth: 3, hoverBorderWidth: 4, hoverBorderColor: '#000' }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true, aspectRatio: 1, cutout: '55%',
+          layout: { padding: 50 },
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          animation: { animateRotate: true, animateScale: true, duration: 800, easing: 'easeInOutQuart' }
+        },
+        plugins: [{
+          id: 'brandValueCenterText',
+          beforeDraw: function(chart) {
+            const width = chart.width, height = chart.height, ctx = chart.ctx;
+            ctx.restore();
+            const fontSize = (height / 280).toFixed(2);
+            ctx.font = `300 ${fontSize}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#000';
+            const text = 'HKD ' + brandValueDashboardData.total.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            const textX = Math.round((width - ctx.measureText(text).width) / 2);
+            ctx.fillText(text, textX, height / 2 - 10);
+            ctx.font = `600 ${(fontSize * 0.35).toFixed(2)}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+            ctx.fillStyle = '#666';
+            const label = 'TOTAL';
+            const labelX = Math.round((width - ctx.measureText(label).width) / 2);
+            ctx.fillText(label, labelX, height / 2 + 20);
+            ctx.save();
+          }
+        }, {
+          id: 'brandValueSliceLabels',
+          afterDraw: function(chart) {
+            const ctx = chart.ctx;
+            const meta = chart.getDatasetMeta(0);
+            const centerX = (chart.chartArea.left + chart.chartArea.right) / 2;
+            const centerY = (chart.chartArea.top + chart.chartArea.bottom) / 2;
+            const activeEls = chart.getActiveElements();
+            const hoveredIndex = activeEls.length > 0 ? activeEls[0].index : -1;
+
+            meta.data.forEach((arc, i) => {
+              const value = chart.data.datasets[0].data[i];
+              if (value === 0) return;
+              const status = brandValueDashboardData.statuses[i];
+              const statusName = status.name;
+              const percentage = ((value / brandValueDashboardData.total) * 100).toFixed(1);
+              const midAngle = (arc.startAngle + arc.endAngle) / 2;
+              const outerRadius = arc.outerRadius;
+              const edgeX = centerX + Math.cos(midAngle) * outerRadius;
+              const edgeY = centerY + Math.sin(midAngle) * outerRadius;
+              const labelDist = outerRadius + 15;
+              const labelX = centerX + Math.cos(midAngle) * labelDist;
+              const labelY = centerY + Math.sin(midAngle) * labelDist;
+              const isHovered = (i === hoveredIndex);
+
+              ctx.save();
+              ctx.beginPath();
+              ctx.arc(edgeX, edgeY, 2, 0, Math.PI * 2);
+              ctx.fillStyle = '#000';
+              ctx.fill();
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+
+              if (isHovered) {
+                const line1 = statusName.toUpperCase();
+                const line2 = 'HKD ' + value.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '  (' + percentage + '%)';
+                ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                const l1W = ctx.measureText(line1).width;
+                ctx.font = '300 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                const l2W = ctx.measureText(line2).width;
+                const maxW = Math.max(l1W, l2W);
+                const pad = 10, boxW = maxW + pad * 2, boxH = 36;
+                const bx = centerX - boxW / 2, by = chart.chartArea.top - boxH - 4, br = 4;
+                ctx.beginPath();
+                ctx.moveTo(bx + br, by); ctx.lineTo(bx + boxW - br, by);
+                ctx.quadraticCurveTo(bx + boxW, by, bx + boxW, by + br);
+                ctx.lineTo(bx + boxW, by + boxH - br);
+                ctx.quadraticCurveTo(bx + boxW, by + boxH, bx + boxW - br, by + boxH);
+                ctx.lineTo(bx + br, by + boxH);
+                ctx.quadraticCurveTo(bx, by + boxH, bx, by + boxH - br);
+                ctx.lineTo(bx, by + br);
+                ctx.quadraticCurveTo(bx, by, bx + br, by);
+                ctx.closePath();
+                ctx.fillStyle = '#000'; ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                ctx.fillText(line1, centerX, by + boxH / 2 - 7);
+                ctx.font = '300 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                ctx.fillText(line2, centerX, by + boxH / 2 + 7);
+              } else {
+                const logoSize = 14, logoPad = 4;
+                ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                const textWidth = ctx.measureText(statusName).width;
+                const hasLogo = status.logoPath;
+                const contentW = hasLogo ? logoSize + logoPad + textWidth : textWidth;
+                const padX = 6, padY = 4, rad = 4;
+                const rw = contentW + padX * 2;
+                const rh = Math.max(logoSize, 12) + padY * 2;
+                const rx = labelX - rw / 2, ry = labelY - rh / 2;
+                ctx.beginPath();
+                ctx.moveTo(rx + rad, ry); ctx.lineTo(rx + rw - rad, ry);
+                ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
+                ctx.lineTo(rx + rw, ry + rh - rad);
+                ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
+                ctx.lineTo(rx + rad, ry + rh);
+                ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
+                ctx.lineTo(rx, ry + rad);
+                ctx.quadraticCurveTo(rx, ry, rx + rad, ry);
+                ctx.closePath();
+                ctx.fillStyle = '#fff'; ctx.fill();
+                ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+                ctx.fillStyle = '#000';
+                if (hasLogo) {
+                  const logoX = rx + padX, logoY = labelY - logoSize / 2;
+                  if (status._logoImg && status._logoImg.complete && status._logoImg.naturalWidth > 0) {
+                    ctx.drawImage(status._logoImg, logoX, logoY, logoSize, logoSize);
+                  }
+                  ctx.fillText(statusName, logoX + logoSize + logoPad + textWidth / 2, labelY);
+                } else {
+                  ctx.fillText(statusName, labelX, labelY);
+                }
+              }
+              ctx.restore();
+            });
+          }
+        }]
+      });
+    }
+
+    function renderBrandValueBarChart() {
+      const canvas = document.getElementById('brandValueChartCanvas');
+      const loading = document.getElementById('brandValueChartLoading');
+      if (!canvas) return;
+
+      if (brandValueDashboardData.total === 0) {
+        canvas.style.display = 'none';
+        if (loading) { loading.style.display = 'block'; loading.innerHTML = 'No data'; }
+        return;
+      }
+
+      canvas.style.display = 'block';
+      if (loading) loading.style.display = 'none';
+      if (brandValueChartInstance) brandValueChartInstance.destroy();
+
+      const labels = brandValueDashboardData.statuses.map(s => s.name);
+      const data = brandValueDashboardData.statuses.map(s => s.count);
+      const colors = brandValueDashboardData.statuses.map(s => s.color);
+
+      const ctx = canvas.getContext('2d');
+      brandValueChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{ data: data, backgroundColor: colors, borderColor: colors, borderWidth: 0, borderRadius: 4 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true, aspectRatio: 1,
+          layout: { padding: 40 },
+          scales: {
+            x: { display: true, grid: { display: false }, ticks: { font: { size: 11, weight: '600', family: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }, color: '#000' } },
+            y: { display: false, beginAtZero: true }
+          },
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          animation: { duration: 800, easing: 'easeInOutQuart' }
+        },
+        plugins: [{
+          id: 'brandValueBarLabels',
+          afterDraw: function(chart) {
+            const ctx = chart.ctx;
+            const meta = chart.getDatasetMeta(0);
+            meta.data.forEach((bar, i) => {
+              const value = chart.data.datasets[0].data[i];
+              const percentage = ((value / brandValueDashboardData.total) * 100).toFixed(1);
+              ctx.save();
+              ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+              ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+              ctx.fillStyle = '#000';
+              ctx.fillText('HKD ' + value.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ','), bar.x, bar.y - 6);
+              ctx.font = '300 10px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+              ctx.fillStyle = '#666';
+              ctx.fillText(percentage + '%', bar.x, bar.y - 20);
+              ctx.restore();
+            });
+          }
+        }]
+      });
     }
 
     // Profiles list functions
@@ -6665,6 +7090,18 @@
     document.getElementById('imageLibBtn').onclick = () => {
       console.log('Image Lib button clicked');
     };
+
+    // ERP data button
+    document.getElementById('erpDataBtn').onclick = () => {};
+
+    // Replacement Record button
+    document.getElementById('replacementRecordBtn').onclick = () => {};
+
+    // Shipment Record button
+    document.getElementById('shipmentRecordBtn').onclick = () => {};
+
+    // Invoice Record button
+    document.getElementById('invoiceRecordBtn').onclick = () => {};
 
     // Fill quotation form with random data (optionally keeping customer info fixed)
     function fillDummyQuotationData(keepCustomerInfoFixed = false) {
