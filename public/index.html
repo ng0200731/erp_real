@@ -5005,11 +5005,11 @@
         },
         plugins: [{
           id: 'brandValueCenterText',
-          beforeDraw: function(chart) {
+          afterDraw: function(chart) {
             const width = chart.width, height = chart.height, ctx = chart.ctx;
             ctx.restore();
             const fontSize = (height / 280).toFixed(2);
-            ctx.font = `300 ${fontSize}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+            ctx.font = `700 ${fontSize}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
             ctx.textBaseline = 'middle';
             ctx.fillStyle = '#000';
             const text = 'HKD ' + brandValueDashboardData.total.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -9071,6 +9071,14 @@
           return;
         }
 
+        // Get brands for dummy data
+        let brands = [];
+        try {
+          const brandsRes = await fetch('/api/brands');
+          const brandsData = await brandsRes.json();
+          if (brandsData.success) brands = brandsData.brands;
+        } catch (e) { console.error('Error fetching brands for dummy:', e); }
+
         showModal({
           title: 'Generating...',
           body: 'Creating 10 outsourcing quotations with suppliers...',
@@ -9094,7 +9102,8 @@
             total: total,
             type: 'non email',
             dateCreated: new Date().toISOString(),
-            status: statuses[Math.floor(Math.random() * statuses.length)]
+            status: statuses[Math.floor(Math.random() * statuses.length)],
+            brandId: brands.length > 0 ? brands[Math.floor(Math.random() * brands.length)].id : null
           };
 
           // Create quotation
@@ -9155,6 +9164,14 @@
       ];
 
       try {
+        // Get brands for dummy data
+        let brands = [];
+        try {
+          const brandsRes = await fetch('/api/brands');
+          const brandsData = await brandsRes.json();
+          if (brandsData.success) brands = brandsData.brands;
+        } catch (e) { console.error('Error fetching brands for dummy:', e); }
+
         alert('Creating 10 quotations...');
 
         for (let i = 0; i < 10; i++) {
@@ -9174,7 +9191,8 @@
             total: total,
             type: 'non email',
             dateCreated: new Date().toISOString(),
-            status: statuses[Math.floor(Math.random() * statuses.length)]
+            status: statuses[Math.floor(Math.random() * statuses.length)],
+            brandId: brands.length > 0 ? brands[Math.floor(Math.random() * brands.length)].id : null
           };
 
           await fetch('/api/quotations', {
