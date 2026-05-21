@@ -1856,6 +1856,9 @@
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Product Type</div>
+                  <select id="outsourcingFilterProductType" class="filter-input" style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
+                    <option value="">All Types</option>
+                  </select>
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Quantity</div>
@@ -1867,6 +1870,11 @@
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Type</div>
+                  <select id="outsourcingFilterSourceType" class="filter-input" style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
+                    <option value="">All Types</option>
+                    <option value="email">Email</option>
+                    <option value="non email">Non Email</option>
+                  </select>
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Status</div>
@@ -1901,7 +1909,7 @@
             <tbody id="outsourcingTableBody">
               <tr>
                 <td colspan="15" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
-                  No outsourcing quotations saved yet. Create outsourcing quotations first.
+                  Loading...
                 </td>
               </tr>
             </tbody>
@@ -10331,6 +10339,22 @@
       // Load only 'other' type quotations from separate API endpoint
       const quotations = await loadOutsourcingQuotationsFromStorage();
 
+      // Populate Product Type dropdown dynamically from data
+      const productTypeSet = new Set(quotations.map(q => q.productType).filter(Boolean));
+      const productTypeSelect = document.getElementById('outsourcingFilterProductType');
+      const currentProductType = productTypeSelect?.value || '';
+      productTypeSelect.innerHTML = '<option value="">All Types</option>';
+      productTypeSet.forEach(type => {
+        const opt = document.createElement('option');
+        opt.value = type;
+        opt.textContent = getProductTypeDisplayName(type);
+        productTypeSelect.appendChild(opt);
+      });
+      // Restore previous selection if still valid
+      if (currentProductType && productTypeSet.has(currentProductType)) {
+        productTypeSelect.value = currentProductType;
+      }
+
       console.log('Loaded outsourcing quotations:', quotations);
 
       if (quotations.length === 0) {
@@ -11422,8 +11446,10 @@
         email: document.getElementById('outsourcingFilterEmail')?.value.toLowerCase().trim() || '',
         phone: document.getElementById('outsourcingFilterPhone')?.value.toLowerCase().trim() || '',
         brand: document.getElementById('outsourcingFilterBrand')?.value || '',
+        productType: document.getElementById('outsourcingFilterProductType')?.value || '',
         quantity: document.getElementById('outsourcingFilterQuantity')?.value.toLowerCase().trim() || '',
         total: document.getElementById('outsourcingFilterTotal')?.value.toLowerCase().trim() || '',
+        sourceType: document.getElementById('outsourcingFilterSourceType')?.value || '',
         status: document.getElementById('outsourcingFilterStatus')?.value || '',
         date: document.getElementById('outsourcingFilterDate')?.value.toLowerCase().trim() || ''
       };
@@ -11434,8 +11460,10 @@
         if (filters.email && !quotation.email?.toLowerCase().includes(filters.email)) return false;
         if (filters.phone && !quotation.phone?.toLowerCase().includes(filters.phone)) return false;
         if (filters.brand && String(quotation.brandId) !== filters.brand) return false;
+        if (filters.productType && quotation.productType !== filters.productType) return false;
         if (filters.quantity && !quotation.quantity.toString().includes(filters.quantity)) return false;
         if (filters.total && !quotation.total.toString().includes(filters.total)) return false;
+        if (filters.sourceType && (quotation.type || 'non email') !== filters.sourceType) return false;
         if (filters.status && quotation.status !== filters.status) return false;
         if (filters.date && !new Date(quotation.dateCreated).toLocaleDateString().toLowerCase().includes(filters.date)) return false;
         return true;
@@ -11577,7 +11605,9 @@
         'woven-label': 'Woven Label',
         'care-label': 'Care Label',
         'heat-transfer': 'Heat Transfer',
-        'others': 'Others'
+        'others': 'Others',
+        'other': 'Other',
+        'outsource': 'Outsource'
       };
       return names[type] || type;
     }
