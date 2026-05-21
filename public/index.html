@@ -18,6 +18,7 @@
       letter-spacing: -0.01em;
       background:#fff;
       color:#000;
+      font-weight: 700;
     }
     h1 {
       margin:0 0 16px 0;
@@ -450,7 +451,7 @@
       border: 1.5px solid #000;
       cursor: pointer;
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 700;
       text-align: left;
       transition: all 0.12s ease;
       box-sizing: border-box; /* Include padding and border in width */
@@ -4446,10 +4447,7 @@
         }
       });
 
-      const bwColors = ['#5B8DEF', '#FF7EB3', '#7ED6A5', '#FFD166', '#A78BFA', '#F9A870', '#67D5E2', '#F4845F'];
-
       const statuses = [];
-      let colorIdx = 0;
       for (const [bid, count] of Object.entries(brandCounts)) {
         const brand = cachedBrands.find(b => String(b.id) === bid);
         const name = brand ? brand.name : 'Unknown Brand';
@@ -4457,10 +4455,9 @@
           name: name,
           key: bid,
           count: count,
-          color: bwColors[colorIdx % bwColors.length],
+          color: getBrandColor(bid),
           logoPath: brand && brand.logoPath ? brand.logoPath : null
         });
-        colorIdx++;
       }
 
       const total = statuses.reduce((s, x) => s + x.count, 0) + noBrandCount;
@@ -4956,20 +4953,16 @@
         }
       });
 
-      const valColors = ['#E8575A', '#3DC1C1', '#F0932B', '#6C5CE7', '#A3CB38', '#ED4C67', '#1289A7', '#D980FA'];
-
       const statuses = [];
-      let colorIdx = 0;
       for (const [bid, total] of Object.entries(brandTotals)) {
         const brand = cachedBrands.find(b => String(b.id) === bid);
         statuses.push({
           name: brand ? brand.name : 'Unknown Brand',
           key: bid,
           count: total,
-          color: valColors[colorIdx % valColors.length],
+          color: getBrandColor(bid),
           logoPath: brand && brand.logoPath ? brand.logoPath : null
         });
-        colorIdx++;
       }
 
       const grandTotal = statuses.reduce((s, x) => s + x.count, 0) + noBrandTotal;
@@ -11495,7 +11488,8 @@
           return '<span style="color:#999;">-</span>';
         }
 
-        return `<button class="page-btn" style="padding:4px 8px; font-size:12px;" onclick="event.stopPropagation(); updateQuotationStatus(${quotation.id}, '${action.next}', '${quotation.type || 'non email'}', ${JSON.stringify(quotation).replace(/"/g, '&quot;')})">${action.label}</button>`;
+        const brandColor = getBrandColor(quotation.brandId);
+        return `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:${brandColor}; color:#fff; border:1px solid ${brandColor};" onclick="event.stopPropagation(); updateQuotationStatus(${quotation.id}, '${action.next}', '${quotation.type || 'non email'}', ${JSON.stringify(quotation).replace(/"/g, '&quot;')})">${action.label}</button>`;
       }
 
       tbody.innerHTML = filteredQuotations.map(quotation => `
@@ -11528,6 +11522,7 @@
         contact: document.getElementById('quotationFilterContact').value.toLowerCase().trim(),
         email: document.getElementById('quotationFilterEmail').value.toLowerCase().trim(),
         phone: document.getElementById('quotationFilterPhone').value.toLowerCase().trim(),
+        brand: document.getElementById('quotationFilterBrand').value,
         type: document.getElementById('quotationFilterType').value,
         quantity: document.getElementById('quotationFilterQuantity').value.toLowerCase().trim(),
         total: document.getElementById('quotationFilterTotal').value.toLowerCase().trim(),
@@ -11540,6 +11535,7 @@
         if (filters.contact && !quotation.contactPerson?.toLowerCase().includes(filters.contact)) return false;
         if (filters.email && !quotation.email?.toLowerCase().includes(filters.email)) return false;
         if (filters.phone && !quotation.phone?.toLowerCase().includes(filters.phone)) return false;
+        if (filters.brand && String(quotation.brandId) !== filters.brand) return false;
         if (filters.type && quotation.productType !== filters.type) return false;
         if (filters.quantity && !quotation.quantity.toString().includes(filters.quantity)) return false;
         if (filters.total && !quotation.total.toString().includes(filters.total)) return false;
@@ -15140,12 +15136,23 @@
         .catch(err => console.error('Error loading brands:', err));
     }
 
+    const BRAND_COLORS = ['#5B8DEF', '#FF7EB3', '#7ED6A5', '#FFD166', '#A78BFA', '#F9A870', '#67D5E2', '#F4845F'];
+
+    function getBrandColor(brandId) {
+      if (!brandId) return '#999';
+      const idx = cachedBrands.findIndex(b => String(b.id) === String(brandId));
+      if (idx === -1) return '#999';
+      return BRAND_COLORS[idx % BRAND_COLORS.length];
+    }
+
     function getBrandCellHtml(brandId) {
       if (!brandId) return '<span style="color:#999;">-</span>';
       const brand = cachedBrands.find(b => b.id === brandId);
       if (!brand) return '<span style="color:#999;">-</span>';
+      const brandColor = getBrandColor(brandId);
+      const colorDot = '<span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:' + brandColor + '; vertical-align:middle; margin-right:6px;"></span>';
       const logoHtml = brand.logoPath ? '<img src="' + brand.logoPath + '" style="max-width:24px; max-height:24px; vertical-align:middle; margin-right:6px;">' : '';
-      return logoHtml + escapeHtml(brand.name);
+      return colorDot + logoHtml + escapeHtml(brand.name);
     }
 
     function renderBrandList(brands) {
