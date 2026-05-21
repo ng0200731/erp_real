@@ -3159,6 +3159,11 @@
       const bottomRight = document.getElementById('brandValueColumn');
 
       if (dashboardExpanded) {
+        // Save chart size before expanding so it doesn't grow
+        const chartContainer = document.getElementById('dashboardChart');
+        const savedW = chartContainer ? chartContainer.offsetWidth : 0;
+        const savedH = chartContainer ? chartContainer.offsetHeight : 0;
+
         // Expand: Fade out other quadrants first
         outsourcingDistribution.classList.add('fade-out');
         brandDistribution.classList.add('fade-out');
@@ -3176,6 +3181,12 @@
           // Change grid layout
           grid.style.gridTemplateColumns = '1.5fr 1fr 1fr 1fr';
           grid.style.gridTemplateRows = '1fr';
+
+          // Constrain chart to saved size so it doesn't grow
+          if (chartContainer) {
+            chartContainer.style.maxWidth = savedW + 'px';
+            chartContainer.style.maxHeight = savedH + 'px';
+          }
 
           // Show expanded columns
           statusColumn.classList.remove('hidden-quadrant');
@@ -3198,7 +3209,6 @@
         insightsColumn.classList.add('fade-out');
 
         setTimeout(() => {
-          // Hide expanded columns
           statusColumn.classList.add('hidden-quadrant');
           metricsColumn.classList.add('hidden-quadrant');
           insightsColumn.classList.add('hidden-quadrant');
@@ -3206,22 +3216,25 @@
           metricsColumn.classList.remove('fade-out', 'fade-in');
           insightsColumn.classList.remove('fade-out', 'fade-in');
 
-          // Change grid layout
           grid.style.gridTemplateColumns = '1fr 1fr';
           grid.style.gridTemplateRows = '1fr 1fr';
 
-          // Show all 4 main quadrants
           quotationDistribution.classList.remove('hidden-quadrant');
           outsourcingDistribution.classList.remove('hidden-quadrant');
           brandDistribution.classList.remove('hidden-quadrant');
           bottomRight.classList.remove('hidden-quadrant');
 
-          // Fade in quadrants
-          setTimeout(() => {
-            outsourcingDistribution.classList.add('fade-in');
-            brandDistribution.classList.add('fade-in');
-            bottomRight.classList.add('fade-in');
-          }, 50);
+          // Remove constraint and resize chart to landing page size
+          const chartContainer = document.getElementById('dashboardChart');
+          if (chartContainer) {
+            chartContainer.style.maxWidth = '';
+            chartContainer.style.maxHeight = '';
+          }
+          // Resize all 4 charts to correct landing page size
+          if (chartInstance) chartInstance.resize();
+          if (outsourcingChartInstance) outsourcingChartInstance.resize();
+          if (brandChartInstance) brandChartInstance.resize();
+          if (brandValueChartInstance) brandValueChartInstance.resize();
         }, 200);
 
         expandHint.textContent = 'Click to expand →';
@@ -3761,6 +3774,11 @@
       const bottomRight = document.getElementById('brandValueColumn');
 
       if (outsourcingDashboardExpanded) {
+        // Save chart size before expanding so it doesn't grow
+        const chartContainer = document.getElementById('outsourcingDashboardChart');
+        const savedW = chartContainer ? chartContainer.offsetWidth : 0;
+        const savedH = chartContainer ? chartContainer.offsetHeight : 0;
+
         // Expand: Fade out other quadrants first
         quotationDistribution.classList.add('fade-out');
         brandDistribution.classList.add('fade-out');
@@ -3778,6 +3796,12 @@
           // Change grid layout
           grid.style.gridTemplateColumns = '1.5fr 1fr 1fr 1fr';
           grid.style.gridTemplateRows = '1fr';
+
+          // Constrain chart to saved size so it doesn't grow
+          if (chartContainer) {
+            chartContainer.style.maxWidth = savedW + 'px';
+            chartContainer.style.maxHeight = savedH + 'px';
+          }
 
           // Show expanded columns
           statusColumn.classList.remove('hidden-quadrant');
@@ -3800,7 +3824,6 @@
         insightsColumn.classList.add('fade-out');
 
         setTimeout(() => {
-          // Hide expanded columns
           statusColumn.classList.add('hidden-quadrant');
           metricsColumn.classList.add('hidden-quadrant');
           insightsColumn.classList.add('hidden-quadrant');
@@ -3808,22 +3831,25 @@
           metricsColumn.classList.remove('fade-out', 'fade-in');
           insightsColumn.classList.remove('fade-out', 'fade-in');
 
-          // Change grid layout
           grid.style.gridTemplateColumns = '1fr 1fr';
           grid.style.gridTemplateRows = '1fr 1fr';
 
-          // Show all 4 main quadrants
           quotationDistribution.classList.remove('hidden-quadrant');
           outsourcingDistribution.classList.remove('hidden-quadrant');
           brandDistribution.classList.remove('hidden-quadrant');
           bottomRight.classList.remove('hidden-quadrant');
 
-          // Fade in quadrants
-          setTimeout(() => {
-            quotationDistribution.classList.add('fade-in');
-            brandDistribution.classList.add('fade-in');
-            bottomRight.classList.add('fade-in');
-          }, 50);
+          // Remove constraint and resize chart to landing page size
+          const chartContainer = document.getElementById('outsourcingDashboardChart');
+          if (chartContainer) {
+            chartContainer.style.maxWidth = '';
+            chartContainer.style.maxHeight = '';
+          }
+          // Resize all 4 charts to correct landing page size
+          if (chartInstance) chartInstance.resize();
+          if (outsourcingChartInstance) outsourcingChartInstance.resize();
+          if (brandChartInstance) brandChartInstance.resize();
+          if (brandValueChartInstance) brandValueChartInstance.resize();
         }, 200);
 
         expandHint.textContent = 'Click to expand →';
@@ -4367,7 +4393,11 @@
       }
 
       if (brandDashboardData) {
-        renderBrandDashboard();
+        if (brandDashboardExpanded) {
+          renderBrandDashboard();
+        } else {
+          setTimeout(() => renderBrandDashboard(), 300);
+        }
       }
     }
 
@@ -4878,7 +4908,13 @@
         expandHint.textContent = 'Click to expand →';
       }
 
-      if (brandValueDashboardData) renderBrandValueDashboard();
+      if (brandValueDashboardData) {
+        if (brandValueDashboardExpanded) {
+          renderBrandValueDashboard();
+        } else {
+          setTimeout(() => renderBrandValueDashboard(), 300);
+        }
+      }
     }
 
     async function loadDashboardBrandValue() {
