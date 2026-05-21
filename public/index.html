@@ -1850,6 +1850,9 @@
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Brand</div>
+                  <select id="outsourcingFilterBrand" class="filter-input" style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
+                    <option value="">All Brands</option>
+                  </select>
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Product Type</div>
@@ -10374,10 +10377,21 @@
       async function getOutsourcingActionButton(quotation, linkedCount, responseCount) {
         const status = quotation.status || 'pending';
 
+        const outsourcingStatusColors = {
+          'pending': '#17a2b8',
+          'send to outsourcing supplier': '#007bff',
+          'await quotation': '#ffc107',
+          'compare quotation': '#fd7e14',
+          'send to customer': '#6f42c1',
+          'await customer confirm price': '#6f42c1',
+          'price confirmed': '#28a745',
+          'sampling': '#20c997',
+          'sample delivered': '#6c757d'
+        };
+
         // Special handling for "await quotation" status
         if (status === 'await quotation') {
           if (responseCount < linkedCount) {
-            // Not all suppliers responded - show view submitted + reminder buttons
             return `
               <div style="text-align:center;">
                 <div style="font-size:12px; color:#666; margin-bottom:4px;">
@@ -10396,9 +10410,9 @@
               </div>
             `;
           } else {
-            // All suppliers responded - show compare button that opens popup directly
+            const btnColor = outsourcingStatusColors['compare quotation'] || '#fd7e14';
             return `
-              <button class="page-btn" style="padding:4px 8px; font-size:12px;"
+              <button class="page-btn" style="padding:4px 8px; font-size:12px; background:${btnColor}; color:#fff; border:1px solid ${btnColor};"
                       onclick="event.stopPropagation(); showCompareQuotationPopup(${quotation.id})">
                 Compare Quotation
               </button>
@@ -10428,10 +10442,12 @@
         }
 
         if (action.popup) {
-          return `<button class="page-btn" style="padding:4px 8px; font-size:12px;" onclick="event.stopPropagation(); showCompareQuotationPopup(${quotation.id})">${action.label}</button>`;
+          const btnColor = outsourcingStatusColors[status] || '#fd7e14';
+          return `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:${btnColor}; color:#fff; border:1px solid ${btnColor};" onclick="event.stopPropagation(); showCompareQuotationPopup(${quotation.id})">${action.label}</button>`;
         }
 
-        const actionBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px;" onclick="event.stopPropagation(); updateOutsourcingStatus(${quotation.id}, '${action.next}')">${action.label}</button>`;
+        const actionColor = outsourcingStatusColors[action.next] || '#333';
+        const actionBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:${actionColor}; color:#fff; border:1px solid ${actionColor};" onclick="event.stopPropagation(); updateOutsourcingStatus(${quotation.id}, '${action.next}')">${action.label}</button>`;
         return viewBtn ? `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">${actionBtn}${viewBtn}</div>` : actionBtn;
       }
 
@@ -11405,6 +11421,7 @@
         contact: document.getElementById('outsourcingFilterContact')?.value.toLowerCase().trim() || '',
         email: document.getElementById('outsourcingFilterEmail')?.value.toLowerCase().trim() || '',
         phone: document.getElementById('outsourcingFilterPhone')?.value.toLowerCase().trim() || '',
+        brand: document.getElementById('outsourcingFilterBrand')?.value || '',
         quantity: document.getElementById('outsourcingFilterQuantity')?.value.toLowerCase().trim() || '',
         total: document.getElementById('outsourcingFilterTotal')?.value.toLowerCase().trim() || '',
         status: document.getElementById('outsourcingFilterStatus')?.value || '',
@@ -11416,6 +11433,7 @@
         if (filters.contact && !quotation.contactPerson?.toLowerCase().includes(filters.contact)) return false;
         if (filters.email && !quotation.email?.toLowerCase().includes(filters.email)) return false;
         if (filters.phone && !quotation.phone?.toLowerCase().includes(filters.phone)) return false;
+        if (filters.brand && String(quotation.brandId) !== filters.brand) return false;
         if (filters.quantity && !quotation.quantity.toString().includes(filters.quantity)) return false;
         if (filters.total && !quotation.total.toString().includes(filters.total)) return false;
         if (filters.status && quotation.status !== filters.status) return false;
@@ -11475,6 +11493,14 @@
       // Helper function to get action button based on status
       function getActionButton(quotation) {
         const status = quotation.status || 'draft';
+        const quotationStatusColors = {
+          'pending': '#17a2b8',
+          'send to customer': '#007bff',
+          'price confirmed': '#28a745',
+          'sampling': '#6f42c1',
+          'sample delivered': '#20c997'
+        };
+
         const statusMap = {
           'pending': { next: 'send to customer', label: 'Send to Customer' },
           'send to customer': { next: 'price confirmed', label: 'Confirm Price' },
@@ -11488,8 +11514,8 @@
           return '<span style="color:#999;">-</span>';
         }
 
-        const brandColor = getBrandColor(quotation.brandId);
-        return `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:${brandColor}; color:#fff; border:1px solid ${brandColor};" onclick="event.stopPropagation(); updateQuotationStatus(${quotation.id}, '${action.next}', '${quotation.type || 'non email'}', ${JSON.stringify(quotation).replace(/"/g, '&quot;')})">${action.label}</button>`;
+        const actionColor = quotationStatusColors[action.next] || '#333';
+        return `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:${actionColor}; color:#fff; border:1px solid ${actionColor};" onclick="event.stopPropagation(); updateQuotationStatus(${quotation.id}, '${action.next}', '${quotation.type || 'non email'}', ${JSON.stringify(quotation).replace(/"/g, '&quot;')})">${action.label}</button>`;
       }
 
       tbody.innerHTML = filteredQuotations.map(quotation => `
@@ -12903,6 +12929,11 @@
           if (filterEl) {
             const currentVal = filterEl.value;
             filterEl.innerHTML = '<option value="">All Brands</option>' + cachedBrands.map(b => '<option value="' + b.id + '"' + (String(b.id) === currentVal ? ' selected' : '') + '>' + escapeHtml(b.name) + '</option>').join('');
+          }
+          const outFilterEl = document.getElementById('outsourcingFilterBrand');
+          if (outFilterEl) {
+            const currentVal = outFilterEl.value;
+            outFilterEl.innerHTML = '<option value="">All Brands</option>' + cachedBrands.map(b => '<option value="' + b.id + '"' + (String(b.id) === currentVal ? ' selected' : '') + '>' + escapeHtml(b.name) + '</option>').join('');
           }
         }
       } catch (e) { console.error('Error loading brands cache:', e); }
@@ -15149,10 +15180,8 @@
       if (!brandId) return '<span style="color:#999;">-</span>';
       const brand = cachedBrands.find(b => b.id === brandId);
       if (!brand) return '<span style="color:#999;">-</span>';
-      const brandColor = getBrandColor(brandId);
-      const colorDot = '<span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:' + brandColor + '; vertical-align:middle; margin-right:6px;"></span>';
       const logoHtml = brand.logoPath ? '<img src="' + brand.logoPath + '" style="max-width:24px; max-height:24px; vertical-align:middle; margin-right:6px;">' : '';
-      return colorDot + logoHtml + escapeHtml(brand.name);
+      return logoHtml + escapeHtml(brand.name);
     }
 
     function renderBrandList(brands) {
