@@ -1318,6 +1318,124 @@
               </div>
             </div>
 
+            <!-- Brand Distribution Status Column (hidden by default) -->
+            <div id="brandStatusColumn" class="dashboard-quadrant hidden-quadrant">
+              <div class="quadrant-header">
+                <span class="quadrant-number">—</span>
+                <h2 class="quadrant-title">Status Breakdown</h2>
+              </div>
+              <div class="quadrant-content">
+                <div id="brandDashboardLegend" class="legend-container"></div>
+              </div>
+            </div>
+
+            <!-- Brand Distribution Metrics Column (hidden by default) -->
+            <div id="brandMetricsColumn" class="dashboard-quadrant hidden-quadrant">
+              <div class="quadrant-header">
+                <span class="quadrant-number">—</span>
+                <h2 class="quadrant-title">Key Metrics</h2>
+              </div>
+              <div class="quadrant-content">
+                <div id="brandDashboardMetrics" class="metrics-container">
+                  <div class="metric-item">
+                    <div class="metric-value" id="brandTotalCount">—</div>
+                    <div class="metric-label">Total Quotations</div>
+                  </div>
+                  <div class="metric-item">
+                    <div class="metric-value secondary" id="brandActiveCount">—</div>
+                    <div class="metric-label">Active</div>
+                  </div>
+                  <div class="metric-item">
+                    <div class="metric-value secondary" id="brandCompletedCount">—</div>
+                    <div class="metric-label">Completed</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Brand Distribution Insights Column (hidden by default) -->
+            <div id="brandInsightsColumn" class="dashboard-quadrant hidden-quadrant">
+              <div class="quadrant-header">
+                <span class="quadrant-number">—</span>
+                <h2 class="quadrant-title">Insights</h2>
+              </div>
+              <div class="quadrant-content">
+                <div id="brandDashboardInsights" class="insights-container">
+                  <div class="insight-card">
+                    <div class="insight-label">Top Status</div>
+                    <div id="brandTopStatus" class="insight-value">—</div>
+                  </div>
+                  <div class="insight-card alt">
+                    <div class="insight-label">Conversion Rate</div>
+                    <div id="brandConversionRate" class="insight-value">—</div>
+                  </div>
+                  <div class="insight-card">
+                    <div class="insight-label">Pending Review</div>
+                    <div id="brandPendingReview" class="insight-value">—</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Brand Value Status Column (hidden by default) -->
+            <div id="brandValueStatusColumn" class="dashboard-quadrant hidden-quadrant">
+              <div class="quadrant-header">
+                <span class="quadrant-number">—</span>
+                <h2 class="quadrant-title">Status Breakdown</h2>
+              </div>
+              <div class="quadrant-content">
+                <div id="brandValueDashboardLegend" class="legend-container"></div>
+              </div>
+            </div>
+
+            <!-- Brand Value Metrics Column (hidden by default) -->
+            <div id="brandValueMetricsColumn" class="dashboard-quadrant hidden-quadrant">
+              <div class="quadrant-header">
+                <span class="quadrant-number">—</span>
+                <h2 class="quadrant-title">Key Metrics</h2>
+              </div>
+              <div class="quadrant-content">
+                <div id="brandValueDashboardMetrics" class="metrics-container">
+                  <div class="metric-item">
+                    <div class="metric-value" id="brandValueTotalCount">—</div>
+                    <div class="metric-label">Total Value (HKD)</div>
+                  </div>
+                  <div class="metric-item">
+                    <div class="metric-value secondary" id="brandValueActiveCount">—</div>
+                    <div class="metric-label">Top Brand Value</div>
+                  </div>
+                  <div class="metric-item">
+                    <div class="metric-value secondary" id="brandValueCompletedCount">—</div>
+                    <div class="metric-label">Brands Count</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Brand Value Insights Column (hidden by default) -->
+            <div id="brandValueInsightsColumn" class="dashboard-quadrant hidden-quadrant">
+              <div class="quadrant-header">
+                <span class="quadrant-number">—</span>
+                <h2 class="quadrant-title">Insights</h2>
+              </div>
+              <div class="quadrant-content">
+                <div id="brandValueDashboardInsights" class="insights-container">
+                  <div class="insight-card">
+                    <div class="insight-label">Top Status</div>
+                    <div id="brandValueTopStatus" class="insight-value">—</div>
+                  </div>
+                  <div class="insight-card alt">
+                    <div class="insight-label">Conversion Rate</div>
+                    <div id="brandValueConversionRate" class="insight-value">—</div>
+                  </div>
+                  <div class="insight-card">
+                    <div class="insight-label">Pending Review</div>
+                    <div id="brandValuePendingReview" class="insight-value">—</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Quadrant 3: Brand VS No Development -->
             <div id="brandDistributionColumn" class="dashboard-quadrant" onclick="toggleBrandDashboardExpansion()">
               <div class="quadrant-header">
@@ -1328,12 +1446,7 @@
               <div class="quadrant-content" style="position:relative;">
                 <div style="position:absolute; top:8px; right:12px; z-index:10; background:#fff; border:1px solid #000; padding:3px 8px;">
                   <select id="brandStatusFilter" onclick="event.stopPropagation()" style="padding:3px 6px; font-size:11px; border:none; font-family:inherit; cursor:pointer; outline:none; background:transparent;">
-                    <option value="">All Statuses</option>
-                    <option value="pending">Pending</option>
-                    <option value="send to customer">Send to Customer</option>
-                    <option value="price confirmed">Price Confirmed</option>
-                    <option value="sampling">Sampling</option>
-                    <option value="sample delivered">Sample Delivered</option>
+                    <option value="">All Brands</option>
                   </select>
                 </div>
                 <div id="brandDashboardChart" class="chart-container">
@@ -1353,12 +1466,7 @@
               <div class="quadrant-content" style="position:relative;">
                 <div style="position:absolute; top:8px; right:12px; z-index:10; background:#fff; border:1px solid #000; padding:3px 8px;">
                   <select id="brandValueStatusFilter" onclick="event.stopPropagation()" style="padding:3px 6px; font-size:11px; border:none; font-family:inherit; cursor:pointer; outline:none; background:transparent;">
-                    <option value="">All Statuses</option>
-                    <option value="pending">Pending</option>
-                    <option value="send to customer">Send to Customer</option>
-                    <option value="price confirmed">Price Confirmed</option>
-                    <option value="sampling">Sampling</option>
-                    <option value="sample delivered">Sample Delivered</option>
+                    <option value="">All Brands</option>
                   </select>
                 </div>
                 <div id="brandValueDashboardChart" class="chart-container">
@@ -3152,12 +3260,18 @@
       if (dashboardExpanded && brandDashboardExpanded) {
         brandDashboardExpanded = false;
         document.getElementById('brandExpandHint').textContent = 'Click to expand →';
+        document.getElementById('brandStatusColumn').classList.add('hidden-quadrant');
+        document.getElementById('brandMetricsColumn').classList.add('hidden-quadrant');
+        document.getElementById('brandInsightsColumn').classList.add('hidden-quadrant');
       }
 
       // Reset brand value expansion when toggling quotation
       if (dashboardExpanded && brandValueDashboardExpanded) {
         brandValueDashboardExpanded = false;
         document.getElementById('brandValueExpandHint').textContent = 'Click to expand →';
+        document.getElementById('brandValueStatusColumn').classList.add('hidden-quadrant');
+        document.getElementById('brandValueMetricsColumn').classList.add('hidden-quadrant');
+        document.getElementById('brandValueInsightsColumn').classList.add('hidden-quadrant');
       }
 
       const grid = document.getElementById('dashboardGrid');
@@ -3767,12 +3881,18 @@
       if (outsourcingDashboardExpanded && brandDashboardExpanded) {
         brandDashboardExpanded = false;
         document.getElementById('brandExpandHint').textContent = 'Click to expand →';
+        document.getElementById('brandStatusColumn').classList.add('hidden-quadrant');
+        document.getElementById('brandMetricsColumn').classList.add('hidden-quadrant');
+        document.getElementById('brandInsightsColumn').classList.add('hidden-quadrant');
       }
 
       // Reset brand value expansion when toggling outsourcing
       if (outsourcingDashboardExpanded && brandValueDashboardExpanded) {
         brandValueDashboardExpanded = false;
         document.getElementById('brandValueExpandHint').textContent = 'Click to expand →';
+        document.getElementById('brandValueStatusColumn').classList.add('hidden-quadrant');
+        document.getElementById('brandValueMetricsColumn').classList.add('hidden-quadrant');
+        document.getElementById('brandValueInsightsColumn').classList.add('hidden-quadrant');
       }
 
       const grid = document.getElementById('dashboardGrid');
@@ -4350,11 +4470,25 @@
         osInsightsCol.classList.add('hidden-quadrant');
       }
 
+      if (brandDashboardExpanded && brandValueDashboardExpanded) {
+        brandValueDashboardExpanded = false;
+        document.getElementById('brandValueExpandHint').textContent = 'Click to expand →';
+        const bvStatusCol = document.getElementById('brandValueStatusColumn');
+        const bvMetricsCol = document.getElementById('brandValueMetricsColumn');
+        const bvInsightsCol = document.getElementById('brandValueInsightsColumn');
+        bvStatusCol.classList.add('hidden-quadrant');
+        bvMetricsCol.classList.add('hidden-quadrant');
+        bvInsightsCol.classList.add('hidden-quadrant');
+      }
+
       const grid = document.getElementById('dashboardGrid');
       const brandDistribution = document.getElementById('brandDistributionColumn');
       const quotationDistribution = document.getElementById('quotationDistributionColumn');
       const outsourcingDistribution = document.getElementById('outsourcingDistributionColumn');
       const bottomRight = document.getElementById('brandValueColumn');
+      const brandStatusCol = document.getElementById('brandStatusColumn');
+      const brandMetricsCol = document.getElementById('brandMetricsColumn');
+      const brandInsightsCol = document.getElementById('brandInsightsColumn');
       const expandHint = document.getElementById('brandExpandHint');
 
       if (brandDashboardExpanded) {
@@ -4370,23 +4504,39 @@
           outsourcingDistribution.classList.remove('fade-out');
           bottomRight.classList.remove('fade-out');
 
-          grid.style.gridTemplateColumns = '2fr 1fr';
-          grid.style.gridTemplateRows = '1fr 1fr';
-          brandDistribution.style.gridColumn = '1';
-          brandDistribution.style.gridRow = '1 / 3';
+          grid.style.gridTemplateColumns = '1.5fr 1fr 1fr 1fr';
+          grid.style.gridTemplateRows = '1fr';
+          brandDistribution.style.gridColumn = '';
+          brandDistribution.style.gridRow = '';
+
+          brandStatusCol.classList.remove('hidden-quadrant');
+          brandMetricsCol.classList.remove('hidden-quadrant');
+          brandInsightsCol.classList.remove('hidden-quadrant');
 
           setTimeout(() => {
-            brandDistribution.classList.add('fade-in');
+            brandStatusCol.classList.add('fade-in');
+            brandMetricsCol.classList.add('fade-in');
+            brandInsightsCol.classList.add('fade-in');
           }, 50);
         }, 200);
 
         expandHint.textContent = '← Click to collapse';
       } else {
+        brandStatusCol.classList.add('fade-out');
+        brandMetricsCol.classList.add('fade-out');
+        brandInsightsCol.classList.add('fade-out');
         brandDistribution.style.gridColumn = '';
         brandDistribution.style.gridRow = '';
         brandDistribution.classList.remove('fade-in');
 
         setTimeout(() => {
+          brandStatusCol.classList.add('hidden-quadrant');
+          brandMetricsCol.classList.add('hidden-quadrant');
+          brandInsightsCol.classList.add('hidden-quadrant');
+          brandStatusCol.classList.remove('fade-out', 'fade-in');
+          brandMetricsCol.classList.remove('fade-out', 'fade-in');
+          brandInsightsCol.classList.remove('fade-out', 'fade-in');
+
           grid.style.gridTemplateColumns = '1fr 1fr';
           grid.style.gridTemplateRows = '1fr 1fr';
 
@@ -4407,13 +4557,21 @@
       if (brandDashboardData) {
         if (brandDashboardExpanded) {
           renderBrandDashboard();
+          updateBrandDashboardMetrics();
         } else {
-          setTimeout(() => renderBrandDashboard(), 300);
+          setTimeout(() => {
+            renderBrandDashboard();
+            if (chartInstance) chartInstance.resize();
+            if (outsourcingChartInstance) outsourcingChartInstance.resize();
+            if (brandChartInstance) brandChartInstance.resize();
+            if (brandValueChartInstance) brandValueChartInstance.resize();
+          }, 300);
         }
       }
     }
 
     let brandDashboardQuotations = null;
+    let brandDashboardStatusData = null;
 
     async function loadDashboardBrand() {
       try {
@@ -4421,6 +4579,19 @@
 
         const filterEl = document.getElementById('brandStatusFilter');
         if (filterEl) {
+          // Populate dropdown dynamically from brands in data
+          const brandIds = [...new Set(brandDashboardQuotations.map(q => q.brandId).filter(Boolean))].map(String);
+          const currentVal = filterEl.value;
+          filterEl.innerHTML = '<option value="">All Brands</option>';
+          brandIds.forEach(bid => {
+            const brand = cachedBrands.find(b => String(b.id) === bid);
+            const name = brand ? brand.name : 'Unknown Brand';
+            const opt = document.createElement('option');
+            opt.value = bid;
+            opt.textContent = name;
+            filterEl.appendChild(opt);
+          });
+          if (currentVal && brandIds.includes(currentVal)) filterEl.value = currentVal;
           filterEl.onchange = updateBrandChart;
         }
 
@@ -4434,18 +4605,26 @@
       }
     }
 
+    const STATUS_COLORS_MAP = {
+      'pending': '#17a2b8',
+      'send to customer': '#007bff',
+      'price confirmed': '#28a745',
+      'sampling': '#6f42c1',
+      'sample delivered': '#20c997'
+    };
+
     function updateBrandChart() {
       if (!brandDashboardQuotations) return;
 
       const filterEl = document.getElementById('brandStatusFilter');
-      const statusFilter = filterEl ? filterEl.value : '';
+      const brandFilter = filterEl ? filterEl.value : '';
 
       let quotations = brandDashboardQuotations;
-      if (statusFilter) {
-        quotations = quotations.filter(q => (q.status || '').toLowerCase() === statusFilter);
+      if (brandFilter) {
+        quotations = quotations.filter(q => String(q.brandId) === brandFilter);
       }
 
-      // Group by brandId
+      // Group by brandId for chart
       const brandCounts = {};
       let noBrandCount = 0;
 
@@ -4458,11 +4637,11 @@
         }
       });
 
-      const statuses = [];
+      const chartStatuses = [];
       for (const [bid, count] of Object.entries(brandCounts)) {
         const brand = cachedBrands.find(b => String(b.id) === bid);
         const name = brand ? brand.name : 'Unknown Brand';
-        statuses.push({
+        chartStatuses.push({
           name: name,
           key: bid,
           count: count,
@@ -4471,10 +4650,10 @@
         });
       }
 
-      const total = statuses.reduce((s, x) => s + x.count, 0) + noBrandCount;
+      const total = chartStatuses.reduce((s, x) => s + x.count, 0) + noBrandCount;
 
       if (noBrandCount > 0) {
-        statuses.push({
+        chartStatuses.push({
           name: 'No Brand',
           key: 'no_brand',
           count: noBrandCount,
@@ -4483,13 +4662,13 @@
         });
       }
 
-      statuses.forEach(s => {
+      chartStatuses.forEach(s => {
         s.percentage = total > 0 ? ((s.count / total) * 100).toFixed(1) : 0;
       });
 
       // Preload brand logo images for canvas drawing
       let logosToLoad = 0;
-      statuses.forEach(s => {
+      chartStatuses.forEach(s => {
         if (s.logoPath && !s._logoImg) {
           logosToLoad++;
           const img = new Image();
@@ -4500,9 +4679,31 @@
       });
 
       brandDashboardData = {
-        statuses: statuses,
+        statuses: chartStatuses,
         total: total
       };
+
+      // Compute status breakdown for side panels
+      const statusCounts = { 'pending': 0, 'send to customer': 0, 'price confirmed': 0, 'sampling': 0, 'sample delivered': 0 };
+      quotations.forEach(q => {
+        const st = (q.status || '').toLowerCase();
+        if (statusCounts.hasOwnProperty(st)) statusCounts[st]++;
+      });
+      const statusTotal = Object.values(statusCounts).reduce((a, b) => a + b, 0);
+
+      brandDashboardStatusData = {
+        statuses: [
+          { name: 'Pending', key: 'pending', count: statusCounts['pending'], color: '#17a2b8' },
+          { name: 'Send to Customer', key: 'send to customer', count: statusCounts['send to customer'], color: '#007bff' },
+          { name: 'Price Confirmed', key: 'price confirmed', count: statusCounts['price confirmed'], color: '#28a745' },
+          { name: 'Sampling', key: 'sampling', count: statusCounts['sampling'], color: '#6f42c1' },
+          { name: 'Sample Delivered', key: 'sample delivered', count: statusCounts['sample delivered'], color: '#20c997' }
+        ],
+        total: statusTotal
+      };
+      brandDashboardStatusData.statuses.forEach(s => {
+        s.percentage = statusTotal > 0 ? ((s.count / statusTotal) * 100).toFixed(1) : '0.0';
+      });
 
       if (logosToLoad === 0) {
         renderBrandDashboard();
@@ -4517,6 +4718,7 @@
         renderBrandBarChart();
       }
       renderBrandLegend();
+      updateBrandDashboardMetrics();
     }
 
     function renderBrandPieChart() {
@@ -4822,18 +5024,117 @@
 
     function renderBrandLegend() {
       const legendContainer = document.getElementById('brandDashboardLegend');
-      if (!legendContainer || !brandDashboardData) return;
+      if (!legendContainer || !brandDashboardStatusData) return;
 
-      const legendItems = brandDashboardData.statuses.map((status, index) => `
-        <div class="legend-item">
-          <div class="legend-color" style="background:${status.color}"></div>
-          <span class="legend-name">${status.name}</span>
-          <span class="legend-count">${status.count}</span>
-          <span class="legend-percentage">${status.percentage}%</span>
+      const legendItems = brandDashboardStatusData.statuses.map((status, index) => `
+        <div style="display:flex; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:1px solid #f0f0f0;">
+          <div style="width:50px; height:50px; background:${status.color}; border:1px solid #000; flex-shrink:0; margin-top:1px;"></div>
+          <div style="flex:1;">
+            <div style="font-size:19px; letter-spacing:0.1em; text-transform:uppercase; font-weight:600; margin-bottom:2px;">${status.name}</div>
+            <div style="font-size:38px; font-weight:300; letter-spacing:-0.02em; line-height:1; margin-bottom:2px;">${status.count}</div>
+            <div style="font-size:21px; opacity:0.6;">${status.percentage}%</div>
+          </div>
         </div>
       `).join('');
 
       legendContainer.innerHTML = legendItems;
+    }
+
+    function updateBrandDashboardMetrics() {
+      if (!brandDashboardStatusData) return;
+
+      const totalCountEl = document.getElementById('brandTotalCount');
+      if (totalCountEl) totalCountEl.textContent = brandDashboardStatusData.total;
+
+      const activeCountEl = document.getElementById('brandActiveCount');
+      if (activeCountEl) {
+        const pending = brandDashboardStatusData.statuses.find(s => s.key === 'pending');
+        const sendToCust = brandDashboardStatusData.statuses.find(s => s.key === 'send to customer');
+        const sampling = brandDashboardStatusData.statuses.find(s => s.key === 'sampling');
+        activeCountEl.textContent = (pending ? pending.count : 0) + (sendToCust ? sendToCust.count : 0) + (sampling ? sampling.count : 0);
+      }
+
+      const completedCountEl = document.getElementById('brandCompletedCount');
+      if (completedCountEl) {
+        const priceConfirmed = brandDashboardStatusData.statuses.find(s => s.key === 'price confirmed');
+        const sampleDelivered = brandDashboardStatusData.statuses.find(s => s.key === 'sample delivered');
+        completedCountEl.textContent = (priceConfirmed ? priceConfirmed.count : 0) + (sampleDelivered ? sampleDelivered.count : 0);
+      }
+
+      const topStatusEl = document.getElementById('brandTopStatus');
+      if (topStatusEl) {
+        const topStatus = brandDashboardStatusData.statuses.reduce((max, s) => s.count > max.count ? s : max, brandDashboardStatusData.statuses[0] || { name: '—', count: 0 });
+        topStatusEl.textContent = `${topStatus.name} (${topStatus.count})`;
+      }
+
+      const conversionRateEl = document.getElementById('brandConversionRate');
+      if (conversionRateEl) {
+        const priceConfirmed = brandDashboardStatusData.statuses.find(s => s.key === 'price confirmed');
+        const rate = brandDashboardStatusData.total > 0 ? ((priceConfirmed ? priceConfirmed.count : 0) / brandDashboardStatusData.total * 100).toFixed(1) : '0.0';
+        conversionRateEl.textContent = `${rate}%`;
+      }
+
+      const pendingReviewEl = document.getElementById('brandPendingReview');
+      if (pendingReviewEl) {
+        const pending = brandDashboardStatusData.statuses.find(s => s.key === 'pending');
+        const sendToCust = brandDashboardStatusData.statuses.find(s => s.key === 'send to customer');
+        pendingReviewEl.textContent = (pending ? pending.count : 0) + (sendToCust ? sendToCust.count : 0);
+      }
+    }
+
+    function renderBrandValueLegend() {
+      const legendContainer = document.getElementById('brandValueDashboardLegend');
+      if (!legendContainer || !brandValueDashboardStatusData) return;
+
+      const legendItems = brandValueDashboardStatusData.statuses.map((status, index) => `
+        <div style="display:flex; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:1px solid #f0f0f0;">
+          <div style="width:50px; height:50px; background:${status.color}; border:1px solid #000; flex-shrink:0; margin-top:1px;"></div>
+          <div style="flex:1;">
+            <div style="font-size:19px; letter-spacing:0.1em; text-transform:uppercase; font-weight:600; margin-bottom:2px;">${status.name}</div>
+            <div style="font-size:28px; font-weight:300; letter-spacing:-0.02em; line-height:1; margin-bottom:2px;">HKD ${status.count.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</div>
+            <div style="font-size:21px; opacity:0.6;">${status.percentage}%</div>
+          </div>
+        </div>
+      `).join('');
+
+      legendContainer.innerHTML = legendItems;
+    }
+
+    function updateBrandValueDashboardMetrics() {
+      if (!brandValueDashboardStatusData) return;
+
+      const totalCountEl = document.getElementById('brandValueTotalCount');
+      if (totalCountEl) totalCountEl.textContent = 'HKD ' + brandValueDashboardStatusData.total.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+      const activeCountEl = document.getElementById('brandValueActiveCount');
+      if (activeCountEl) {
+        const topStatus = brandValueDashboardStatusData.statuses.reduce((max, s) => s.count > max.count ? s : max, brandValueDashboardStatusData.statuses[0] || { count: 0 });
+        activeCountEl.textContent = 'HKD ' + topStatus.count.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      }
+
+      const completedCountEl = document.getElementById('brandValueCompletedCount');
+      if (completedCountEl) completedCountEl.textContent = brandValueDashboardStatusData.statuses.length;
+
+      const topStatusEl = document.getElementById('brandValueTopStatus');
+      if (topStatusEl) {
+        const topStatus = brandValueDashboardStatusData.statuses.reduce((max, s) => s.count > max.count ? s : max, brandValueDashboardStatusData.statuses[0] || { name: '—', count: 0 });
+        topStatusEl.textContent = `${topStatus.name} (HKD ${topStatus.count.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')})`;
+      }
+
+      const conversionRateEl = document.getElementById('brandValueConversionRate');
+      if (conversionRateEl) {
+        const priceConfirmed = brandValueDashboardStatusData.statuses.find(s => s.key === 'price confirmed');
+        const rate = brandValueDashboardStatusData.total > 0 ? ((priceConfirmed ? priceConfirmed.count : 0) / brandValueDashboardStatusData.total * 100).toFixed(1) : '0.0';
+        conversionRateEl.textContent = `${rate}%`;
+      }
+
+      const pendingReviewEl = document.getElementById('brandValuePendingReview');
+      if (pendingReviewEl) {
+        const pending = brandValueDashboardStatusData.statuses.find(s => s.key === 'pending');
+        const sendToCust = brandValueDashboardStatusData.statuses.find(s => s.key === 'send to customer');
+        const total = (pending ? pending.count : 0) + (sendToCust ? sendToCust.count : 0);
+        pendingReviewEl.textContent = 'HKD ' + total.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      }
     }
 
     // Brand VS Total (HKD) Dashboard
@@ -4841,6 +5142,7 @@
     let brandValueChartInstance = null;
     let brandValueDashboardExpanded = false;
     let brandValueQuotations = null;
+    let brandValueDashboardStatusData = null;
 
     function toggleBrandValueExpansion() {
       brandValueDashboardExpanded = !brandValueDashboardExpanded;
@@ -4864,6 +5166,9 @@
       if (brandValueDashboardExpanded && brandDashboardExpanded) {
         brandDashboardExpanded = false;
         document.getElementById('brandExpandHint').textContent = 'Click to expand →';
+        document.getElementById('brandStatusColumn').classList.add('hidden-quadrant');
+        document.getElementById('brandMetricsColumn').classList.add('hidden-quadrant');
+        document.getElementById('brandInsightsColumn').classList.add('hidden-quadrant');
       }
 
       const grid = document.getElementById('dashboardGrid');
@@ -4871,6 +5176,9 @@
       const quotationDistribution = document.getElementById('quotationDistributionColumn');
       const outsourcingDistribution = document.getElementById('outsourcingDistributionColumn');
       const brandDistribution = document.getElementById('brandDistributionColumn');
+      const bvStatusCol = document.getElementById('brandValueStatusColumn');
+      const bvMetricsCol = document.getElementById('brandValueMetricsColumn');
+      const bvInsightsCol = document.getElementById('brandValueInsightsColumn');
       const expandHint = document.getElementById('brandValueExpandHint');
 
       if (brandValueDashboardExpanded) {
@@ -4886,21 +5194,39 @@
           outsourcingDistribution.classList.remove('fade-out');
           brandDistribution.classList.remove('fade-out');
 
-          grid.style.gridTemplateColumns = '2fr 1fr';
-          grid.style.gridTemplateRows = '1fr 1fr';
-          brandValueCol.style.gridColumn = '1';
-          brandValueCol.style.gridRow = '1 / 3';
+          grid.style.gridTemplateColumns = '1.5fr 1fr 1fr 1fr';
+          grid.style.gridTemplateRows = '1fr';
+          brandValueCol.style.gridColumn = '';
+          brandValueCol.style.gridRow = '';
 
-          setTimeout(() => { brandValueCol.classList.add('fade-in'); }, 50);
+          bvStatusCol.classList.remove('hidden-quadrant');
+          bvMetricsCol.classList.remove('hidden-quadrant');
+          bvInsightsCol.classList.remove('hidden-quadrant');
+
+          setTimeout(() => {
+            bvStatusCol.classList.add('fade-in');
+            bvMetricsCol.classList.add('fade-in');
+            bvInsightsCol.classList.add('fade-in');
+          }, 50);
         }, 200);
 
         expandHint.textContent = '← Click to collapse';
       } else {
+        bvStatusCol.classList.add('fade-out');
+        bvMetricsCol.classList.add('fade-out');
+        bvInsightsCol.classList.add('fade-out');
         brandValueCol.style.gridColumn = '';
         brandValueCol.style.gridRow = '';
         brandValueCol.classList.remove('fade-in');
 
         setTimeout(() => {
+          bvStatusCol.classList.add('hidden-quadrant');
+          bvMetricsCol.classList.add('hidden-quadrant');
+          bvInsightsCol.classList.add('hidden-quadrant');
+          bvStatusCol.classList.remove('fade-out', 'fade-in');
+          bvMetricsCol.classList.remove('fade-out', 'fade-in');
+          bvInsightsCol.classList.remove('fade-out', 'fade-in');
+
           grid.style.gridTemplateColumns = '1fr 1fr';
           grid.style.gridTemplateRows = '1fr 1fr';
           quotationDistribution.classList.remove('hidden-quadrant');
@@ -4919,8 +5245,15 @@
       if (brandValueDashboardData) {
         if (brandValueDashboardExpanded) {
           renderBrandValueDashboard();
+          updateBrandValueDashboardMetrics();
         } else {
-          setTimeout(() => renderBrandValueDashboard(), 300);
+          setTimeout(() => {
+            renderBrandValueDashboard();
+            if (chartInstance) chartInstance.resize();
+            if (outsourcingChartInstance) outsourcingChartInstance.resize();
+            if (brandChartInstance) brandChartInstance.resize();
+            if (brandValueChartInstance) brandValueChartInstance.resize();
+          }, 300);
         }
       }
     }
@@ -4929,7 +5262,22 @@
       try {
         brandValueQuotations = await loadQuotationsFromStorage();
         const filterEl = document.getElementById('brandValueStatusFilter');
-        if (filterEl) filterEl.onchange = updateBrandValueChart;
+        if (filterEl) {
+          // Populate dropdown dynamically from brands in data
+          const brandIds = [...new Set(brandValueQuotations.map(q => q.brandId).filter(Boolean))].map(String);
+          const currentVal = filterEl.value;
+          filterEl.innerHTML = '<option value="">All Brands</option>';
+          brandIds.forEach(bid => {
+            const brand = cachedBrands.find(b => String(b.id) === bid);
+            const name = brand ? brand.name : 'Unknown Brand';
+            const opt = document.createElement('option');
+            opt.value = bid;
+            opt.textContent = name;
+            filterEl.appendChild(opt);
+          });
+          if (currentVal && brandIds.includes(currentVal)) filterEl.value = currentVal;
+          filterEl.onchange = updateBrandValueChart;
+        }
         updateBrandValueChart();
       } catch (error) {
         console.error('Error loading brand value dashboard:', error);
@@ -4944,11 +5292,11 @@
       if (!brandValueQuotations) return;
 
       const filterEl = document.getElementById('brandValueStatusFilter');
-      const statusFilter = filterEl ? filterEl.value : '';
+      const brandFilter = filterEl ? filterEl.value : '';
 
       let quotations = brandValueQuotations;
-      if (statusFilter) {
-        quotations = quotations.filter(q => (q.status || '').toLowerCase() === statusFilter);
+      if (brandFilter) {
+        quotations = quotations.filter(q => String(q.brandId) === brandFilter);
       }
 
       const brandTotals = {};
@@ -4964,10 +5312,10 @@
         }
       });
 
-      const statuses = [];
+      const chartStatuses = [];
       for (const [bid, total] of Object.entries(brandTotals)) {
         const brand = cachedBrands.find(b => String(b.id) === bid);
-        statuses.push({
+        chartStatuses.push({
           name: brand ? brand.name : 'Unknown Brand',
           key: bid,
           count: total,
@@ -4976,19 +5324,19 @@
         });
       }
 
-      const grandTotal = statuses.reduce((s, x) => s + x.count, 0) + noBrandTotal;
+      const grandTotal = chartStatuses.reduce((s, x) => s + x.count, 0) + noBrandTotal;
 
       if (noBrandTotal > 0) {
-        statuses.push({ name: 'No Brand', key: 'no_brand', count: noBrandTotal, color: '#E0E0E0', logoPath: null });
+        chartStatuses.push({ name: 'No Brand', key: 'no_brand', count: noBrandTotal, color: '#E0E0E0', logoPath: null });
       }
 
-      statuses.forEach(s => {
+      chartStatuses.forEach(s => {
         s.percentage = grandTotal > 0 ? ((s.count / grandTotal) * 100).toFixed(1) : 0;
       });
 
       // Preload logos
       let logosToLoad = 0;
-      statuses.forEach(s => {
+      chartStatuses.forEach(s => {
         if (s.logoPath && !s._logoImg) {
           logosToLoad++;
           const img = new Image();
@@ -4998,7 +5346,31 @@
         }
       });
 
-      brandValueDashboardData = { statuses: statuses, total: grandTotal };
+      brandValueDashboardData = { statuses: chartStatuses, total: grandTotal };
+
+      // Compute status breakdown by value for side panels
+      const statusTotals = { 'pending': 0, 'send to customer': 0, 'price confirmed': 0, 'sampling': 0, 'sample delivered': 0 };
+      quotations.forEach(q => {
+        const val = parseFloat(q.total) || 0;
+        const st = (q.status || '').toLowerCase();
+        if (statusTotals.hasOwnProperty(st)) statusTotals[st] += val;
+      });
+      const statusGrandTotal = Object.values(statusTotals).reduce((a, b) => a + b, 0);
+
+      brandValueDashboardStatusData = {
+        statuses: [
+          { name: 'Pending', key: 'pending', count: statusTotals['pending'], color: '#17a2b8' },
+          { name: 'Send to Customer', key: 'send to customer', count: statusTotals['send to customer'], color: '#007bff' },
+          { name: 'Price Confirmed', key: 'price confirmed', count: statusTotals['price confirmed'], color: '#28a745' },
+          { name: 'Sampling', key: 'sampling', count: statusTotals['sampling'], color: '#6f42c1' },
+          { name: 'Sample Delivered', key: 'sample delivered', count: statusTotals['sample delivered'], color: '#20c997' }
+        ],
+        total: statusGrandTotal
+      };
+      brandValueDashboardStatusData.statuses.forEach(s => {
+        s.percentage = statusGrandTotal > 0 ? ((s.count / statusGrandTotal) * 100).toFixed(1) : '0.0';
+      });
+
       if (logosToLoad === 0) renderBrandValueDashboard();
     }
 
@@ -5009,6 +5381,8 @@
       } else {
         renderBrandValueBarChart();
       }
+      renderBrandValueLegend();
+      updateBrandValueDashboardMetrics();
     }
 
     function renderBrandValuePieChart() {
@@ -12965,6 +13339,14 @@
             const currentVal = outFilterEl.value;
             outFilterEl.innerHTML = '<option value="">All Brands</option>' + cachedBrands.map(b => '<option value="' + b.id + '"' + (String(b.id) === currentVal ? ' selected' : '') + '>' + escapeHtml(b.name) + '</option>').join('');
           }
+          // Refresh dashboard brand dropdowns
+          ['brandStatusFilter', 'brandValueStatusFilter'].forEach(filterId => {
+            const el = document.getElementById(filterId);
+            if (el) {
+              const currentVal = el.value;
+              el.innerHTML = '<option value="">All Brands</option>' + cachedBrands.map(b => '<option value="' + b.id + '"' + (String(b.id) === currentVal ? ' selected' : '') + '>' + escapeHtml(b.name) + '</option>').join('');
+            }
+          });
         }
       } catch (e) { console.error('Error loading brands cache:', e); }
     }
