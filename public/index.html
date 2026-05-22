@@ -4492,6 +4492,11 @@
       const expandHint = document.getElementById('brandExpandHint');
 
       if (brandDashboardExpanded) {
+        // Save chart size before expanding so it doesn't grow
+        const chartContainer = document.getElementById('brandDashboardChart');
+        const savedW = chartContainer ? chartContainer.offsetWidth : 0;
+        const savedH = chartContainer ? chartContainer.offsetHeight : 0;
+
         quotationDistribution.classList.add('fade-out');
         outsourcingDistribution.classList.add('fade-out');
         bottomRight.classList.add('fade-out');
@@ -4508,6 +4513,12 @@
           grid.style.gridTemplateRows = '1fr';
           brandDistribution.style.gridColumn = '';
           brandDistribution.style.gridRow = '';
+
+          // Constrain chart to saved size so it doesn't grow
+          if (chartContainer) {
+            chartContainer.style.maxWidth = savedW + 'px';
+            chartContainer.style.maxHeight = savedH + 'px';
+          }
 
           brandStatusCol.classList.remove('hidden-quadrant');
           brandMetricsCol.classList.remove('hidden-quadrant');
@@ -4543,6 +4554,18 @@
           quotationDistribution.classList.remove('hidden-quadrant');
           outsourcingDistribution.classList.remove('hidden-quadrant');
           bottomRight.classList.remove('hidden-quadrant');
+
+          // Remove constraint and resize chart to landing page size
+          const chartContainer = document.getElementById('brandDashboardChart');
+          if (chartContainer) {
+            chartContainer.style.maxWidth = '';
+            chartContainer.style.maxHeight = '';
+          }
+          // Resize all 4 charts to correct landing page size
+          if (chartInstance) chartInstance.resize();
+          if (outsourcingChartInstance) outsourcingChartInstance.resize();
+          if (brandChartInstance) brandChartInstance.resize();
+          if (brandValueChartInstance) brandValueChartInstance.resize();
 
           setTimeout(() => {
             quotationDistribution.classList.add('fade-in');
@@ -5182,6 +5205,11 @@
       const expandHint = document.getElementById('brandValueExpandHint');
 
       if (brandValueDashboardExpanded) {
+        // Save chart size before expanding so it doesn't grow
+        const chartContainer = document.getElementById('brandValueDashboardChart');
+        const savedW = chartContainer ? chartContainer.offsetWidth : 0;
+        const savedH = chartContainer ? chartContainer.offsetHeight : 0;
+
         quotationDistribution.classList.add('fade-out');
         outsourcingDistribution.classList.add('fade-out');
         brandDistribution.classList.add('fade-out');
@@ -5198,6 +5226,12 @@
           grid.style.gridTemplateRows = '1fr';
           brandValueCol.style.gridColumn = '';
           brandValueCol.style.gridRow = '';
+
+          // Constrain chart to saved size so it doesn't grow
+          if (chartContainer) {
+            chartContainer.style.maxWidth = savedW + 'px';
+            chartContainer.style.maxHeight = savedH + 'px';
+          }
 
           bvStatusCol.classList.remove('hidden-quadrant');
           bvMetricsCol.classList.remove('hidden-quadrant');
@@ -5232,6 +5266,19 @@
           quotationDistribution.classList.remove('hidden-quadrant');
           outsourcingDistribution.classList.remove('hidden-quadrant');
           brandDistribution.classList.remove('hidden-quadrant');
+
+          // Remove constraint and resize chart to landing page size
+          const chartContainer = document.getElementById('brandValueDashboardChart');
+          if (chartContainer) {
+            chartContainer.style.maxWidth = '';
+            chartContainer.style.maxHeight = '';
+          }
+          // Resize all 4 charts to correct landing page size
+          if (chartInstance) chartInstance.resize();
+          if (outsourcingChartInstance) outsourcingChartInstance.resize();
+          if (brandChartInstance) brandChartInstance.resize();
+          if (brandValueChartInstance) brandValueChartInstance.resize();
+
           setTimeout(() => {
             quotationDistribution.classList.add('fade-in');
             outsourcingDistribution.classList.add('fade-in');
