@@ -2675,7 +2675,6 @@
       const controls = Array.from(panelEl.querySelectorAll('input, textarea, select'));
 
       for (const el of controls) {
-        if (el.disabled) continue;
         if (el.tagName === 'INPUT') {
           const type = (el.type || 'text').toLowerCase();
           if (type === 'button' || type === 'submit' || type === 'reset' || type === 'hidden') continue;
@@ -2689,6 +2688,9 @@
         const labelEl = el.id ? panelEl.querySelector(`label[for="${CSS.escape(el.id)}"]`) : null;
         const label = (labelEl?.textContent || '').toLowerCase();
         const hint = `${id} ${name} ${label}`;
+
+        // Allow disabled customer name field to be filled if empty, skip other disabled fields
+        if (el.disabled && !hint.includes('customer name')) continue;
 
         if (el.tagName === 'SELECT') {
           const enabledOptions = Array.from(el.options).filter(o => !o.disabled && o.value !== '');
@@ -14438,6 +14440,11 @@
 
         // Refresh the quotations list to show the newly saved quotation
         await displayQuotations();
+
+        // Also refresh outsourcing view if this is an outsourcing quotation
+        if (tagType === 'outsource' || tagType === 'other' || tagType === 'others') {
+          await displayOutsourcingQuotations();
+        }
 
         // Return the final quotation for use by saveQuotationWithConfirmation
         return finalQuotation;
