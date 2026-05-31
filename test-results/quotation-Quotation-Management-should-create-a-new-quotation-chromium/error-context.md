@@ -1,103 +1,70 @@
 # Page snapshot
 
 ```yaml
-- generic [ref=e2]:
-  - generic [ref=e3]:
-    - button "E" [ref=e5] [cursor=pointer]
-    - button "C" [ref=e7] [cursor=pointer]
-    - button "T" [ref=e8] [cursor=pointer]
-    - button "K" [ref=e9] [cursor=pointer]
-    - button "Q" [ref=e11] [cursor=pointer]
-    - button "S" [ref=e12] [cursor=pointer]
-    - generic [ref=e14]: v1.0.23
-  - generic [ref=e15]:
-    - generic [ref=e16]:
-      - generic [ref=e18] [cursor=pointer]: Welcome
-      - generic [ref=e20] [cursor=pointer]: Quotation (create)
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - button "E" [ref=e5] [cursor=pointer]
+      - button "B" [ref=e7] [cursor=pointer]
+      - button "C" [ref=e9] [cursor=pointer]
+      - button "S" [ref=e11] [cursor=pointer]
+      - button "T" [ref=e12] [cursor=pointer]
+      - button "K" [ref=e13] [cursor=pointer]
+      - button "Q" [ref=e15] [cursor=pointer]
+      - button "O" [ref=e17] [cursor=pointer]
+      - button "S" [ref=e18] [cursor=pointer]
+      - generic [ref=e20]: v1.0.23
     - generic [ref=e21]:
-      - generic [ref=e22]:
-        - button "Hang Tag" [ref=e23] [cursor=pointer]
-        - button "Woven Label" [ref=e24] [cursor=pointer]
-        - button "Care Label" [ref=e25] [cursor=pointer]
-        - button "Heat Transfer" [ref=e26] [cursor=pointer]
-        - button "Others" [ref=e27] [cursor=pointer]
-      - generic [ref=e28]:
-        - heading "Hang Tag Quotation" [level=3] [ref=e30]
-        - generic [ref=e32]:
-          - generic [ref=e34]:
-            - generic [ref=e35]:
-              - heading "Customer Information" [level=4] [ref=e36]
-              - generic [ref=e37]:
-                - generic [ref=e38]:
-                  - generic [ref=e39]: Customer Name *
-                  - textbox "Enter customer name" [ref=e41]: Test Customer
-                - generic [ref=e42]:
-                  - generic [ref=e43]: Contact Person
-                  - combobox [ref=e44]:
-                    - option "Select Contact Person" [selected]
-              - generic [ref=e45]:
-                - generic [ref=e46]:
-                  - generic [ref=e47]: Email
-                  - textbox "customer@email.com" [ref=e48]: test@example.com
-                - generic [ref=e49]:
-                  - generic [ref=e50]: Phone
-                  - textbox "+852 1234 5678" [active] [ref=e51]
-            - generic [ref=e52]:
-              - heading "Product Specifications" [level=4] [ref=e53]
-              - generic [ref=e54]:
-                - generic [ref=e55]:
-                  - generic [ref=e56]: Material
-                  - combobox [ref=e57]:
-                    - option "Select Material" [selected]
-                    - option "Paper"
-                    - option "Cardboard"
-                    - option "Plastic"
-                    - option "Fabric"
-                - generic [ref=e58]:
-                  - generic [ref=e59]: Size
-                  - textbox "2x3 inches" [ref=e60]
-              - generic [ref=e61]:
-                - generic [ref=e62]: Printing Method
-                - combobox [ref=e63]:
-                  - option "Select Printing Method" [selected]
-                  - option "Screen Printing"
-                  - option "Digital Printing"
-                  - option "Offset Printing"
-                  - option "Embroidery"
-            - generic [ref=e64]:
-              - heading "Quantity & Pricing" [level=4] [ref=e65]
-              - generic [ref=e66]:
-                - generic [ref=e67]:
-                  - generic [ref=e68]: Quantity *
-                  - spinbutton [ref=e69]
-                - generic [ref=e70]:
-                  - generic [ref=e71]: Unit Price (HKD)
-                  - spinbutton [ref=e72]
-                - generic [ref=e73]:
-                  - generic [ref=e74]: Total (Auto)
-                  - textbox [ref=e75]
-            - generic [ref=e76]:
-              - heading "Additional Notes" [level=4] [ref=e77]
-              - textbox "Special requirements, delivery instructions, etc." [ref=e78]
-            - generic [ref=e79]:
-              - button "Dummy 2" [ref=e80] [cursor=pointer]
-              - button "Dummy Fill" [ref=e81] [cursor=pointer]
-              - button "Clear" [ref=e82] [cursor=pointer]
-              - button "SAVE" [ref=e83] [cursor=pointer]
-              - button "Generate PDF" [ref=e84] [cursor=pointer]
-          - generic [ref=e85]:
-            - generic [ref=e86]:
-              - heading "Profile Image" [level=5] [ref=e87]
-              - generic [ref=e89] [cursor=pointer]:
-                - generic [ref=e90]: 📷
-                - generic [ref=e91]: Drop image here or click to browse
-                - generic [ref=e92]: (Ctrl+V or Ctrl+P to paste)
-            - generic [ref=e93]:
-              - heading "Attachments" [level=5] [ref=e94]
-              - generic [ref=e97] [cursor=pointer]:
-                - generic [ref=e98]: 📎
-                - generic [ref=e99]: Drop files here or click to browse
-                - generic [ref=e100]: (Ctrl+V or Ctrl+P to paste)
-                - generic [ref=e101]: "Supports: PDF, DOC, images, text files"
-    - text: ▼
+      - generic [ref=e24] [cursor=pointer]: Welcome
+      - generic [ref=e25]:
+        - banner [ref=e26]:
+          - generic [ref=e27]:
+            - heading "Dashboard" [level=1] [ref=e28]
+            - generic [ref=e29]:
+              - button "PIE" [ref=e30] [cursor=pointer]
+              - button "BAR" [ref=e31] [cursor=pointer]
+        - generic [ref=e33]:
+          - generic [ref=e35] [cursor=pointer]:
+            - generic [ref=e36]: "01"
+            - heading "Quotation Distribution" [level=2] [ref=e37]
+            - generic [ref=e38]: Click to expand →
+          - generic [ref=e43] [cursor=pointer]:
+            - generic [ref=e44]: "02"
+            - heading "Outsourcing Distribution" [level=2] [ref=e45]
+            - generic [ref=e46]: Click to expand →
+          - generic [ref=e50] [cursor=pointer]:
+            - generic [ref=e51]:
+              - generic [ref=e52]: "03"
+              - heading "Brand Distribution" [level=2] [ref=e53]
+              - generic [ref=e54]: Click to expand →
+            - combobox [ref=e57]:
+              - option "All Brands" [selected]
+              - option "nike"
+              - option "J Long"
+              - option "puma"
+              - option "asics"
+              - option "adidas"
+              - option "lululmeon"
+              - option "byrant"
+          - generic [ref=e60] [cursor=pointer]:
+            - generic [ref=e61]:
+              - generic [ref=e62]: "04"
+              - heading "Brand VS Total (HKD)" [level=2] [ref=e63]
+              - generic [ref=e64]: Click to expand →
+            - combobox [ref=e67]:
+              - option "All Brands" [selected]
+              - option "nike"
+              - option "J Long"
+              - option "puma"
+              - option "asics"
+              - option "adidas"
+              - option "lululmeon"
+              - option "byrant"
+      - text: ▼
+  - generic [ref=e71]:
+    - generic [ref=e72]: Email Loading Error
+    - generic [ref=e73]: "Error: Connection not available (NoConnection) Status: 500 Full details: { \"success\": false, \"error\": \"Connection not available\", \"code\": \"NoConnection\" }"
+    - generic [ref=e74]:
+      - button "Copy" [ref=e75] [cursor=pointer]
+      - button "Close" [ref=e76] [cursor=pointer]
 ```

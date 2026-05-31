@@ -385,6 +385,30 @@ async function ensureSchema(db) {
       console.warn('Error adding brandId column:', err);
     }
   }
+
+  try {
+    await db.exec(`ALTER TABLE quotations ADD COLUMN profileImageBlob BLOB;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding profileImageBlob column:', err);
+    }
+  }
+
+  try {
+    await db.exec(`ALTER TABLE quotations ADD COLUMN profileImageMime TEXT;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding profileImageMime column:', err);
+    }
+  }
+
+  try {
+    await db.exec(`ALTER TABLE quotations ADD COLUMN customerItemName TEXT;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding customerItemName column:', err);
+    }
+  }
 }
 
 export async function getTasksDb() {
@@ -839,8 +863,8 @@ export async function createQuotation(quotationData) {
 
   const result = await db.run(
     `
-      INSERT INTO quotations (customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, outsourcingSeq, brandId)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO quotations (customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, outsourcingSeq, brandId, customerItemName)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       quotationData.customerName,
@@ -862,7 +886,8 @@ export async function createQuotation(quotationData) {
       quotationData.dateCreated,
       quotationData.status || 'draft',
       outsourcingSeq,
-      quotationData.brandId || null
+      quotationData.brandId || null,
+      quotationData.customerItemName || null
     ]
   );
 
@@ -871,7 +896,11 @@ export async function createQuotation(quotationData) {
 
 export async function getQuotationById(id) {
   const db = await getTasksDb();
-  const quotation = await db.get(`SELECT * FROM quotations WHERE id = ?`, [id]);
+  // Exclude profileImageBlob from general queries to avoid transferring large BLOB data
+  const quotation = await db.get(
+    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, resendCount, outsourcingSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations WHERE id = ?`,
+    [id]
+  );
 
   if (quotation) {
     quotation.productDetails = JSON.parse(quotation.productDetails || '{}');
@@ -883,7 +912,10 @@ export async function getQuotationById(id) {
 
 export async function getAllQuotations() {
   const db = await getTasksDb();
-  const quotations = await db.all(`SELECT * FROM quotations ORDER BY dateCreated DESC`);
+  // Exclude profileImageBlob from general queries to avoid transferring large BLOB data
+  const quotations = await db.all(
+    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, resendCount, outsourcingSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations ORDER BY dateCreated DESC`
+  );
 
   // Parse JSON fields
   for (const quotation of quotations) {
@@ -900,7 +932,7 @@ export async function updateQuotation(id, quotationData) {
   await db.run(
     `
       UPDATE quotations
-      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?, outsourcingSeq = ?, selectedSupplierId = ?, selectedSupplierResponseId = ?, sampleReadyDate = ?, brandId = ?
+      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?, outsourcingSeq = ?, selectedSupplierId = ?, selectedSupplierResponseId = ?, sampleReadyDate = ?, brandId = ?, customerItemName = ?
       WHERE id = ?
     `,
     [
@@ -927,11 +959,30 @@ export async function updateQuotation(id, quotationData) {
       quotationData.selectedSupplierResponseId || null,
       quotationData.sampleReadyDate || null,
       quotationData.brandId || null,
+      quotationData.customerItemName || null,
       id
     ]
   );
 
   return true;
+}
+
+export async function updateQuotationProfileImage(id, imageBlob, mimeType) {
+  const db = await getTasksDb();
+  await db.run(
+    `UPDATE quotations SET profileImageBlob = ?, profileImageMime = ? WHERE id = ?`,
+    [imageBlob, mimeType, id]
+  );
+  return true;
+}
+
+export async function getQuotationProfileImage(id) {
+  const db = await getTasksDb();
+  const row = await db.get(
+    `SELECT profileImageBlob, profileImageMime FROM quotations WHERE id = ?`,
+    [id]
+  );
+  return row;
 }
 
 export async function deleteQuotation(id) {

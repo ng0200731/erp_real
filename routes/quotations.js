@@ -20,9 +20,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * @param {Function} deps.linkSupplierToQuotation - Link supplier to quotation function
  * @param {Function} deps.unlinkSupplierFromQuotation - Unlink supplier from quotation function
  * @param {Function} deps.getSuppliersForQuotation - Get suppliers for quotation function
+ * @param {Function} deps.updateQuotationProfileImage - Update profile image BLOB function
+ * @param {Function} deps.getQuotationProfileImage - Get profile image BLOB function
  */
 export function createQuotationRoutes(deps) {
-  const { getAllQuotations, getQuotationById, createQuotation, updateQuotation, deleteQuotation, upload, getNormalizedRelativePath, getSupplierById, linkSupplierToQuotation, unlinkSupplierFromQuotation, getSuppliersForQuotation } = deps;
+  const { getAllQuotations, getQuotationById, createQuotation, updateQuotation, deleteQuotation, upload, getNormalizedRelativePath, getSupplierById, linkSupplierToQuotation, unlinkSupplierFromQuotation, getSuppliersForQuotation, updateQuotationProfileImage, getQuotationProfileImage } = deps;
 
   // Get all quotations
   router.get('/', async (req, res) => {
@@ -119,7 +121,26 @@ export function createQuotationRoutes(deps) {
     }
   });
 
-  // Upload profile image for quotation
+  // Serve profile image from database
+  router.get('/:id/profile-image', async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const imageData = await getQuotationProfileImage(id);
+
+      if (!imageData || !imageData.profileImageBlob) {
+        return res.status(404).json({ success: false, error: 'Profile image not found' });
+      }
+
+      res.setHeader('Content-Type', imageData.profileImageMime || 'image/jpeg');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.send(Buffer.from(imageData.profileImageBlob));
+    } catch (error) {
+      console.error('Error serving profile image:', error);
+      res.status(500).json({ success: false, error: 'Failed to serve profile image' });
+    }
+  });
+
+  // Upload profile image for quotation - stores in database as BLOB
   router.post('/:id/upload-profile-image', upload.single('profileImage'), async (req, res) => {
     try {
       console.log('=== Profile Image Upload Request ===');
@@ -149,30 +170,37 @@ export function createQuotationRoutes(deps) {
       }
       console.log('Quotation found:', quotation.id, quotation.customerName);
 
-      // Delete old profile image if exists
-      if (quotation.profileImagePath) {
-        console.log('Deleting old profile image:', quotation.profileImagePath);
-        try {
-          await fs.unlink(path.join(__dirname, '..', quotation.profileImagePath));
-          console.log('Old profile image deleted successfully');
-        } catch (error) {
-          console.warn('Failed to delete old profile image:', error.message);
-        }
+      // Read file as buffer and store in database
+      const imageBuffer = await fs.readFile(req.file.path);
+      const mimeType = req.file.mimetype;
+
+      // Store in database
+      await updateQuotationProfileImage(id, imageBuffer, mimeType);
+      console.log('Profile image stored in database');
+
+      // Delete the temporary file since it's now in DB
+      try {
+        await fs.unlink(req.file.path);
+        console.log('Temporary file deleted');
+      } catch (error) {
+        console.warn('Failed to delete temporary file:', error.message);
       }
 
-      // Update quotation with new profile image path
-      console.log('Calculating relative path for:', req.file.path);
-      const relativePath = getNormalizedRelativePath(path.join(__dirname, '..'), req.file.path);
-      console.log('Relative path:', relativePath);
-
-      console.log('Updating quotation with profile image path');
-      await updateQuotation(id, { ...quotation, profileImagePath: relativePath });
-      console.log('Quotation updated successfully');
+      // Also delete old file if there was a profileImagePath
+      if (quotation.profileImagePath) {
+        console.log('Deleting old profile image file:', quotation.profileImagePath);
+        try {
+          await fs.unlink(path.join(__dirname, '..', quotation.profileImagePath));
+          console.log('Old profile image file deleted successfully');
+        } catch (error) {
+          console.warn('Failed to delete old profile image file:', error.message);
+        }
+      }
 
       console.log('=== Profile Image Upload Success ===');
       res.json({
         success: true,
-        profileImagePath: relativePath,
+        profileImageUrl: `/api/quotations/${id}/profile-image`,
         message: 'Profile image uploaded successfully'
       });
     } catch (error) {

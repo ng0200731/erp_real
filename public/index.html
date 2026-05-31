@@ -1839,6 +1839,12 @@
                   <div>Customer Name</div>
                   <input type="text" id="quotationFilterCustomer" class="filter-input" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
                 </th>
+                <th style="border:1px solid #000; padding:8px; text-align:center; width:50px;">
+                  <div>Image</div>
+                </th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">
+                  <div>Item Name</div>
+                </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Contact Person</div>
                   <input type="text" id="quotationFilterContact" class="filter-input" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
@@ -1944,6 +1950,12 @@
                   <div>Customer Name</div>
                   <input type="text" id="outsourcingFilterCustomer" class="filter-input" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
                 </th>
+                <th style="border:1px solid #000; padding:8px; text-align:center; width:50px;">
+                  <div>Image</div>
+                </th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">
+                  <div>Item Name</div>
+                </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Contact Person</div>
                   <input type="text" id="outsourcingFilterContact" class="filter-input" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
@@ -2016,7 +2028,7 @@
             </thead>
             <tbody id="outsourcingTableBody">
               <tr>
-                <td colspan="15" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+                <td colspan="17" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
                   Loading...
                 </td>
               </tr>
@@ -10871,7 +10883,7 @@
       if (quotations.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="14" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="16" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No outsourcing quotations saved yet. Create outsourcing quotations first.
             </td>
           </tr>
@@ -10885,7 +10897,7 @@
       if (filteredQuotations.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="14" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="16" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No outsourcing quotations match the current filters.
             </td>
           </tr>
@@ -11016,6 +11028,8 @@
               </td>
               <td style="border:1px solid #000; padding:8px;">${quotation.outsourcingSeq || '-'}</td>
               <td style="border:1px solid #000; padding:8px;">${quotation.customerName}</td>
+              <td style="border:1px solid #000; padding:4px; text-align:center;">${quotation.hasProfileImage ? '<img src="/api/quotations/' + quotation.id + '/profile-image" style="width:40px; height:40px; object-fit:cover; border:1px solid #ddd; cursor:pointer;" onclick="event.stopPropagation(); showImagePreview(this.src)">' : '<span style="color:#ccc;">-</span>'}</td>
+              <td style="border:1px solid #000; padding:8px;">${quotation.customerItemName || '<span style="color:#ccc;">-</span>'}</td>
               <td style="border:1px solid #000; padding:8px;">${quotation.contactPerson || 'N/A'}</td>
               <td style="border:1px solid #000; padding:8px;">${quotation.email || 'N/A'}</td>
               <td style="border:1px solid #000; padding:8px;">${quotation.phone || 'N/A'}</td>
@@ -11051,6 +11065,8 @@
                   </td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.outsourcingSeq || '-'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.customerName}</td>
+                  <td style="border:1px solid #000; padding:4px; text-align:center;" rowspan="${suppliers.length}">${quotation.hasProfileImage ? '<img src="/api/quotations/' + quotation.id + '/profile-image" style="width:40px; height:40px; object-fit:cover; border:1px solid #ddd; cursor:pointer;" onclick="event.stopPropagation(); showImagePreview(this.src)">' : '<span style="color:#ccc;">-</span>'}</td>
+                  <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.customerItemName || '<span style="color:#ccc;">-</span>'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.contactPerson || 'N/A'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.email || 'N/A'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.phone || 'N/A'}</td>
@@ -11992,7 +12008,7 @@
       if (quotations.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="13" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="15" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No quotations saved yet. Create quotations first.
             </td>
           </tr>
@@ -12006,7 +12022,7 @@
       if (filteredQuotations.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="13" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="15" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No quotations match the current filters.
             </td>
           </tr>
@@ -12063,6 +12079,8 @@
             <input type="checkbox" class="quotation-checkbox" data-quotation-id="${quotation.id}" style="cursor:pointer;">
           </td>
           <td style="border:1px solid #000; padding:8px;">${quotation.customerName}</td>
+          <td style="border:1px solid #000; padding:4px; text-align:center;">${quotation.hasProfileImage ? '<img src="/api/quotations/' + quotation.id + '/profile-image" style="width:40px; height:40px; object-fit:cover; border:1px solid #ddd; cursor:pointer;" onclick="event.stopPropagation(); showImagePreview(this.src)">' : '<span style="color:#ccc;">-</span>'}</td>
+          <td style="border:1px solid #000; padding:8px;">${quotation.customerItemName || '<span style="color:#ccc;">-</span>'}</td>
           <td style="border:1px solid #000; padding:8px;">${quotation.contactPerson || 'N/A'}</td>
           <td style="border:1px solid #000; padding:8px;">${quotation.email || 'N/A'}</td>
           <td style="border:1px solid #000; padding:8px;">${quotation.phone || 'N/A'}</td>
@@ -12206,6 +12224,17 @@
       }
     };
 
+    window.showImagePreview = function(src) {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:100000; display:flex; align-items:center; justify-content:center; cursor:pointer;';
+      overlay.onclick = () => overlay.remove();
+      const img = document.createElement('img');
+      img.src = src;
+      img.style.cssText = 'max-width:80%; max-height:80%; object-fit:contain; border:2px solid #fff; box-shadow:0 0 20px rgba(0,0,0,0.5);';
+      overlay.appendChild(img);
+      document.body.appendChild(overlay);
+    };
+
     async function viewQuotationDetails(quotationId) {
       console.log('Viewing quotation with ID:', quotationId);
 
@@ -12251,8 +12280,14 @@
       const modalContent = `
         <div style="max-width: 1200px; max-height: 85vh; overflow-y: auto;">
           <div style="margin-bottom: 15px; padding: 10px; background: #f8f8f8; border: 1px solid #000;">
-            <strong>Quotation Details</strong> - Created: ${new Date(quotation.dateCreated).toLocaleString()}
-            <span style="float: right; font-size: 0.9em; color: #666;">Status: ${quotation.status || 'Draft'}</span>
+            <div style="display:flex; align-items:center; gap:12px;">
+              ${quotation.hasProfileImage ? '<img src="/api/quotations/' + quotation.id + '/profile-image" style="width:60px; height:60px; object-fit:cover; border:1px solid #ddd; flex-shrink:0; cursor:pointer;" onclick="showImagePreview(this.src)">' : ''}
+              <div style="flex:1;">
+                <strong>Quotation Details</strong> - Created: ${new Date(quotation.dateCreated).toLocaleString()}
+                ${quotation.customerItemName ? '<div style="margin-top:4px; font-size:13px; color:#555;"><strong>Item:</strong> ' + quotation.customerItemName + '</div>' : ''}
+              </div>
+              <span style="font-size: 0.9em; color: #666;">Status: ${quotation.status || 'Draft'}</span>
+            </div>
           </div>
           <div id="quotationViewFormContainer">
             ${formHtml}
@@ -12446,6 +12481,7 @@
         const unitPrice = document.getElementById('quotationUnitPrice')?.value;
         const notes = document.getElementById('quotationNotes')?.value.trim();
         const brandId = document.getElementById('quotationBrandId')?.value || null;
+        const customerItemName = document.getElementById('quotationCustomerItemName')?.value?.trim() || null;
 
         // Validation
         if (!customerName) {
@@ -12475,7 +12511,8 @@
           unitPrice: parseFloat(unitPrice) || 0,
           total: total,
           notes,
-          brandId
+          brandId,
+          customerItemName
         };
 
         console.log('Updated quotation:', updatedQuotation);
@@ -12576,14 +12613,22 @@
 
     function populateExistingFilesForEditing(quotation) {
       // Populate profile image if exists
-      if (quotation.profileImagePath) {
-        const profileImagePreview = document.getElementById('profileImagePreview');
-        const profileImagePlaceholder = document.getElementById('profileImagePlaceholder');
-        const removeProfileImageBtn = document.getElementById('removeProfileImageBtn');
-        const profileImageDropZone = document.getElementById('profileImageDropZone');
+      const profileImagePreview = document.getElementById('profileImagePreview');
+      const profileImagePlaceholder = document.getElementById('profileImagePlaceholder');
+      const removeProfileImageBtn = document.getElementById('removeProfileImageBtn');
+      const profileImageDropZone = document.getElementById('profileImageDropZone');
 
-        if (profileImagePreview && profileImagePlaceholder && removeProfileImageBtn && profileImageDropZone) {
-          profileImagePreview.style.backgroundImage = `url(/${quotation.profileImagePath})`;
+      if (profileImagePreview && profileImagePlaceholder && removeProfileImageBtn && profileImageDropZone) {
+        // Try DB-served image first, fallback to file path
+        let imageUrl = null;
+        if (quotation.hasProfileImage) {
+          imageUrl = `/api/quotations/${quotation.id}/profile-image`;
+        } else if (quotation.profileImagePath) {
+          imageUrl = `/${quotation.profileImagePath}`;
+        }
+
+        if (imageUrl) {
+          profileImagePreview.style.backgroundImage = `url(${imageUrl})`;
           profileImagePreview.style.display = 'block';
           profileImagePlaceholder.style.display = 'none';
           removeProfileImageBtn.style.display = 'inline-block';
@@ -13439,16 +13484,25 @@
           const response = await fetch(`/api/quotations/${quotationId}`);
           const result = await response.json();
 
-          if (result.success && result.quotation && result.quotation.profileImagePath) {
-            // Display existing profile image
-            profileImagePreview.style.backgroundImage = `url(/${result.quotation.profileImagePath})`;
-            profileImagePreview.style.display = 'block';
-            profileImagePlaceholder.style.display = 'none';
-            removeProfileImageBtn.style.display = 'inline-block';
+          if (result.success && result.quotation) {
+            // Check for DB-stored image first, then file path
+            let imageUrl = null;
+            if (result.quotation.hasProfileImage) {
+              imageUrl = `/api/quotations/${quotationId}/profile-image`;
+            } else if (result.quotation.profileImagePath) {
+              imageUrl = `/${result.quotation.profileImagePath}`;
+            }
 
-            // Update drop zone styling
-            profileImageDropZone.style.borderColor = '#000';
-            profileImageDropZone.style.backgroundColor = '#f9f9f9';
+            if (imageUrl) {
+              profileImagePreview.style.backgroundImage = `url(${imageUrl})`;
+              profileImagePreview.style.display = 'block';
+              profileImagePlaceholder.style.display = 'none';
+              removeProfileImageBtn.style.display = 'inline-block';
+
+              // Update drop zone styling
+              profileImageDropZone.style.borderColor = '#000';
+              profileImageDropZone.style.backgroundColor = '#f9f9f9';
+            }
           }
         } catch (error) {
           console.warn('Failed to load existing profile image:', error);
@@ -13472,7 +13526,7 @@
           throw new Error(result.error || 'Upload failed');
         }
 
-        console.log('Profile image uploaded:', result.profileImagePath);
+        console.log('Profile image uploaded:', result.profileImageUrl);
       } catch (error) {
         console.error('Error uploading profile image:', error);
         showModal({
@@ -13657,6 +13711,10 @@
 
             '<div style="margin-bottom:20px;">' +
               '<h4>Product Specifications</h4>' +
+              '<div style="margin-bottom:15px;">' +
+                '<label style="display:block; margin-bottom:5px; font-weight:600;">Customer Item Name</label>' +
+                '<input type="text" id="quotationCustomerItemName" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., SKU-12345 or Item Name" value="' + (quotation.customerItemName || '') + '">' +
+              '</div>' +
               getProductSpecificFieldsForView(tagType, quotation.productDetails || {}) +
             '</div>' +
 
@@ -13691,8 +13749,14 @@
           '<div style="flex:0 0 30%; border:1px solid #000; padding:10px; background:#fafafa; margin:20px;">' +
             '<h5 style="margin:0 0 10px 0; font-size:14px;">Profile Image</h5>' +
             '<div id="profileImageDropZone" style="width:100%; height:120px; border:2px dashed #ccc; border-radius:0; display:flex; align-items:center; justify-content:center; background:#fff; position:relative; overflow:hidden;">' +
-              (quotation.profileImagePath ?
-                '<img src="/' + quotation.profileImagePath + '" style="width:100%; height:100%; object-fit:cover;" alt="Profile Image" onerror="console.error(\'Failed to load image: /' + quotation.profileImagePath + '\'); this.style.display=\'none\'; this.nextElementSibling.style.display=\'block\';">' +
+              (quotation.hasProfileImage ?
+                '<img src="/api/quotations/' + quotation.id + '/profile-image" style="width:100%; height:100%; object-fit:contain;" alt="Profile Image">' +
+                '<div style="display:none; text-align:center; color:#666; width:100%;">' +
+                  '<div style="font-size:24px; margin-bottom:5px;">🖼️❌</div>' +
+                  '<div style="font-size:12px;">Image failed to load</div>' +
+                '</div>'
+              : quotation.profileImagePath ?
+                '<img src="/' + quotation.profileImagePath + '" style="width:100%; height:100%; object-fit:contain;" alt="Profile Image" onerror="console.error(\'Failed to load image: /' + quotation.profileImagePath + '\'); this.style.display=\'none\'; this.nextElementSibling.style.display=\'block\';">' +
                 '<div style="display:none; text-align:center; color:#666; width:100%;">' +
                   '<div style="font-size:24px; margin-bottom:5px;">🖼️❌</div>' +
                   '<div style="font-size:12px;">Image failed to load</div>' +
@@ -13802,6 +13866,10 @@
                 '<label style="display:block; margin-bottom:5px; font-weight:600;">Product Type *</label>' +
                 getProductTypeSelectHtml(tagType) +
               '</div>' +
+              '<div style="margin-bottom:15px;">' +
+                '<label style="display:block; margin-bottom:5px; font-weight:600;">Customer Item Name</label>' +
+                '<input type="text" id="quotationCustomerItemName" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., SKU-12345 or Item Name">' +
+              '</div>' +
               getProductSpecificFields(tagType) +
             '</div>' +
 
@@ -13858,7 +13926,7 @@
           '<div style="flex:0 0 30%; border:1px solid #000; padding:10px; background:#fafafa; margin:20px;">' +
             '<h5 style="margin:0 0 10px 0; font-size:14px;">Profile Image</h5>' +
             '<div id="profileImageDropZone" style="width:100%; height:120px; border:2px dashed #ccc; border-radius:0; display:flex; align-items:center; justify-content:center; background:#fff; cursor:pointer; position:relative; overflow:hidden;">' +
-              '<div id="profileImagePreview" style="width:100%; height:100%; display:none; background-size:cover; background-repeat:no-repeat; background-position:center; position:absolute; top:0; left:0; z-index:1;"></div>' +
+              '<div id="profileImagePreview" style="width:100%; height:100%; display:none; background-size:contain; background-repeat:no-repeat; background-position:center; position:absolute; top:0; left:0; z-index:1;"></div>' +
               '<div id="profileImagePlaceholder" style="text-align:center; color:#666; position:relative; z-index:2;">' +
                 '<div style="font-size:24px; margin-bottom:5px;">📷</div>' +
                 '<div style="font-size:12px;">Drop image here or click to browse</div>' +
@@ -14613,6 +14681,13 @@
       if (form) {
         fillDummyForm(form);
 
+        // Fill customer item name with a random sample
+        const customerItemNameField = document.getElementById('quotationCustomerItemName');
+        if (customerItemNameField) {
+          const sampleNames = ['ITEM-' + String(Math.floor(Math.random() * 999) + 1).padStart(3, '0'), 'SAMPLE-' + String.fromCharCode(65 + Math.floor(Math.random() * 26)), 'PROD-2024-' + String(Math.floor(Math.random() * 999) + 1).padStart(3, '0'), 'REF-' + Math.random().toString(36).substring(2, 8).toUpperCase()];
+          customerItemNameField.value = sampleNames[Math.floor(Math.random() * sampleNames.length)];
+        }
+
         // Check if supplier selection section is visible (for Outsource product type)
         const supplierSection = document.getElementById('supplierSelectionSection');
         if (supplierSection && supplierSection.style.display !== 'none') {
@@ -14727,6 +14802,7 @@
         const total = document.getElementById('quotationTotal').value;
         const notes = document.getElementById('quotationNotes').value.trim();
         const brandId = document.getElementById('quotationBrandId')?.value || null;
+        const customerItemName = document.getElementById('quotationCustomerItemName')?.value?.trim() || null;
 
         console.log('Saving quotation with data:', {
           customerName, contactPerson, email, phone, quantity, unitPrice, total, notes, tagType, source
@@ -14759,6 +14835,7 @@
           total: parseFloat(total) || 0,
           notes,
           brandId,
+          customerItemName,
           type: source,
           sourceEmailUid: (source === 'email' && window.currentQuotationEmailMeta) ? window.currentQuotationEmailMeta.uid : null,
           sourceEmailSubject: (source === 'email' && window.currentQuotationEmailMeta) ? window.currentQuotationEmailMeta.subject : null,
@@ -14778,14 +14855,14 @@
         const quotationId = savedQuotation.id;
 
         // Now upload files with the actual quotation ID
-        let profileImagePath = null;
+        let profileImageUploaded = false;
         let attachmentPaths = [];
 
         console.log('Uploading files for quotation ID:', quotationId);
         console.log('Temp profile image file:', window.tempProfileImageFile ? 'EXISTS' : 'NOT SET');
         console.log('Temp attachment files:', window.tempAttachmentFiles ? window.tempAttachmentFiles.length : 'NOT SET');
 
-        // Handle profile image
+        // Handle profile image - stored directly in DB as BLOB
         if (window.tempProfileImageFile) {
           console.log('Uploading profile image file:', window.tempProfileImageFile.name, 'Size:', window.tempProfileImageFile.size);
 
@@ -14811,9 +14888,9 @@
             const profileResult = await profileResponse.json();
             console.log('Profile upload result:', profileResult);
 
-            if (profileResult.success && profileResult.profileImagePath) {
-              profileImagePath = profileResult.profileImagePath;
-              console.log('Profile image uploaded successfully:', profileImagePath);
+            if (profileResult.success) {
+              profileImageUploaded = true;
+              console.log('Profile image uploaded successfully to DB');
             } else {
               console.error('Profile upload failed:', profileResult.error || 'No path returned');
             }
@@ -14846,21 +14923,19 @@
           }
         }
 
-        // Update quotation with file paths if any files were uploaded
-        console.log('Profile image path to save:', profileImagePath);
+        // Update quotation with attachment paths if any files were uploaded
+        // Note: profile image is already stored in DB as BLOB by the upload endpoint
+        console.log('Profile image uploaded to DB:', profileImageUploaded);
         console.log('Attachment paths to save:', attachmentPaths);
 
         let finalQuotation = savedQuotation;
-        if (profileImagePath || attachmentPaths.length > 0) {
+        if (attachmentPaths.length > 0) {
           const updateData = {
             ...savedQuotation,
-            profileImagePath,
             attachmentPaths
           };
           console.log('Updating quotation with file data:', updateData);
           finalQuotation = await saveQuotationToStorage(updateData);
-          console.log('Final quotation after update:', finalQuotation);
-          console.log('Final profileImagePath:', finalQuotation.profileImagePath);
           console.log('Final attachmentPaths:', finalQuotation.attachmentPaths);
         }
 

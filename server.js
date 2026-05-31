@@ -18,6 +18,8 @@ import {
   getAllQuotations, getQuotationById, createQuotation, updateQuotation, deleteQuotation,
   // Quotation-Supplier linking functions
   linkSupplierToQuotation, unlinkSupplierFromQuotation, getSuppliersForQuotation, getQuotationsForSupplier,
+  // Profile image BLOB functions
+  updateQuotationProfileImage, getQuotationProfileImage,
   // Skills functions
   getAllSkills, getSkillsStats, getSkillByName, getSkillById, createSkill, updateSkill, deleteSkill,
   // Brand functions
@@ -421,7 +423,9 @@ const quotationRoutes = createQuotationRoutes({
   getSupplierById,
   linkSupplierToQuotation,
   unlinkSupplierFromQuotation,
-  getSuppliersForQuotation
+  getSuppliersForQuotation,
+  updateQuotationProfileImage,
+  getQuotationProfileImage
 });
 app.use('/api/quotations', quotationRoutes);
 
