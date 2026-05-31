@@ -1096,6 +1096,8 @@
   </style>
   <!-- Chart.js library for better chart layout and responsiveness -->
   <script src="/chart.umd.js"></script>
+  <!-- ExcelJS for Excel export with embedded images -->
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 </head>
 <body>
   <div id="layout">
@@ -1825,6 +1827,14 @@
           <button id="batchDeleteQuotationsBtn" class="page-btn" style="background:#dc3545; color:#fff;">Delete Selected</button>
           <button id="batchUpdateStatusBtn" class="page-btn">Update Status</button>
           <button id="generateQuotationDummyBtn" class="page-btn" style="background:#17a2b8; color:#fff;">Generate 10 Dummy</button>
+          <div style="position:relative; display:inline-block;">
+            <button id="exportQuotationBtn" class="page-btn" style="background:#28a745; color:#fff;">Export ▼</button>
+            <div id="exportQuotationDropdown" style="display:none; position:absolute; top:100%; left:0; background:#fff; border:1px solid #000; z-index:100; min-width:120px;">
+              <div style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #eee;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='#fff'" onclick="exportQuotationData('xlsx')">Excel (.xlsx)</div>
+              <div style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #eee;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='#fff'" onclick="exportQuotationData('csv')">CSV (.csv)</div>
+              <div style="padding:8px 12px; cursor:pointer;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='#fff'" onclick="exportQuotationData('pdf')">PDF (.pdf)</div>
+            </div>
+          </div>
         </div>
 
         <!-- Quotation Table -->
@@ -1911,11 +1921,14 @@
                 <th style="border:1px solid #000; padding:8px; text-align:center;">
                   <div>Delete</div>
                 </th>
+                <th style="border:1px solid #000; padding:8px; text-align:center;">
+                  <div>History</div>
+                </th>
               </tr>
             </thead>
             <tbody id="quotationsTableBody">
               <tr>
-                <td colspan="13" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+                <td colspan="17" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
                   No quotations saved yet. Create quotations first.
                 </td>
               </tr>
@@ -1932,6 +1945,14 @@
           <button id="deselectAllOutsourcingBtn" class="page-btn">Deselect All</button>
           <button id="batchDeleteOutsourcingBtn" class="page-btn" style="background:#dc3545; color:#fff;">Delete Selected</button>
           <button id="generateOutsourcingDummyBtn" class="page-btn" style="background:#17a2b8; color:#fff;">Generate 10 Dummy</button>
+          <div style="position:relative; display:inline-block;">
+            <button id="exportOutsourcingBtn" class="page-btn" style="background:#28a745; color:#fff;">Export ▼</button>
+            <div id="exportOutsourcingDropdown" style="display:none; position:absolute; top:100%; left:0; background:#fff; border:1px solid #000; z-index:100; min-width:120px;">
+              <div style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #eee;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='#fff'" onclick="exportOutsourcingData('xlsx')">Excel (.xlsx)</div>
+              <div style="padding:8px 12px; cursor:pointer; border-bottom:1px solid #eee;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='#fff'" onclick="exportOutsourcingData('csv')">CSV (.csv)</div>
+              <div style="padding:8px 12px; cursor:pointer;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='#fff'" onclick="exportOutsourcingData('pdf')">PDF (.pdf)</div>
+            </div>
+          </div>
         </div>
 
         <!-- Outsourcing Table -->
@@ -2024,16 +2045,30 @@
                 <th style="border:1px solid #000; padding:8px; text-align:center;">
                   <div>Delete</div>
                 </th>
+                <th style="border:1px solid #000; padding:8px; text-align:center;">
+                  <div>History</div>
+                </th>
               </tr>
             </thead>
             <tbody id="outsourcingTableBody">
               <tr>
-                <td colspan="17" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+                <td colspan="18" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
                   Loading...
                 </td>
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Status History Popup Modal -->
+      <div id="statusHistoryModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#fff; border:2px solid #000; padding:0; min-width:400px; max-width:550px; max-height:80vh; display:flex; flex-direction:column;">
+          <div style="padding:15px 20px; border-bottom:2px solid #000; display:flex; justify-content:space-between; align-items:center; background:#f8f8f8;">
+            <h3 style="margin:0; font-weight:700; font-size:16px;">Status History</h3>
+            <button onclick="document.getElementById('statusHistoryModal').style.display='none'" style="background:none; border:none; font-size:20px; cursor:pointer; font-weight:700;">✕</button>
+          </div>
+          <div id="statusHistoryContent" style="padding:20px; overflow-y:auto; flex:1;"></div>
         </div>
       </div>
 
@@ -3320,6 +3355,7 @@
 
     let currentDashboardView = 'pie'; // 'pie' or 'bar'
     let dashboardData = null;
+    let dashboardQuotations = null; // Store quotations for drill-down
     let dashboardExpanded = false; // Track expansion state
 
     // Resize handler to redraw charts when window resizes
@@ -3472,6 +3508,7 @@
     async function loadDashboardQuotations() {
       try {
         const quotations = await loadQuotationsFromStorage();
+        dashboardQuotations = quotations; // Store for drill-down access
 
         // Group quotations by status and count
         const statusCounts = {
@@ -3879,7 +3916,9 @@
       if (!legendContainer) return;
 
       const legendItems = dashboardData.statuses.map((status, index) => `
-        <div style="display:flex; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:1px solid #f0f0f0;">
+        <div style="display:flex; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; transition:background 0.15s;"
+             onclick="openStatusDrilldown('${status.key}', '${status.name}', 'quotation')"
+             onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
           <div style="width:50px; height:50px; background:${status.color}; border:1px solid #000; flex-shrink:0; margin-top:1px;"></div>
           <div style="flex:1;">
             <div style="font-size:19px; letter-spacing:0.1em; text-transform:uppercase; font-weight:600; margin-bottom:2px;">${status.name}</div>
@@ -4130,6 +4169,9 @@
           ],
           total: total
         };
+
+        // Store quotations for drill-down access
+        outsourcingDashboardData._quotations = quotations;
 
         // Calculate percentages
         outsourcingDashboardData.statuses.forEach(status => {
@@ -4465,7 +4507,9 @@
       const bwColors = ['#000000', '#1a1a1a', '#333333', '#4d4d4d', '#666666', '#808080', '#999999', '#b3b3b3'];
 
       const legendItems = outsourcingDashboardData.statuses.map((status, index) => `
-        <div style="display:flex; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:1px solid #f0f0f0;">
+        <div style="display:flex; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; transition:background 0.15s;"
+             onclick="openStatusDrilldown('${status.key}', '${status.name}', 'outsourcing')"
+             onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
           <div style="width:50px; height:50px; background:${bwColors[index]}; border:1px solid #000; flex-shrink:0; margin-top:1px;"></div>
           <div style="flex:1;">
             <div style="font-size:14px; letter-spacing:0.1em; text-transform:uppercase; font-weight:600; margin-bottom:2px;">${status.name}</div>
@@ -5152,7 +5196,9 @@
       if (!legendContainer || !brandDashboardStatusData) return;
 
       const legendItems = brandDashboardStatusData.statuses.map((status, index) => `
-        <div style="display:flex; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:1px solid #f0f0f0;">
+        <div style="display:flex; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; transition:background 0.15s;"
+             onclick="openStatusDrilldown('${status.key}', '${status.name}', 'brand')"
+             onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
           <div style="width:50px; height:50px; background:${status.color}; border:1px solid #000; flex-shrink:0; margin-top:1px;"></div>
           <div style="flex:1;">
             <div style="font-size:19px; letter-spacing:0.1em; text-transform:uppercase; font-weight:600; margin-bottom:2px;">${status.name}</div>
@@ -5212,7 +5258,9 @@
       if (!legendContainer || !brandValueDashboardStatusData) return;
 
       const legendItems = brandValueDashboardStatusData.statuses.map((status, index) => `
-        <div style="display:flex; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:1px solid #f0f0f0;">
+        <div style="display:flex; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; transition:background 0.15s;"
+             onclick="openStatusDrilldown('${status.key}', '${status.name}', 'brandValue')"
+             onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='transparent'">
           <div style="width:50px; height:50px; background:${status.color}; border:1px solid #000; flex-shrink:0; margin-top:1px;"></div>
           <div style="flex:1;">
             <div style="font-size:19px; letter-spacing:0.1em; text-transform:uppercase; font-weight:600; margin-bottom:2px;">${status.name}</div>
@@ -10883,7 +10931,7 @@
       if (quotations.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="16" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="20" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No outsourcing quotations saved yet. Create outsourcing quotations first.
             </td>
           </tr>
@@ -10897,7 +10945,7 @@
       if (filteredQuotations.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="16" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="20" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No outsourcing quotations match the current filters.
             </td>
           </tr>
@@ -11048,6 +11096,9 @@
               <td style="border:1px solid #000; padding:8px; text-align:center;">
                 <button class="page-btn" style="padding:4px 8px; font-size:12px; background:#dc3545; color:#fff;" onclick="event.stopPropagation(); deleteQuotation(${quotation.id})">Delete</button>
               </td>
+              <td style="border:1px solid #000; padding:8px; text-align:center;">
+                <button class="page-btn" style="padding:4px 8px; font-size:11px; background:#6c757d; color:#fff;" onclick="event.stopPropagation(); showStatusHistory(${quotation.id})">📋 History</button>
+              </td>
             </tr>
           `);
         } else {
@@ -11088,6 +11139,9 @@
                   </td>
                   <td style="border:1px solid #000; padding:8px; text-align:center;" rowspan="${suppliers.length}">
                     <button class="page-btn" style="padding:4px 8px; font-size:12px; background:#dc3545; color:#fff;" onclick="event.stopPropagation(); deleteQuotation(${quotation.id})">Delete</button>
+                  </td>
+                  <td style="border:1px solid #000; padding:8px; text-align:center;" rowspan="${suppliers.length}">
+                    <button class="page-btn" style="padding:4px 8px; font-size:11px; background:#6c757d; color:#fff;" onclick="event.stopPropagation(); showStatusHistory(${quotation.id})">📋 History</button>
                   </td>
                 </tr>
               `);
@@ -12008,7 +12062,7 @@
       if (quotations.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="15" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="17" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No quotations saved yet. Create quotations first.
             </td>
           </tr>
@@ -12022,7 +12076,7 @@
       if (filteredQuotations.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="15" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="17" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No quotations match the current filters.
             </td>
           </tr>
@@ -12094,6 +12148,9 @@
           <td style="border:1px solid #000; padding:8px; text-align:center;">${getActionButton(quotation)}</td>
           <td style="border:1px solid #000; padding:8px; text-align:center;">
             <button class="page-btn" style="padding:4px 8px; font-size:12px; background:#dc3545; color:#fff;" onclick="event.stopPropagation(); deleteQuotation(${quotation.id})">Delete</button>
+          </td>
+          <td style="border:1px solid #000; padding:8px; text-align:center;">
+            <button class="page-btn" style="padding:4px 8px; font-size:11px; background:#6c757d; color:#fff;" onclick="event.stopPropagation(); showStatusHistory(${quotation.id})">📋 History</button>
           </td>
         </tr>
       `).join('');
@@ -15231,8 +15288,28 @@
         }
       }
 
+      // Fetch profile image as base64 for embedding in email
+      let profileImageBase64 = null;
+      if (quotation.hasProfileImage || quotation.id) {
+        try {
+          const imgResponse = await fetch(`/api/quotations/${quotation.id}/profile-image`);
+          if (imgResponse.ok) {
+            const contentType = imgResponse.headers.get('content-type') || 'image/png';
+            const blob = await imgResponse.blob();
+            profileImageBase64 = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.readAsDataURL(blob);
+            });
+            console.log('Profile image fetched for email embedding');
+          }
+        } catch (e) {
+          console.warn('Failed to fetch profile image for email:', e);
+        }
+      }
+
       // Generate HTML email content
-      const emailHtml = generateQuotationEmailHtml(quotation, emailMeta, originalEmailHtml);
+      const emailHtml = generateQuotationEmailHtml(quotation, emailMeta, originalEmailHtml, profileImageBase64);
 
       // Prepare email subject using original subject from envelope
       const emailSubject = `Re: ${originalSubject} - Quotation`;
@@ -15273,7 +15350,7 @@
     }
 
     // Generate HTML email content for quotation
-    function generateQuotationEmailHtml(quotation, emailMeta, originalEmailHtml) {
+    function generateQuotationEmailHtml(quotation, emailMeta, originalEmailHtml, profileImageBase64 = null) {
       const productTypeNames = {
         'hang-tag': 'Hang Tag',
         'woven-label': 'Woven Label',
@@ -15330,6 +15407,17 @@
 
     <div class="quotation-section">
       <h3>Product Details</h3>
+      ${profileImageBase64 ? `
+      <div style="margin-bottom:15px; text-align:center;">
+        <img src="${profileImageBase64}" style="max-width:200px; max-height:200px; object-fit:contain; border:1px solid #ddd; padding:5px;" alt="Product Image">
+      </div>
+      ` : ''}
+      ${quotation.customerItemName ? `
+      <div class="quotation-row">
+        <div class="quotation-label">Item Name:</div>
+        <div class="quotation-value">${quotation.customerItemName}</div>
+      </div>
+      ` : ''}
       <div class="quotation-row">
         <div class="quotation-label">Product Type:</div>
         <div class="quotation-value">${productTypeName}</div>
@@ -16378,6 +16466,795 @@
 
     loadBrandsCache();
     load();
+
+    // ========== STATUS HISTORY FUNCTIONS ==========
+
+    window.showStatusHistory = async function(quotationId) {
+      const modal = document.getElementById('statusHistoryModal');
+      const content = document.getElementById('statusHistoryContent');
+      content.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">Loading...</div>';
+      modal.style.display = 'flex';
+
+      try {
+        const response = await fetch(`/api/quotations/${quotationId}/status-history`);
+        const data = await response.json();
+
+        if (!data.success) {
+          content.innerHTML = '<div style="text-align:center; padding:20px; color:#dc3545;">Failed to load history.</div>';
+          return;
+        }
+
+        const history = data.history || [];
+
+        if (history.length === 0) {
+          content.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">No status changes recorded yet.</div>';
+          return;
+        }
+
+        let html = '<div style="position:relative; padding-left:24px;">';
+        html += '<div style="position:absolute; left:10px; top:8px; bottom:8px; width:2px; background:#ddd;"></div>';
+
+        history.forEach((entry, idx) => {
+          const date = new Date(entry.changedAt);
+          const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+          const fromLabel = entry.fromStatus || '(new)';
+          const toLabel = entry.toStatus;
+
+          const statusColors = {
+            'draft': '#6c757d', 'pending': '#17a2b8', 'send to customer': '#007bff',
+            'price confirmed': '#28a745', 'sampling': '#6f42c1', 'sample delivered': '#20c997',
+            'send to outsourcing supplier': '#007bff', 'await quotation': '#ffc107',
+            'compare quotation': '#fd7e14', 'await customer confirm price': '#6f42c1'
+          };
+          const dotColor = statusColors[toLabel] || '#333';
+
+          html += `
+            <div style="position:relative; margin-bottom:${idx < history.length - 1 ? '16px' : '0'}; padding-left:16px;">
+              <div style="position:absolute; left:-18px; top:4px; width:10px; height:10px; border-radius:50%; background:${dotColor}; border:2px solid #fff; box-shadow:0 0 0 2px ${dotColor};"></div>
+              <div style="font-size:13px; font-weight:600; margin-bottom:2px;">
+                <span style="color:${statusColors[fromLabel] || '#666'};">${fromLabel}</span>
+                <span style="margin:0 6px; color:#999;">→</span>
+                <span style="color:${dotColor};">${toLabel}</span>
+              </div>
+              <div style="font-size:11px; color:#999;">${formattedDate}</div>
+            </div>`;
+        });
+
+        html += '</div>';
+        content.innerHTML = html;
+      } catch (err) {
+        console.error('Error loading status history:', err);
+        content.innerHTML = '<div style="text-align:center; padding:20px; color:#dc3545;">Error loading history.</div>';
+      }
+    };
+
+    // Close modal on background click
+    document.getElementById('statusHistoryModal').addEventListener('click', function(e) {
+      if (e.target === this) this.style.display = 'none';
+    });
+
+    // ========== EXPORT DROPDOWN TOGGLE ==========
+
+    function setupExportDropdown(btnId, dropdownId) {
+      const btn = document.getElementById(btnId);
+      const dropdown = document.getElementById(dropdownId);
+      if (!btn || !dropdown) return;
+
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        // Close other dropdowns first
+        document.querySelectorAll('#exportQuotationDropdown, #exportOutsourcingDropdown').forEach(d => {
+          if (d.id !== dropdownId) d.style.display = 'none';
+        });
+        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+      });
+    }
+
+    setupExportDropdown('exportQuotationBtn', 'exportQuotationDropdown');
+    setupExportDropdown('exportOutsourcingBtn', 'exportOutsourcingDropdown');
+
+    // Close dropdowns on outside click
+    document.addEventListener('click', function() {
+      document.getElementById('exportQuotationDropdown').style.display = 'none';
+      document.getElementById('exportOutsourcingDropdown').style.display = 'none';
+    });
+
+    // ========== EXPORT LIBRARY LOADER ==========
+
+    let _xlsxLib = null;
+    let _excelJsLib = null;
+    let _jsPdfLib = null;
+    let _jsPdfAutoTableLib = null;
+
+    async function loadXlsxLib() {
+      if (_xlsxLib) return _xlsxLib;
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+        script.onload = () => { _xlsxLib = window.XLSX; resolve(_xlsxLib); };
+        script.onerror = () => reject(new Error('Failed to load SheetJS library'));
+        document.head.appendChild(script);
+      });
+    }
+
+    async function loadExcelJsLib() {
+      if (_excelJsLib) return _excelJsLib;
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+        script.onload = () => { _excelJsLib = window.ExcelJS; resolve(_excelJsLib); };
+        script.onerror = () => reject(new Error('Failed to load ExcelJS library'));
+        document.head.appendChild(script);
+      });
+    }
+
+    async function loadJsPdfLib() {
+      if (_jsPdfLib && _jsPdfAutoTableLib) return { jsPDF: _jsPdfLib, autoTable: _jsPdfAutoTableLib };
+      return new Promise((resolve, reject) => {
+        const script1 = document.createElement('script');
+        script1.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        script1.onload = () => {
+          _jsPdfLib = window.jspdf.jsPDF;
+          const script2 = document.createElement('script');
+          script2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js';
+          script2.onload = () => { _jsPdfAutoTableLib = true; resolve({ jsPDF: _jsPdfLib, autoTable: true }); };
+          script2.onerror = () => reject(new Error('Failed to load jsPDF autoTable library'));
+          document.head.appendChild(script2);
+        };
+        script1.onerror = () => reject(new Error('Failed to load jsPDF library'));
+        document.head.appendChild(script1);
+      });
+    }
+
+    // ========== EXPORT HELPER ==========
+
+    const EXPORT_COLUMNS = [
+      'OS Ref', 'Customer Name', 'Item Name', 'Contact Person', 'Email', 'Phone',
+      'Brand', 'Product Type', 'Quantity', 'Total (HKD)', 'Type', 'Status',
+      'Date Created', 'Sample Ready Date'
+    ];
+
+    function getBrandName(brandId) {
+      if (!brandId) return '';
+      const brand = cachedBrands.find(b => b.id === brandId);
+      return brand ? brand.name : '';
+    }
+
+    function buildExportRows(quotations) {
+      return quotations.map(q => ({
+        'OS Ref': q.outsourcingSeq || '',
+        'Customer Name': q.customerName || '',
+        'Item Name': q.customerItemName || '',
+        'Contact Person': q.contactPerson || '',
+        'Email': q.email || '',
+        'Phone': q.phone || '',
+        'Brand': getBrandName(q.brandId),
+        'Product Type': getProductTypeDisplayName(q.productType),
+        'Quantity': q.quantity,
+        'Total (HKD)': q.total,
+        'Type': q.type || 'non email',
+        'Status': q.status || 'draft',
+        'Date Created': new Date(q.dateCreated).toLocaleString(),
+        'Sample Ready Date': q.sampleReadyDate || ''
+      }));
+    }
+
+    function getStatusBreakdown(quotations) {
+      const counts = {};
+      quotations.forEach(q => {
+        const s = q.status || 'draft';
+        counts[s] = (counts[s] || 0) + 1;
+      });
+      return counts;
+    }
+
+    // Generate pie chart as base64 PNG using canvas
+    function generatePieChartBase64(statusCounts, title) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 520;
+      canvas.height = 340;
+      const ctx = canvas.getContext('2d');
+
+      const entries = Object.entries(statusCounts).sort((a, b) => b[1] - a[1]);
+      const total = entries.reduce((s, e) => s + e[1], 0);
+      if (total === 0) return null;
+
+      const colors = [
+        '#17a2b8', '#007bff', '#28a745', '#ffc107', '#fd7e14',
+        '#6f42c1', '#20c997', '#dc3545', '#6c757d', '#343a40',
+        '#e83e8c', '#7fbdff', '#a29bfe', '#ffeaa7', '#55efc4'
+      ];
+
+      // Background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Title
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 16px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(title + ' - Status Breakdown', canvas.width / 2, 24);
+
+      // Pie chart
+      const cx = 180, cy = 185, r = 120;
+      let startAngle = -Math.PI / 2;
+
+      entries.forEach(([status, count], i) => {
+        const slice = (count / total) * 2 * Math.PI;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, startAngle, startAngle + slice);
+        ctx.closePath();
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        startAngle += slice;
+      });
+
+      // Legend
+      const legendX = 340;
+      let legendY = 60;
+      ctx.textAlign = 'left';
+      ctx.font = '12px Arial';
+
+      entries.forEach(([status, count], i) => {
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fillRect(legendX, legendY, 14, 14);
+        ctx.fillStyle = '#333333';
+        ctx.fillText(`${status} (${count})`, legendX + 20, legendY + 11);
+        legendY += 22;
+      });
+
+      // Total label
+      ctx.fillStyle = '#666';
+      ctx.font = '11px Arial';
+      ctx.fillText(`Total: ${total}`, legendX, legendY + 10);
+
+      return canvas.toDataURL('image/png').split(',')[1];
+    }
+
+    async function fetchProfileImageBase64(quotationId) {
+      try {
+        const res = await fetch(`/api/quotations/${quotationId}/profile-image`);
+        if (!res.ok) return null;
+        const blob = await res.blob();
+        return new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+        });
+      } catch { return null; }
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // XLSX export with embedded images + pie chart using ExcelJS
+    async function exportToXlsx(quotations, filename, sheetTitle) {
+      const ExcelJS = await loadExcelJsLib();
+      const workbook = new ExcelJS.Workbook();
+
+      // --- Sheet 1: Data ---
+      const ws = workbook.addWorksheet('Data');
+
+      // Header row
+      const headerRow = ['Image', ...EXPORT_COLUMNS];
+      ws.addRow(headerRow);
+
+      // Style header
+      const hdr = ws.getRow(1);
+      hdr.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      hdr.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
+      hdr.alignment = { vertical: 'middle', horizontal: 'center' };
+      hdr.height = 22;
+
+      // Column widths
+      ws.getColumn(1).width = 14; // Image column
+      EXPORT_COLUMNS.forEach((col, i) => {
+        const len = Math.max(col.length + 2, 12);
+        ws.getColumn(i + 2).width = Math.min(len, 25);
+      });
+
+      const IMAGE_COL = 1;
+
+      for (let i = 0; i < quotations.length; i++) {
+        const q = quotations[i];
+        const rowIdx = i + 2;
+        const row = ws.addRow([
+          '',
+          q.outsourcingSeq || '',
+          q.customerName || '',
+          q.customerItemName || '',
+          q.contactPerson || '',
+          q.email || '',
+          q.phone || '',
+          getBrandName(q.brandId),
+          getProductTypeDisplayName(q.productType),
+          q.quantity,
+          q.total,
+          q.type || 'non email',
+          q.status || 'draft',
+          new Date(q.dateCreated).toLocaleString(),
+          q.sampleReadyDate || ''
+        ]);
+        row.height = 52;
+
+        if (q.hasProfileImage) {
+          const base64Data = await fetchProfileImageBase64(q.id);
+          if (base64Data) {
+            const mimeType = base64Data.match(/data:(image\/\w+);/)?.[1] || 'image/jpeg';
+            const ext = mimeType.split('/')[1] || 'jpeg';
+            const base64 = base64Data.split(',')[1];
+            try {
+              const imageId = workbook.addImage({ base64, extension: ext });
+              ws.addImage(imageId, {
+                tl: { col: IMAGE_COL - 1 + 0.1, row: rowIdx - 1 + 0.1 },
+                ext: { width: 48, height: 48 }
+              });
+            } catch (imgErr) {
+              console.warn('Could not embed image for quotation', q.id, imgErr);
+            }
+          }
+        }
+      }
+
+      // --- Sheet 2: Status Breakdown (pie chart) ---
+      const chartWs = workbook.addWorksheet('Status Breakdown');
+      const statusCounts = getStatusBreakdown(quotations);
+      const chartBase64 = generatePieChartBase64(statusCounts, sheetTitle || 'Quotations');
+
+      if (chartBase64) {
+        const chartImageId = workbook.addImage({ base64: chartBase64, extension: 'png' });
+        chartWs.addImage(chartImageId, {
+          tl: { col: 0, row: 0 },
+          ext: { width: 520, height: 340 }
+        });
+      }
+
+      // Status summary table below chart
+      const summaryStartRow = chartBase64 ? 20 : 1;
+      chartWs.getRow(summaryStartRow).values = ['Status', 'Count', 'Percentage'];
+      const sumHdr = chartWs.getRow(summaryStartRow);
+      sumHdr.font = { bold: true };
+      chartWs.getColumn(1).width = 30;
+      chartWs.getColumn(2).width = 12;
+      chartWs.getColumn(3).width = 14;
+
+      const total = quotations.length;
+      const entries = Object.entries(statusCounts).sort((a, b) => b[1] - a[1]);
+      entries.forEach(([status, count], i) => {
+        chartWs.getRow(summaryStartRow + 1 + i).values = [status, count, (count / total * 100).toFixed(1) + '%'];
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      downloadBlob(blob, filename);
+    }
+
+    // CSV export with status breakdown appended
+    async function exportToCsv(quotations, filename, sheetTitle) {
+      await loadXlsxLib();
+      const rows = buildExportRows(quotations);
+      const XLSX = _xlsxLib;
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const csvData = XLSX.utils.sheet_to_csv(ws);
+
+      // Append status breakdown
+      const statusCounts = getStatusBreakdown(quotations);
+      const total = quotations.length;
+      let summary = '\n\n--- Status Breakdown ---\n';
+      Object.entries(statusCounts).sort((a, b) => b[1] - a[1]).forEach(([status, count]) => {
+        summary += `${status},${count},${(count / total * 100).toFixed(1)}%\n`;
+      });
+      summary += `Total,${total},100%\n`;
+
+      const blob = new Blob(['﻿' + csvData + summary], { type: 'text/csv;charset=utf-8;' });
+      downloadBlob(blob, filename);
+    }
+
+    // PDF export with pie chart image embedded
+    async function exportToPdf(quotations, filename, sheetTitle) {
+      await loadJsPdfLib();
+      const rows = buildExportRows(quotations);
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: 'landscape' });
+
+      // Page 1: Data table
+      const headers = EXPORT_COLUMNS;
+      const body = rows.map(r => headers.map(h => String(r[h] || '')));
+      doc.autoTable({
+        head: [headers],
+        body: body,
+        styles: { fontSize: 7, cellPadding: 2 },
+        headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255], fontStyle: 'bold' },
+        margin: { top: 14 },
+        didDrawPage: function(data) {
+          doc.setFontSize(10);
+          doc.setFont(undefined, 'bold');
+          doc.text(sheetTitle || filename.replace('.pdf', ''), data.settings.margin.left, 10);
+        }
+      });
+
+      // Last page: Pie chart
+      doc.addPage();
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text((sheetTitle || 'Quotations') + ' - Status Breakdown', 14, 18);
+
+      const statusCounts = getStatusBreakdown(quotations);
+      const chartBase64 = generatePieChartBase64(statusCounts, sheetTitle || 'Quotations');
+      if (chartBase64) {
+        doc.addImage(chartBase64, 'PNG', 14, 24, 208, 136);
+      }
+
+      // Summary table next to chart
+      const total = quotations.length;
+      const entries = Object.entries(statusCounts).sort((a, b) => b[1] - a[1]);
+      doc.autoTable({
+        startY: 30,
+        margin: { left: 240 },
+        head: [['Status', 'Count', '%']],
+        body: entries.map(([s, c]) => [s, String(c), (c / total * 100).toFixed(1) + '%']),
+        styles: { fontSize: 9, cellPadding: 3 },
+        headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255], fontStyle: 'bold' },
+      });
+
+      doc.save(filename);
+    }
+
+    // ========== EXPORT MAIN FUNCTIONS ==========
+
+    window.exportQuotationData = async function(format) {
+      document.getElementById('exportQuotationDropdown').style.display = 'none';
+      const quotations = await loadQuotationsFromStorage();
+      const filteredQuotations = applyQuotationFilters(quotations);
+
+      if (filteredQuotations.length === 0) { alert('No data to export.'); return; }
+
+      const timestamp = new Date().toISOString().slice(0, 10);
+
+      try {
+        if (format === 'xlsx') {
+          await exportToXlsx(filteredQuotations, `quotations_${timestamp}.xlsx`, 'Quotation');
+        } else if (format === 'csv') {
+          await exportToCsv(filteredQuotations, `quotations_${timestamp}.csv`, 'Quotation');
+        } else if (format === 'pdf') {
+          await exportToPdf(filteredQuotations, `quotations_${timestamp}.pdf`, 'Quotation');
+        }
+      } catch (err) {
+        console.error('Export error:', err);
+        alert('Export failed: ' + err.message);
+      }
+    };
+
+    window.exportOutsourcingData = async function(format) {
+      document.getElementById('exportOutsourcingDropdown').style.display = 'none';
+      const quotations = await loadOutsourcingQuotationsFromStorage();
+      const filteredQuotations = applyOutsourcingFilters(quotations);
+
+      if (filteredQuotations.length === 0) { alert('No data to export.'); return; }
+
+      const timestamp = new Date().toISOString().slice(0, 10);
+
+      try {
+        if (format === 'xlsx') {
+          await exportToXlsx(filteredQuotations, `outsourcing_${timestamp}.xlsx`, 'Outsourcing');
+        } else if (format === 'csv') {
+          await exportToCsv(filteredQuotations, `outsourcing_${timestamp}.csv`, 'Outsourcing');
+        } else if (format === 'pdf') {
+          await exportToPdf(filteredQuotations, `outsourcing_${timestamp}.pdf`, 'Outsourcing');
+        }
+      } catch (err) {
+        console.error('Export error:', err);
+        alert('Export failed: ' + err.message);
+      }
+    };
+
+    // ==========================================
+    // Status Drill-Down Modal + Excel Export
+    // ==========================================
+
+    // Get the quotation list for a given dashboard type
+    function getQuotationsForDashboard(dashboardType) {
+      switch (dashboardType) {
+        case 'quotation':
+          return dashboardQuotations || [];
+        case 'brand':
+          return brandDashboardQuotations || [];
+        case 'outsourcing':
+          return outsourcingDashboardData && outsourcingDashboardData._quotations ? outsourcingDashboardData._quotations : [];
+        case 'brandValue':
+          return brandValueQuotations || [];
+        default:
+          return [];
+      }
+    }
+
+    // Helper: escape HTML (uses existing escapeHtml function)
+
+    // Get brand name from cachedBrands
+    function getBrandName(brandId) {
+      if (!brandId) return '-';
+      const brand = cachedBrands.find(b => String(b.id) === String(brandId));
+      return brand ? brand.name : '-';
+    }
+
+    // Status color map for badges
+    const statusColors = {
+      'pending': '#17a2b8',
+      'send to customer': '#007bff',
+      'price confirmed': '#28a745',
+      'sampling': '#6f42c1',
+      'sample delivered': '#20c997',
+      'send to outsourcing supplier': '#5a6268',
+      'await quotation': '#856404',
+      'compare quotation': '#fd7e14'
+    };
+
+    function getStatusBadge(status) {
+      const color = statusColors[(status || '').toLowerCase()] || '#6c757d';
+      return '<span style="background:' + color + ';color:#fff;padding:2px 8px;border-radius:2px;font-size:10px;white-space:nowrap;">' + escapeHtml((status || '').toUpperCase()) + '</span>';
+    }
+
+    // Open the status drill-down modal
+    function openStatusDrilldown(statusKey, statusName, dashboardType) {
+      // Close any existing drill-down modal
+      const existing = document.getElementById('statusDrilldownOverlay');
+      if (existing) existing.remove();
+
+      const quotations = getQuotationsForDashboard(dashboardType);
+      const filtered = quotations.filter(q =>
+        q.status && q.status.toLowerCase() === statusKey.toLowerCase()
+      );
+
+      // Determine columns based on dashboard type
+      const isOutsourcing = dashboardType === 'outsourcing';
+
+      // Create overlay
+      const overlay = document.createElement('div');
+      overlay.id = 'statusDrilldownOverlay';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:30000;display:flex;align-items:center;justify-content:center;';
+
+      // Create modal
+      const modal = document.createElement('div');
+      modal.style.cssText = 'width:80vw;height:80vh;background:#fff;border:2px solid #000;display:flex;flex-direction:column;overflow:hidden;';
+
+      // Header
+      const header = document.createElement('div');
+      header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:2px solid #000;background:#f8f8f8;flex-shrink:0;';
+      header.innerHTML = '<h3 style="margin:0;font-size:16px;letter-spacing:-0.01em;">📋 ' + escapeHtml(statusName) + ' — ' + filtered.length + ' items</h3>' +
+        '<div style="display:flex;gap:8px;align-items:center;">' +
+        '<button id="drilldownExportBtn" style="padding:6px 14px;border:2px solid #000;background:#fff;cursor:pointer;font-size:12px;font-weight:600;letter-spacing:0.05em;">📥 EXPORT EXCEL</button>' +
+        '<button id="drilldownCloseBtn" style="padding:6px 10px;border:2px solid #000;background:#fff;cursor:pointer;font-size:16px;line-height:1;">✕</button>' +
+        '</div>';
+      modal.appendChild(header);
+
+      // Table container (scrollable)
+      const tableWrap = document.createElement('div');
+      tableWrap.style.cssText = 'flex:1;overflow:auto;';
+
+      if (filtered.length === 0) {
+        tableWrap.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#999;font-size:16px;">No items found with status: ' + escapeHtml(statusName) + '</div>';
+      } else {
+        // Build table
+        let html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+        // Header row
+        html += '<thead><tr style="background:#f0f0f0;border-bottom:2px solid #000;position:sticky;top:0;z-index:1;">';
+        if (isOutsourcing) html += '<th style="padding:8px;text-align:left;border-right:1px solid #ddd;white-space:nowrap;">OS Ref</th>';
+        html += '<th style="padding:8px;text-align:left;border-right:1px solid #ddd;">Image</th>';
+        html += '<th style="padding:8px;text-align:left;border-right:1px solid #ddd;white-space:nowrap;">Customer Name</th>';
+        html += '<th style="padding:8px;text-align:left;border-right:1px solid #ddd;white-space:nowrap;">Item Name</th>';
+        html += '<th style="padding:8px;text-align:left;border-right:1px solid #ddd;white-space:nowrap;">Contact Person</th>';
+        html += '<th style="padding:8px;text-align:left;border-right:1px solid #ddd;">Email</th>';
+        html += '<th style="padding:8px;text-align:left;border-right:1px solid #ddd;">Phone</th>';
+        html += '<th style="padding:8px;text-align:left;border-right:1px solid #ddd;">Brand</th>';
+        html += '<th style="padding:8px;text-align:left;border-right:1px solid #ddd;white-space:nowrap;">Product Type</th>';
+        html += '<th style="padding:8px;text-align:right;border-right:1px solid #ddd;">Qty</th>';
+        html += '<th style="padding:8px;text-align:right;border-right:1px solid #ddd;white-space:nowrap;">Total (HKD)</th>';
+        html += '<th style="padding:8px;text-align:left;border-right:1px solid #ddd;">Type</th>';
+        html += '<th style="padding:8px;text-align:left;border-right:1px solid #ddd;">Status</th>';
+        html += '<th style="padding:8px;text-align:left;white-space:nowrap;">Date Created</th>';
+        if (isOutsourcing) html += '<th style="padding:8px;text-align:left;white-space:nowrap;">Supplier</th>';
+        html += '</tr></thead><tbody>';
+
+        filtered.forEach((q, i) => {
+          const bg = i % 2 === 0 ? '#fff' : '#fafafa';
+          html += '<tr style="background:' + bg + ';border-bottom:1px solid #eee;">';
+          if (isOutsourcing) html += '<td style="padding:6px 8px;border-right:1px solid #eee;">' + escapeHtml(q.outsourcingSeq || '-') + '</td>';
+          // Image
+          const imgHtml = q.hasProfileImage
+            ? '<img src="/api/quotations/' + q.id + '/profile-image" style="width:36px;height:36px;object-fit:cover;border:1px solid #ddd;cursor:pointer;" onclick="event.stopPropagation();showImagePreview(this.src)">'
+            : '<span style="color:#ccc;">-</span>';
+          html += '<td style="padding:6px 8px;border-right:1px solid #eee;">' + imgHtml + '</td>';
+          html += '<td style="padding:6px 8px;border-right:1px solid #eee;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(q.customerName) + '</td>';
+          html += '<td style="padding:6px 8px;border-right:1px solid #eee;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(q.customerItemName || q.itemName || '-') + '</td>';
+          html += '<td style="padding:6px 8px;border-right:1px solid #eee;">' + escapeHtml(q.contactPerson || '-') + '</td>';
+          html += '<td style="padding:6px 8px;border-right:1px solid #eee;">' + escapeHtml(q.email || '-') + '</td>';
+          html += '<td style="padding:6px 8px;border-right:1px solid #eee;">' + escapeHtml(q.phone || '-') + '</td>';
+          html += '<td style="padding:6px 8px;border-right:1px solid #eee;">' + getBrandCellHtml(q.brandId) + '</td>';
+          html += '<td style="padding:6px 8px;border-right:1px solid #eee;">' + escapeHtml(q.productType || '-') + '</td>';
+          html += '<td style="padding:6px 8px;text-align:right;border-right:1px solid #eee;">' + (q.quantity || 0) + '</td>';
+          html += '<td style="padding:6px 8px;text-align:right;border-right:1px solid #eee;">' + (q.total ? Number(q.total).toLocaleString('en-HK') : '0') + '</td>';
+          html += '<td style="padding:6px 8px;border-right:1px solid #eee;">' + escapeHtml(q.type || '-') + '</td>';
+          html += '<td style="padding:6px 8px;border-right:1px solid #eee;">' + getStatusBadge(q.status) + '</td>';
+          html += '<td style="padding:6px 8px;">' + escapeHtml(q.dateCreated ? new Date(q.dateCreated).toLocaleDateString('en-CA') : '-') + '</td>';
+          if (isOutsourcing) html += '<td style="padding:6px 8px;">' + escapeHtml(q.supplier || '-') + '</td>';
+          html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+        tableWrap.innerHTML = html;
+      }
+      modal.appendChild(tableWrap);
+
+      // Footer
+      const footer = document.createElement('div');
+      footer.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:8px 16px;border-top:1px solid #ddd;background:#f8f8f8;flex-shrink:0;';
+      footer.innerHTML = '<span style="font-size:12px;color:#666;">Showing ' + filtered.length + ' item' + (filtered.length !== 1 ? 's' : '') + '</span>';
+      modal.appendChild(footer);
+
+      overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+
+      // Close handlers
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+      });
+      document.getElementById('drilldownCloseBtn').addEventListener('click', () => overlay.remove());
+
+      // Export handler
+      document.getElementById('drilldownExportBtn').addEventListener('click', () => {
+        exportStatusDrilldownToExcel(filtered, statusName, dashboardType, isOutsourcing);
+      });
+    }
+
+    // Export drill-down data to Excel with embedded images
+    async function exportStatusDrilldownToExcel(quotations, statusName, dashboardType, isOutsourcing) {
+      const btn = document.getElementById('drilldownExportBtn');
+      const originalText = btn.textContent;
+      btn.textContent = '⏳ Exporting...';
+      btn.disabled = true;
+
+      try {
+        const workbook = new ExcelJS.Workbook();
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const sheetName = statusName + ' - ' + dateStr;
+        const ws = workbook.addWorksheet(sheetName);
+
+        // Define columns
+        const columns = [];
+        if (isOutsourcing) columns.push({ header: 'OS Ref', key: 'outsourcingSeq', width: 10 });
+        columns.push({ header: 'Image', key: 'image', width: 10 });
+        columns.push({ header: 'Customer Name', key: 'customerName', width: 20 });
+        columns.push({ header: 'Item Name', key: 'customerItemName', width: 20 });
+        columns.push({ header: 'Contact Person', key: 'contactPerson', width: 15 });
+        columns.push({ header: 'Email', key: 'email', width: 25 });
+        columns.push({ header: 'Phone', key: 'phone', width: 15 });
+        columns.push({ header: 'Brand', key: 'brand', width: 14 });
+        columns.push({ header: 'Product Type', key: 'productType', width: 15 });
+        columns.push({ header: 'Quantity', key: 'quantity', width: 10 });
+        columns.push({ header: 'Total (HKD)', key: 'total', width: 15 });
+        columns.push({ header: 'Type', key: 'type', width: 12 });
+        columns.push({ header: 'Status', key: 'status', width: 18 });
+        columns.push({ header: 'Date Created', key: 'dateCreated', width: 14 });
+        if (isOutsourcing) columns.push({ header: 'Supplier', key: 'supplier', width: 15 });
+        ws.columns = columns;
+
+        // Style header row
+        const headerRow = ws.getRow(1);
+        headerRow.eachCell((cell) => {
+          cell.font = { bold: true, size: 11 };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'medium' },
+            right: { style: 'thin' }
+          };
+          cell.alignment = { vertical: 'middle' };
+        });
+        headerRow.height = 24;
+
+        // Add data rows
+        for (let i = 0; i < quotations.length; i++) {
+          const q = quotations[i];
+          const row = {};
+          if (isOutsourcing) row.outsourcingSeq = q.outsourcingSeq || '-';
+          row.image = '';
+          row.customerName = q.customerName || '-';
+          row.customerItemName = q.customerItemName || q.itemName || '-';
+          row.contactPerson = q.contactPerson || '-';
+          row.email = q.email || '-';
+          row.phone = q.phone || '-';
+          row.brand = getBrandName(q.brandId);
+          row.productType = q.productType || '-';
+          row.quantity = q.quantity || 0;
+          row.total = q.total || 0;
+          row.type = q.type || '-';
+          row.status = (q.status || '-').toUpperCase();
+          row.dateCreated = q.dateCreated ? new Date(q.dateCreated).toLocaleDateString('en-CA') : '-';
+          if (isOutsourcing) row.supplier = q.supplier || '-';
+
+          const addedRow = ws.addRow(row);
+          addedRow.height = 48; // Make room for image
+
+          // Add borders to each cell
+          addedRow.eachCell({ includeEmpty: true }, (cell) => {
+            cell.border = {
+              top: { style: 'thin' },
+              left: { style: 'thin' },
+              bottom: { style: 'thin' },
+              right: { style: 'thin' }
+            };
+            cell.alignment = { vertical: 'middle' };
+          });
+
+          // Embed image if available
+          if (q.hasProfileImage) {
+            try {
+              const imgResponse = await fetch('/api/quotations/' + q.id + '/profile-image');
+              if (imgResponse.ok) {
+                const imgBlob = await imgResponse.blob();
+                const base64 = await new Promise((resolve) => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                  reader.readAsDataURL(imgBlob);
+                });
+
+                // Determine extension
+                const contentType = imgBlob.type || 'image/jpeg';
+                let ext = 'jpeg';
+                if (contentType.includes('png')) ext = 'png';
+                else if (contentType.includes('webp')) ext = 'webp';
+
+                const imageId = workbook.addImage({
+                  base64: base64,
+                  extension: ext
+                });
+
+                const imageColIndex = isOutsourcing ? 1 : 0; // 0-based column for image
+                ws.addImage(imageId, {
+                  tl: { col: imageColIndex + 0.1, row: i + 1 + 0.1 },
+                  ext: { width: 48, height: 48 }
+                });
+              }
+            } catch (imgErr) {
+              console.warn('Could not load image for quotation', q.id, imgErr);
+            }
+          }
+        }
+
+        // Generate and download
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = statusName.replace(/[^a-zA-Z0-9]/g, '_') + '_' + dashboardType + '_' + dateStr + '.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+      } catch (err) {
+        console.error('Excel export error:', err);
+        alert('Export failed: ' + err.message);
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    }
   </script>
 </body>
 </html>

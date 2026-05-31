@@ -1,0 +1,39 @@
+<h2>Status Breakdown Popup — Approaches</h2>
+<p class="subtitle">How should the drill-down popup work when you click a status?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Full-Screen Overlay Table</h3>
+      <p>Click a status → full-screen modal overlay with a data table. Export button in the top-right corner. Clean, focused view. Easy to scan many rows.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Side Panel Slide-In</h3>
+      <p>Click a status → a panel slides in from the right side, showing the table alongside the expanded chart. Keeps context visible but less space for data.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Centered Modal Dialog</h3>
+      <p>Click a status → a centered modal dialog (~80% viewport) with scrollable table. Export button at bottom. Classic modal pattern. Balanced context.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 2rem;">
+  <h3>Recommendation</h3>
+  <p>I recommend <strong>A — Full-Screen Overlay</strong> because:</p>
+  <ul>
+    <li>Most data space for the table — fits all columns comfortably</li>
+    <li>Export button is prominent and easy to find</li>
+    <li>Matches the monochrome, focused design of the existing dashboard</li>
+    <li>Same pattern as the existing chart expand behavior</li>
+  </ul>
+</div>

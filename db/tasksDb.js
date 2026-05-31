@@ -409,6 +409,23 @@ async function ensureSchema(db) {
       console.warn('Error adding customerItemName column:', err);
     }
   }
+
+  try {
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS quotation_status_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        quotationId INTEGER NOT NULL,
+        fromStatus TEXT,
+        toStatus TEXT NOT NULL,
+        changedAt TEXT NOT NULL,
+        FOREIGN KEY (quotationId) REFERENCES quotations(id) ON DELETE CASCADE
+      );
+    `);
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_qsh_quotationId ON quotation_status_history(quotationId);`);
+    await db.exec(`CREATE INDEX IF NOT EXISTS idx_qsh_changedAt ON quotation_status_history(changedAt DESC);`);
+  } catch (err) {
+    console.warn('Error creating quotation_status_history table:', err);
+  }
 }
 
 export async function getTasksDb() {
@@ -989,6 +1006,43 @@ export async function deleteQuotation(id) {
   const db = await getTasksDb();
   await db.run(`DELETE FROM quotations WHERE id = ?`, [id]);
   return true;
+}
+
+// ========== STATUS HISTORY FUNCTIONS ==========
+
+export async function logStatusChange(quotationId, fromStatus, toStatus) {
+  const db = await getTasksDb();
+  const changedAt = new Date().toISOString();
+  await db.run(
+    `INSERT INTO quotation_status_history (quotationId, fromStatus, toStatus, changedAt) VALUES (?, ?, ?, ?)`,
+    [quotationId, fromStatus || null, toStatus, changedAt]
+  );
+  return true;
+}
+
+export async function getStatusHistory(quotationId) {
+  const db = await getTasksDb();
+  const rows = await db.all(
+    `SELECT id, quotationId, fromStatus, toStatus, changedAt FROM quotation_status_history WHERE quotationId = ? ORDER BY changedAt ASC`,
+    [quotationId]
+  );
+  return rows;
+}
+
+export async function getBulkStatusHistory(quotationIds) {
+  const db = await getTasksDb();
+  if (quotationIds.length === 0) return {};
+  const placeholders = quotationIds.map(() => '?').join(',');
+  const rows = await db.all(
+    `SELECT id, quotationId, fromStatus, toStatus, changedAt FROM quotation_status_history WHERE quotationId IN (${placeholders}) ORDER BY changedAt ASC`,
+    quotationIds
+  );
+  const map = {};
+  for (const row of rows) {
+    if (!map[row.quotationId]) map[row.quotationId] = [];
+    map[row.quotationId].push(row);
+  }
+  return map;
 }
 
 // ========== SKILL FUNCTIONS ==========

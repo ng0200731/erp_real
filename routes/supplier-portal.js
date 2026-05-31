@@ -1,5 +1,5 @@
 import express from 'express';
-import { getTasksDb, getProfiles } from '../db/tasksDb.js';
+import { getTasksDb, getProfiles, getQuotationProfileImage } from '../db/tasksDb.js';
 import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -35,9 +35,35 @@ async function sendSubmissionNotification(quotation, supplier, supplierMember, s
     const senderDomain = senderEmail.split('@')[1] || 'longriver.com';
     const subject = `Quotation Submitted - ${senderDomain} / ${supplier.companyName} / ${quotation.outsourcingSeq || 'N/A'}`;
 
+    // Fetch profile image for embedding
+    let profileImageCid = null;
+    let profileImageAttachment = null;
+    try {
+      const imageData = await getQuotationProfileImage(quotation.id);
+      if (imageData && imageData.profileImageBlob) {
+        profileImageCid = `profile-image-${quotation.id}@longriverlabel.com`;
+        profileImageAttachment = {
+          filename: 'product-image.png',
+          content: imageData.profileImageBlob,
+          contentType: imageData.profileImageMime || 'image/png',
+          cid: profileImageCid
+        };
+      }
+    } catch (e) {
+      console.warn('Failed to fetch profile image for email:', e.message);
+    }
+
     const html = `
       <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
         <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Quotation Submission Confirmation</h2>
+        ${profileImageCid ? `
+        <div style="text-align:center; margin:15px 0;">
+          <img src="cid:${profileImageCid}" style="max-width:150px; max-height:150px; object-fit:contain; border:1px solid #ddd; padding:3px;" alt="Product Image">
+        </div>
+        ` : ''}
+        ${quotation.customerItemName ? `
+        <p><strong>Customer Item Name:</strong> ${quotation.customerItemName}</p>
+        ` : ''}
         <p>A supplier quotation has been submitted with the following details:</p>
         <table style="width:100%; border-collapse:collapse; margin:20px 0;">
           <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Supplier</td><td style="padding:8px; border:1px solid #ccc;">${supplier.companyName}</td></tr>
@@ -61,6 +87,9 @@ async function sendSubmissionNotification(quotation, supplier, supplierMember, s
     for (const to of recipients) {
       try {
         const mailOptions = { to, subject, html };
+        if (profileImageAttachment) {
+          mailOptions.attachments = [profileImageAttachment];
+        }
         if (to === senderEmail && supplierEmail) {
           // Send to admin on behalf of supplier
           mailOptions.from = `${supplierMember.name} <${senderEmail}>`;
@@ -318,9 +347,32 @@ router.post('/sampling/:token/submit', async (req, res) => {
           const supplierEmail = (member.emailPrefix && supplier.emailDomain) ? `${member.emailPrefix}@${supplier.emailDomain}` : null;
           const senderEmail = activeProfile.mailUser;
           const subject = `Sample Ready Date Confirmed - ${supplier.companyName} / ${quotation.outsourcingSeq || 'N/A'} / Ready: ${sampleReadyDate}`;
+
+          // Fetch profile image for embedding
+          let profileImageCid = null;
+          let profileImageAttachment = null;
+          try {
+            const imageData = await getQuotationProfileImage(quotation.id);
+            if (imageData && imageData.profileImageBlob) {
+              profileImageCid = `profile-image-${quotation.id}@longriverlabel.com`;
+              profileImageAttachment = {
+                filename: 'product-image.png',
+                content: imageData.profileImageBlob,
+                contentType: imageData.profileImageMime || 'image/png',
+                cid: profileImageCid
+              };
+            }
+          } catch (e) { /* ignore */ }
+
           const html = `
             <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
               <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Sample Ready Date Confirmed</h2>
+              ${profileImageCid ? `
+              <div style="text-align:center; margin:15px 0;">
+                <img src="cid:${profileImageCid}" style="max-width:150px; max-height:150px; object-fit:contain; border:1px solid #ddd; padding:3px;" alt="Product Image">
+              </div>
+              ` : ''}
+              ${quotation.customerItemName ? `<p><strong>Customer Item Name:</strong> ${quotation.customerItemName}</p>` : ''}
               <p>The sample ready date has been submitted:</p>
               <table style="width:100%; border-collapse:collapse; margin:20px 0;">
                 <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Supplier</td><td style="padding:8px; border:1px solid #ccc;">${supplier.companyName}</td></tr>
@@ -335,7 +387,11 @@ router.post('/sampling/:token/submit', async (req, res) => {
           const recipients = [senderEmail];
           if (supplierEmail && supplierEmail !== senderEmail) recipients.push(supplierEmail);
           for (const to of recipients) {
-            try { await transport.sendMail({ from: senderEmail, to, subject, html }); } catch (e) { console.error(`Failed to send to ${to}:`, e.message); }
+            try {
+              const mailOptions = { from: senderEmail, to, subject, html };
+              if (profileImageAttachment) mailOptions.attachments = [profileImageAttachment];
+              await transport.sendMail(mailOptions);
+            } catch (e) { console.error(`Failed to send to ${to}:`, e.message); }
           }
           transport.close();
         } catch (e) { console.error('Error sending sampling notification:', e); }

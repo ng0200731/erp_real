@@ -1,0 +1,111 @@
+<h2>Design: Status Drill-Down Modal</h2>
+<p class="subtitle">Centered modal (~80% viewport) with scrollable table</p>
+
+<div class="mockup">
+  <div class="mockup-header">Expanded Chart Panel — Status Breakdown Section</div>
+  <div class="mockup-body" style="background:#fff; padding:16px;">
+    <!-- Status items as clickable pills -->
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid #ccc;border-radius:4px;cursor:pointer;background:#f5f5f5;">
+        <div style="width:12px;height:12px;background:#17a2b8;"></div>
+        <strong>PENDING</strong><span>12</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:2px solid #000;border-radius:4px;cursor:pointer;background:#e8e8e8;">
+        <div style="width:12px;height:12px;background:#007bff;"></div>
+        <strong>SEND TO CUSTOMER</strong><span>8</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid #ccc;border-radius:4px;cursor:pointer;background:#f5f5f5;">
+        <div style="width:12px;height:12px;background:#28a745;"></div>
+        <strong>PRICE CONFIRMED</strong><span>15</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid #ccc;border-radius:4px;cursor:pointer;background:#f5f5f5;">
+        <div style="width:12px;height:12px;background:#6f42c1;"></div>
+        <strong>SAMPLING</strong><span>5</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid #ccc;border-radius:4px;cursor:pointer;background:#f5f5f5;">
+        <div style="width:12px;height:12px;background:#20c997;"></div>
+        <strong>SAMPLE DELIVERED</strong><span>3</span>
+      </div>
+    </div>
+    <p style="font-size:12px;color:#666;">↑ Click any status to open drill-down modal</p>
+  </div>
+</div>
+
+<div style="height:24px;"></div>
+
+<div class="mockup">
+  <div class="mockup-header">Drill-Down Modal — "Send to Customer" (8 items)</div>
+  <div class="mockup-body" style="background:#fff; padding:0;">
+    <!-- Modal header -->
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:2px solid #000;">
+      <h3 style="margin:0;font-size:16px;">📋 Send to Customer — 8 items</h3>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button style="padding:6px 14px;border:1px solid #000;background:#fff;cursor:pointer;font-size:12px;">📥 Export Excel</button>
+        <button style="padding:6px 10px;border:1px solid #000;background:#fff;cursor:pointer;font-size:16px;">✕</button>
+      </div>
+    </div>
+    <!-- Table -->
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="background:#f0f0f0;border-bottom:2px solid #000;">
+            <th style="padding:8px;text-align:left;border-right:1px solid #ddd;">Image</th>
+            <th style="padding:8px;text-align:left;border-right:1px solid #ddd;">Customer</th>
+            <th style="padding:8px;text-align:left;border-right:1px solid #ddd;">Item Name</th>
+            <th style="padding:8px;text-align:left;border-right:1px solid #ddd;">Brand</th>
+            <th style="padding:8px;text-align:left;border-right:1px solid #ddd;">Product Type</th>
+            <th style="padding:8px;text-align:right;border-right:1px solid #ddd;">Qty</th>
+            <th style="padding:8px;text-align:right;border-right:1px solid #ddd;">Total (HKD)</th>
+            <th style="padding:8px;text-align:left;border-right:1px solid #ddd;">Status</th>
+            <th style="padding:8px;text-align:left;">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #eee;">
+            <td style="padding:6px 8px;border-right:1px solid #eee;"><div style="width:32px;height:32px;background:#e0e0e0;border-radius:2px;"></div></td>
+            <td style="padding:6px 8px;border-right:1px solid #eee;">ABC Trading</td>
+            <td style="padding:6px 8px;border-right:1px solid #eee;">Widget A</td>
+            <td style="padding:6px 8px;border-right:1px solid #eee;">Nike</td>
+            <td style="padding:6px 8px;border-right:1px solid #eee;">Type X</td>
+            <td style="padding:6px 8px;text-align:right;border-right:1px solid #eee;">500</td>
+            <td style="padding:6px 8px;text-align:right;border-right:1px solid #eee;">25,000</td>
+            <td style="padding:6px 8px;border-right:1px solid #eee;"><span style="background:#007bff;color:#fff;padding:2px 6px;border-radius:2px;font-size:10px;">SEND TO CUSTOMER</span></td>
+            <td style="padding:6px 8px;">2026-05-15</td>
+          </tr>
+          <tr style="border-bottom:1px solid #eee;background:#fafafa;">
+            <td style="padding:6px 8px;border-right:1px solid #eee;"><div style="width:32px;height:32px;background:#e0e0e0;border-radius:2px;"></div></td>
+            <td style="padding:6px 8px;border-right:1px solid #eee;">XYZ Ltd</td>
+            <td style="padding:6px 8px;border-right:1px solid #eee;">Gadget B</td>
+            <td style="padding:6px 8px;border-right:1px solid #eee;">Adidas</td>
+            <td style="padding:6px 8px;border-right:1px solid #eee;">Type Y</td>
+            <td style="padding:6px 8px;text-align:right;border-right:1px solid #eee;">200</td>
+            <td style="padding:6px 8px;text-align:right;border-right:1px solid #eee;">18,000</td>
+            <td style="padding:6px 8px;border-right:1px solid #eee;"><span style="background:#007bff;color:#fff;padding:2px 6px;border-radius:2px;font-size:10px;">SEND TO CUSTOMER</span></td>
+            <td style="padding:6px 8px;">2026-05-18</td>
+          </tr>
+          <tr style="border-bottom:1px solid #eee;">
+            <td style="padding:6px 8px;border-right:1px solid #eee;color:#ccc;">-</td>
+            <td style="padding:6px 8px;border-right:1px solid #eee;">Global Co</td>
+            <td style="padding:6px 8px;border-right:1px solid #eee;">Part C</td>
+            <td style="padding:6px 8px;border-right:1px solid #eee;">Puma</td>
+            <td style="padding:6px 8px;border-right:1px solid #eee;">Type Z</td>
+            <td style="padding:6px 8px;text-align:right;border-right:1px solid #eee;">1000</td>
+            <td style="padding:6px 8px;text-align:right;border-right:1px solid #eee;">45,000</td>
+            <td style="padding:6px 8px;border-right:1px solid #eee;"><span style="background:#007bff;color:#fff;padding:2px 6px;border-radius:2px;font-size:10px;">SEND TO CUSTOMER</span></td>
+            <td style="padding:6px 8px;">2026-05-20</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- Footer -->
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-top:1px solid #ddd;background:#f9f9f9;">
+      <span style="font-size:12px;color:#666;">Showing 3 of 8 items</span>
+      <div style="display:flex;gap:4px;">
+        <button style="padding:4px 10px;border:1px solid #ccc;background:#fff;cursor:pointer;">◀</button>
+        <button style="padding:4px 10px;border:1px solid #000;background:#000;color:#fff;cursor:pointer;">1</button>
+        <button style="padding:4px 10px;border:1px solid #ccc;background:#fff;cursor:pointer;">2</button>
+        <button style="padding:4px 10px;border:1px solid #ccc;background:#fff;cursor:pointer;">▶</button>
+      </div>
+    </div>
+  </div>
+</div>

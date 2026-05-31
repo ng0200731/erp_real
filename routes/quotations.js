@@ -24,7 +24,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * @param {Function} deps.getQuotationProfileImage - Get profile image BLOB function
  */
 export function createQuotationRoutes(deps) {
-  const { getAllQuotations, getQuotationById, createQuotation, updateQuotation, deleteQuotation, upload, getNormalizedRelativePath, getSupplierById, linkSupplierToQuotation, unlinkSupplierFromQuotation, getSuppliersForQuotation, updateQuotationProfileImage, getQuotationProfileImage } = deps;
+  const { getAllQuotations, getQuotationById, createQuotation, updateQuotation, deleteQuotation, upload, getNormalizedRelativePath, getSupplierById, linkSupplierToQuotation, unlinkSupplierFromQuotation, getSuppliersForQuotation, updateQuotationProfileImage, getQuotationProfileImage, logStatusChange, getStatusHistory, getBulkStatusHistory } = deps;
 
   // Get all quotations
   router.get('/', async (req, res) => {
@@ -84,6 +84,21 @@ export function createQuotationRoutes(deps) {
     }
   });
 
+  // Bulk status history for multiple quotations (must be before /:id routes)
+  router.post('/bulk-status-history', async (req, res) => {
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.json({ success: true, historyMap: {} });
+      }
+      const historyMap = await getBulkStatusHistory(ids);
+      res.json({ success: true, historyMap });
+    } catch (error) {
+      console.error('Error fetching bulk status history:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch bulk status history' });
+    }
+  });
+
   // Update quotation
   router.put('/:id', async (req, res) => {
     try {
@@ -93,6 +108,13 @@ export function createQuotationRoutes(deps) {
       const existing = await getQuotationById(id);
       if (!existing) {
         return res.status(404).json({ success: false, error: 'Quotation not found' });
+      }
+
+      // Log status change if status is different
+      const oldStatus = existing.status;
+      const newStatus = quotationData.status;
+      if (newStatus && oldStatus !== newStatus) {
+        await logStatusChange(id, oldStatus, newStatus);
       }
 
       await updateQuotation(id, quotationData);
@@ -370,6 +392,18 @@ export function createQuotationRoutes(deps) {
     } catch (error) {
       console.error('Error fetching suppliers for quotation:', error);
       res.status(500).json({ success: false, error: 'Failed to fetch suppliers' });
+    }
+  });
+
+  // Get status history for a single quotation
+  router.get('/:id/status-history', async (req, res) => {
+    try {
+      const quotationId = Number(req.params.id);
+      const history = await getStatusHistory(quotationId);
+      res.json({ success: true, history });
+    } catch (error) {
+      console.error('Error fetching status history:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch status history' });
     }
   });
 
