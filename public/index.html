@@ -2093,7 +2093,10 @@
         <div style="background:#fff; border:2px solid #000; padding:0; min-width:400px; max-width:550px; max-height:80vh; display:flex; flex-direction:column;">
           <div style="padding:15px 20px; border-bottom:2px solid #000; display:flex; justify-content:space-between; align-items:center; background:#f8f8f8;">
             <h3 style="margin:0; font-weight:700; font-size:16px;">Status History</h3>
-            <button onclick="document.getElementById('statusHistoryModal').style.display='none'" style="background:none; border:none; font-size:20px; cursor:pointer; font-weight:700;">✕</button>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <button id="exportHistoryExcelBtn" onclick="exportStatusHistoryExcel()" style="background:#28a745; color:#fff; border:none; padding:4px 12px; font-size:12px; cursor:pointer; font-weight:600;">Export Excel</button>
+              <button onclick="document.getElementById('statusHistoryModal').style.display='none'" style="background:none; border:none; font-size:20px; cursor:pointer; font-weight:700;">✕</button>
+            </div>
           </div>
           <div id="statusHistoryContent" style="padding:20px; overflow-y:auto; flex:1;"></div>
         </div>
@@ -11984,8 +11987,8 @@
           return;
         }
 
-        // Log "View Submitted" in history
-        if (viewOnly) {
+        // Log "View Submitted" in history — only during "await quotation" stage
+        if (viewOnly && quotation.status === 'await quotation') {
           try {
             await fetch(`/api/quotations/${quotationId}/log-history`, {
               method: 'POST',
@@ -12337,6 +12340,19 @@
           alert('Email sent but failed to update status to "await customer confirm price"');
           return;
         }
+
+        // Log which supplier was selected in history
+        try {
+          await fetch(`/api/quotations/${quotationId}/log-history`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fromStatus: 'await quotation',
+              toStatus: 'send to customer',
+              note: `Selected supplier: ${selectedResponse.companyName || 'Unknown'} (Unit: $${selectedResponse.unitPrice ? selectedResponse.unitPrice.toFixed(2) : 'N/A'}, Delivery: ${selectedResponse.deliveryDays || 'N/A'} days)`
+            })
+          });
+        } catch (e) { console.warn('Failed to log supplier selection history:', e); }
 
         alert('Quotation comparison sent to customer successfully!\nStatus updated to "Await Customer Confirm Price".');
         await displayOutsourcingQuotations();
@@ -17134,6 +17150,146 @@
       } catch (err) {
         console.error('Error loading status history:', err);
         content.innerHTML = '<div style="text-align:center; padding:20px; color:#dc3545;">Error loading history.</div>';
+      }
+    };
+
+    // Store current history quotation ID for export
+    let _currentHistoryQuotationId = null;
+
+    // Override showStatusHistory to store the ID
+    const _origShowStatusHistory = window.showStatusHistory;
+    window.showStatusHistory = async function(quotationId) {
+      _currentHistoryQuotationId = quotationId;
+      return _origShowStatusHistory(quotationId);
+    };
+
+    // Export status history to Excel
+    window.exportStatusHistoryExcel = async function() {
+      if (!_currentHistoryQuotationId) {
+        alert('No history to export.');
+        return;
+      }
+
+      try {
+        // Fetch quotation details
+        const qRes = await fetch(`/api/quotations/${_currentHistoryQuotationId}`);
+        const qData = await qRes.json();
+        const quotation = qData.success ? qData.quotation : null;
+
+        // Fetch history
+        const hRes = await fetch(`/api/quotations/${_currentHistoryQuotationId}/status-history`);
+        const hData = await hRes.json();
+        const history = hData.success ? hData.history : [];
+
+        if (history.length === 0) {
+          alert('No history records to export.');
+          return;
+        }
+
+        const ExcelJS = await loadExcelJsLib();
+        const workbook = new ExcelJS.Workbook();
+        const ws = workbook.addWorksheet('Status History');
+
+        const seqLabel = quotation ? (quotation.quotationSeq || quotation.outsourcingSeq || '') : '';
+        const sheetTitle = seqLabel ? `${seqLabel} Status History` : 'Status History';
+
+        // Title row
+        ws.mergeCells('A1:E1');
+        const titleCell = ws.getCell('A1');
+        titleCell.value = sheetTitle;
+        titleCell.font = { bold: true, size: 14 };
+        titleCell.alignment = { horizontal: 'left' };
+
+        // Quotation info row
+        if (quotation) {
+          ws.mergeCells('A2:E2');
+          const infoCell = ws.getCell('A2');
+          infoCell.value = `Customer: ${quotation.customerName || ''}${quotation.customerItemName ? '  |  Item: ' + quotation.customerItemName : ''}  |  Status: ${quotation.status || ''}`;
+          infoCell.font = { size: 11, color: { argb: 'FF666666' } };
+        }
+
+        // Header row (row 4)
+        const headers = ['#', 'From Status', 'To Status', 'Date / Time', 'Note'];
+        const headerRow = ws.getRow(4);
+        headers.forEach((h, i) => {
+          headerRow.getCell(i + 1).value = h;
+        });
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
+        headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+        headerRow.height = 22;
+
+        // Column widths
+        ws.getColumn(1).width = 6;
+        ws.getColumn(2).width = 30;
+        ws.getColumn(3).width = 30;
+        ws.getColumn(4).width = 24;
+        ws.getColumn(5).width = 45;
+
+        // Status color map
+        const statusColorMap = {
+          'draft': 'FF6C757D', 'pending': 'FF17A2B8', 'send to customer': 'FF007BFF',
+          'price confirmed': 'FF28A745', 'sampling': 'FF6F42C1', 'sample delivered': 'FF20C997',
+          'send to outsourcing supplier': 'FF007BFF', 'await quotation': 'FFFFC107',
+          'compare quotation': 'FFFD7E14', 'await customer confirm price': 'FF6F42C1',
+          'await sample ready date': 'FFE83E8C'
+        };
+
+        // Data rows
+        history.forEach((entry, idx) => {
+          const row = ws.getRow(idx + 5);
+          const date = new Date(entry.changedAt);
+          const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+          const fromLabel = entry.fromStatus || '(new)';
+          const toLabel = entry.toStatus;
+
+          row.getCell(1).value = idx + 1;
+          row.getCell(2).value = fromLabel;
+          row.getCell(3).value = toLabel;
+          row.getCell(4).value = formattedDate;
+          row.getCell(5).value = entry.note || '';
+
+          // Color the "To Status" cell
+          const toColor = statusColorMap[toLabel];
+          if (toColor) {
+            row.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: toColor } };
+            // Use white text on dark backgrounds
+            if (['FF000000', 'FF007BFF', 'FF6C757D', 'FF6F42C1', 'FF28A745', 'FFE83E8C'].includes(toColor)) {
+              row.getCell(3).font = { color: { argb: 'FFFFFFFF' } };
+            }
+          }
+
+          row.height = 20;
+          row.alignment = { vertical: 'middle' };
+        });
+
+        // Add borders
+        for (let r = 4; r <= history.length + 4; r++) {
+          for (let c = 1; c <= 5; c++) {
+            ws.getRow(r).getCell(c).border = {
+              top: { style: 'thin' },
+              left: { style: 'thin' },
+              bottom: { style: 'thin' },
+              right: { style: 'thin' }
+            };
+          }
+        }
+
+        // Download
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${seqLabel || 'quotation'}_history_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+      } catch (err) {
+        console.error('Export history error:', err);
+        alert('Export failed: ' + err.message);
       }
     };
 
