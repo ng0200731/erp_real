@@ -444,11 +444,19 @@ async function ensureSchema(db) {
         fromStatus TEXT,
         toStatus TEXT NOT NULL,
         changedAt TEXT NOT NULL,
+        note TEXT,
         FOREIGN KEY (quotationId) REFERENCES quotations(id) ON DELETE CASCADE
       );
     `);
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_qsh_quotationId ON quotation_status_history(quotationId);`);
     await db.exec(`CREATE INDEX IF NOT EXISTS idx_qsh_changedAt ON quotation_status_history(changedAt DESC);`);
+
+    // Add note column if it doesn't exist (migration for existing DBs)
+    try {
+      await db.exec(`ALTER TABLE quotation_status_history ADD COLUMN note TEXT`);
+    } catch (e) {
+      // Column already exists, ignore
+    }
   } catch (err) {
     console.warn('Error creating quotation_status_history table:', err);
   }
@@ -1047,12 +1055,12 @@ export async function deleteQuotation(id) {
 
 // ========== STATUS HISTORY FUNCTIONS ==========
 
-export async function logStatusChange(quotationId, fromStatus, toStatus) {
+export async function logStatusChange(quotationId, fromStatus, toStatus, note = null) {
   const db = await getTasksDb();
   const changedAt = new Date().toISOString();
   await db.run(
-    `INSERT INTO quotation_status_history (quotationId, fromStatus, toStatus, changedAt) VALUES (?, ?, ?, ?)`,
-    [quotationId, fromStatus || null, toStatus, changedAt]
+    `INSERT INTO quotation_status_history (quotationId, fromStatus, toStatus, changedAt, note) VALUES (?, ?, ?, ?, ?)`,
+    [quotationId, fromStatus || null, toStatus, changedAt, note]
   );
   return true;
 }
@@ -1060,7 +1068,7 @@ export async function logStatusChange(quotationId, fromStatus, toStatus) {
 export async function getStatusHistory(quotationId) {
   const db = await getTasksDb();
   const rows = await db.all(
-    `SELECT id, quotationId, fromStatus, toStatus, changedAt FROM quotation_status_history WHERE quotationId = ? ORDER BY changedAt ASC`,
+    `SELECT id, quotationId, fromStatus, toStatus, changedAt, note FROM quotation_status_history WHERE quotationId = ? ORDER BY changedAt ASC`,
     [quotationId]
   );
   return rows;
@@ -1071,7 +1079,7 @@ export async function getBulkStatusHistory(quotationIds) {
   if (quotationIds.length === 0) return {};
   const placeholders = quotationIds.map(() => '?').join(',');
   const rows = await db.all(
-    `SELECT id, quotationId, fromStatus, toStatus, changedAt FROM quotation_status_history WHERE quotationId IN (${placeholders}) ORDER BY changedAt ASC`,
+    `SELECT id, quotationId, fromStatus, toStatus, changedAt, note FROM quotation_status_history WHERE quotationId IN (${placeholders}) ORDER BY changedAt ASC`,
     quotationIds
   );
   const map = {};

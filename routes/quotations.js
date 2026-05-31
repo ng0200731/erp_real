@@ -451,5 +451,21 @@ export function createQuotationRoutes(deps) {
     }
   });
 
+  // Log a history event for a quotation (for non-status-change events like reminders, views)
+  router.post('/:id/log-history', async (req, res) => {
+    try {
+      const quotationId = Number(req.params.id);
+      const { fromStatus, toStatus, note } = req.body;
+      if (!toStatus) {
+        return res.status(400).json({ success: false, error: 'toStatus is required' });
+      }
+      await logStatusChange(quotationId, fromStatus || null, toStatus, note || null);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error logging history:', error);
+      res.status(500).json({ success: false, error: 'Failed to log history' });
+    }
+  });
+
   return router;
 }

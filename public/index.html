@@ -2064,6 +2064,7 @@
                     <option value="Await Confirm">Await Confirm</option>
                     <option value="Confirm Price">Confirm Price</option>
                     <option value="Start Sampling">Start Sampling</option>
+                    <option value="Chase Sample Date">Chase Sample Date</option>
                     <option value="Mark Delivered">Mark Delivered</option>
                     <option value="Completed">Completed</option>
                   </select>
@@ -4191,6 +4192,7 @@
             { name: 'Send to Customer', key: 'send to customer', count: statusCounts['send to customer'], color: '#6f42c1' },
             { name: 'Price Confirmed', key: 'price confirmed', count: statusCounts['price confirmed'], color: '#28a745' },
             { name: 'Sampling', key: 'sampling', count: statusCounts['sampling'], color: '#20c997' },
+            { name: 'Await Sample Date', key: 'await sample ready date', count: statusCounts['await sample ready date'], color: '#e83e8c' },
             { name: 'Sample Delivered', key: 'sample delivered', count: statusCounts['sample delivered'], color: '#6c757d' }
           ],
           total: total
@@ -7117,7 +7119,7 @@
 
         const content = document.createElement('div');
         content.className = 'modal-body';
-        content.textContent = body;
+        content.innerHTML = body;
 
         const actions = document.createElement('div');
         actions.className = 'modal-actions';
@@ -11099,6 +11101,7 @@
           'await customer confirm price': '#6f42c1',
           'price confirmed': '#28a745',
           'sampling': '#20c997',
+          'await sample ready date': '#e83e8c',
           'sample delivered': '#6c757d'
         };
 
@@ -11139,12 +11142,12 @@
           'send to customer': { next: 'await customer confirm price', label: 'Await Confirm' },
           'await customer confirm price': { next: 'price confirmed', label: 'Confirm Price' },
           'price confirmed': { next: 'sampling', label: 'Start Sampling' },
-          'sampling': { next: 'sample delivered', label: 'Mark Delivered' },
-          'sample delivered': { next: null, label: 'Completed' }
+          'sampling': { next: 'await sample ready date', label: 'Chase Sample Date' },
+          'await sample ready date': { next: 'sample delivered', label: 'Mark Delivered' },          'sample delivered': { next: null, label: 'Completed' }
         };
 
         // Statuses after comparison - show view button alongside action
-        const postCompareStatuses = ['compare quotation', 'send to customer', 'await customer confirm price', 'price confirmed', 'sampling', 'sample delivered'];
+        const postCompareStatuses = ['compare quotation', 'send to customer', 'await customer confirm price', 'price confirmed', 'sampling', 'await sample ready date', 'sample delivered'];
         const viewBtn = (postCompareStatuses.includes(status) && responseCount > 0)
           ? `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#17a2b8; color:#fff;" onclick="event.stopPropagation(); showCompareQuotationPopup(${quotation.id}, true)">View Quotations</button>`
           : '';
@@ -11490,12 +11493,187 @@
                 });
               }
             } else {
-              alert('Supplier email not found. Status will be updated but no email sent.');
+              alert('Supplier email not found. Status will be updated but no sampling email sent.');
+              // Log the missing email in history
+              try {
+                await fetch(`/api/quotations/${quotationId}/log-history`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    fromStatus: quotation.status,
+                    toStatus: 'sampling',
+                    note: 'Sampling started — no supplier email on file, email not sent'
+                  })
+                });
+              } catch (e) { console.warn('Failed to log missing email history:', e); }
             }
           } catch (e) {
             console.error('Error sending sampling email:', e);
             alert('Error sending sampling email: ' + e.message);
+            // Log the error in history
+            try {
+              await fetch(`/api/quotations/${quotationId}/log-history`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  fromStatus: quotation.status,
+                  toStatus: 'sampling',
+                  note: `Sampling started — email error: ${e.message}`
+                })
+              });
+            } catch (logErr) { console.warn('Failed to log error history:', logErr); }
           }
+        }
+
+        // Handle "await sample ready date" — send chase email to supplier (no status change)
+        if (newStatus === 'await sample ready date') {
+          if (!quotation.selectedSupplierId) {
+            alert('No supplier was selected for this quotation. Cannot chase sample date.');
+            if (loadingOverlay) document.body.removeChild(loadingOverlay);
+            return;
+          }
+
+          // Show loading
+          if (!loadingOverlay) {
+            loadingOverlay = document.createElement('div');
+            loadingOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999;';
+            loadingOverlay.innerHTML = '<div style="background:#fff; padding:30px 40px; border-radius:8px; text-align:center;"><div style="border:4px solid #f3f3f3; border-top:4px solid #000; border-radius:50%; width:40px; height:40px; animation:spin 1s linear infinite; margin:0 auto 15px;"></div><div style="font-size:16px;">Sending sample date reminder...</div></div><style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>';
+            document.body.appendChild(loadingOverlay);
+          }
+
+          try {
+            // Increment chase count
+            const currentChaseCount = (quotation.chaseSampleCount || 0) + 1;
+            await fetch(`/api/quotations/${quotationId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...quotation, chaseSampleCount: currentChaseCount })
+            });
+
+            // Get active profile domain
+            let activeProfileDomain = 'longriver.com';
+            try {
+              const profilesRes = await fetch('/api/profiles');
+              const profilesData = await profilesRes.json();
+              const activeProfile = (profilesData.profiles || profilesData || []).find(p => p.isActive === 1);
+              if (activeProfile && activeProfile.mailUser) {
+                activeProfileDomain = activeProfile.mailUser.split('@')[1] || activeProfileDomain;
+              }
+            } catch (e) { console.warn('Could not fetch profile domain:', e); }
+
+            // Get supplier info from DB directly
+            const dbSupplierRes = await fetch('/api/quotations/' + quotationId + '/suppliers');
+            const dbSupplierData = await dbSupplierRes.json();
+            const linkedSuppliers = dbSupplierData.success ? (dbSupplierData.suppliers || []) : [];
+
+            // Find the selected supplier
+            const selectedSupplier = linkedSuppliers.find(s => s.id === quotation.selectedSupplierId) || linkedSuppliers[0];
+            const supplierName = selectedSupplier ? selectedSupplier.companyName : 'Supplier';
+
+            // Get supplier email from members
+            let supplierEmail = null;
+            if (selectedSupplier && selectedSupplier.members && selectedSupplier.members.length > 0) {
+              const member = selectedSupplier.members[0];
+              if (member.emailPrefix && selectedSupplier.emailDomain) {
+                supplierEmail = `${member.emailPrefix}@${selectedSupplier.emailDomain}`;
+              }
+            }
+
+            // Try to get existing sampling token for the link
+            let samplingLink = '';
+            try {
+              const samplingTokenRes = await fetch('/api/supplier-portal/generate-sampling-token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ quotationId })
+              });
+              const samplingTokenData = await samplingTokenRes.json();
+              if (samplingTokenData.success) {
+                samplingLink = `${window.location.origin}/supplier-sampling/${samplingTokenData.token}`;
+              }
+            } catch (e) { console.warn('Could not generate sampling token:', e); }
+
+            const subject = `REMINDER X ${currentChaseCount} Quotation Request from ${activeProfileDomain} to ${supplierName} / ${quotation.outsourcingSeq || 'N/A'} - Sample Ready Date`;
+
+            const emailHtml = `
+              <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
+                <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">REMINDER X ${currentChaseCount}: Sample Ready Date Request</h2>
+                <p>Dear Supplier,</p>
+                <p><strong>This is reminder #${currentChaseCount}</strong> regarding the sampling for the following quotation:</p>
+                <table style="width:100%; border-collapse:collapse; margin:20px 0;">
+                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerName || 'N/A'}</td></tr>
+                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${quotation.productType || 'N/A'}</td></tr>
+                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity ? quotation.quantity.toLocaleString() : 'N/A'}</td></tr>
+                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">OS Ref</td><td style="padding:8px; border:1px solid #ccc;">${quotation.outsourcingSeq || 'N/A'}</td></tr>
+                </table>
+                <p><strong>We kindly request you to confirm the expected sample ready date.</strong></p>
+                ${samplingLink ? `
+                <p>Please click the link below to submit the sample ready date:</p>
+                <table cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;"><tr><td align="center" bgcolor="#000000" style="padding:12px 24px; border-radius:4px;"><a href="${samplingLink}" style="color:#ffffff; text-decoration:none; font-weight:500; font-size:14px;" target="_blank">Submit Sample Ready Date</a></td></tr></table>
+                <p style="font-size:13px; color:#333; margin-bottom:4px; font-weight:600;">Or copy this link:</p>
+                <div style="padding:10px; background:#f0f0f0; border:2px solid #000; font-size:13px; font-family:monospace; word-break:break-all;">${samplingLink}</div>
+                ` : ''}
+                <p style="font-size:12px; color:#666; margin-top:20px;">Thank you for your prompt attention.</p>
+              </div>
+            `;
+
+            if (supplierEmail) {
+              const sendRes = await fetch('/api/email/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to: supplierEmail, subject, html: emailHtml })
+              });
+              const sendResult = await sendRes.json();
+              if (!sendResult.success) {
+                alert('Failed to send chase email: ' + (sendResult.error || 'Unknown error'));
+              } else {
+                // Log in history
+                try {
+                  await fetch(`/api/quotations/${quotationId}/log-history`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      fromStatus: 'sampling',
+                      toStatus: 'sampling',
+                      note: `Reminder X ${currentChaseCount} sent to ${supplierName} (${supplierEmail}) to input sample ready date`
+                    })
+                  });
+                } catch (e) { console.warn('Failed to log history:', e); }
+
+                showModal({
+                  title: 'Chase Email Sent',
+                  body: `<p>Follow-up email sent to <strong>${supplierEmail}</strong></p>
+                    ${samplingLink ? `<p style="margin-top:10px; font-size:13px;">Copy the link below to share manually:</p>
+                    <div style="display:flex; gap:6px; margin-top:6px;">
+                      <input type="text" value="${samplingLink}" id="chaseLinkCopy" readonly style="flex:1; padding:8px; border:1px solid #000; font-size:12px; font-family:monospace;">
+                      <button onclick="document.getElementById('chaseLinkCopy').select(); document.execCommand('copy'); this.textContent='Copied!';" style="padding:8px 16px; background:#000; color:#fff; border:none; cursor:pointer; font-size:12px;">Copy</button>
+                    </div>` : ''}`
+                });
+              }
+            } else {
+              alert('Supplier email not found. Cannot send reminder.');
+              // Still log in history
+              try {
+                await fetch(`/api/quotations/${quotationId}/log-history`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    fromStatus: 'sampling',
+                    toStatus: 'sampling',
+                    note: `Chase attempted — no supplier email on file for ${supplierName}`
+                  })
+                });
+              } catch (e) { console.warn('Failed to log history:', e); }
+            }
+          } catch (e) {
+            console.error('Error sending chase email:', e);
+            alert('Error sending chase email: ' + e.message);
+          }
+
+          // Refresh and return — NO status change, stays at 'sampling'
+          await displayOutsourcingQuotations();
+          if (loadingOverlay) document.body.removeChild(loadingOverlay);
+          return;
         }
 
         // Update the status (auto-transition to await quotation after sending to supplier)
@@ -11762,6 +11940,19 @@
           alert(`Successfully sent reminder to ${sentCount} supplier contact(s).`);
         }
 
+        // Log reminder in history
+        try {
+          await fetch(`/api/quotations/${quotationId}/log-history`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fromStatus: 'await quotation',
+              toStatus: 'await quotation',
+              note: `Reminder #${currentResendCount} sent to ${sentCount} supplier(s)`
+            })
+          });
+        } catch (e) { console.warn('Failed to log reminder history:', e); }
+
         await displayOutsourcingQuotations();
         document.body.removeChild(loadingOverlay);
       } catch (error) {
@@ -11791,6 +11982,21 @@
         if (responses.length === 0) {
           alert('No supplier responses available yet.');
           return;
+        }
+
+        // Log "View Submitted" in history
+        if (viewOnly) {
+          try {
+            await fetch(`/api/quotations/${quotationId}/log-history`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                fromStatus: quotation.status,
+                toStatus: quotation.status,
+                note: `Viewed ${responses.length} supplier submission(s)`
+              })
+            });
+          } catch (e) { console.warn('Failed to log view history:', e); }
         }
 
         // 3. Build comparison table HTML with radio selection
@@ -11830,15 +12036,19 @@
 
         responses.forEach((r, idx) => {
           let rowBg = '';
+          const isSelected = quotation.selectedSupplierId && r.supplierId === quotation.selectedSupplierId;
+          const hasSelection = quotation.selectedSupplierId != null;
           if (!allEqual && r.totalPrice != null && r.totalPrice > 0) {
             if (r.totalPrice === minTotal) rowBg = 'background:#d4edda;';
             else if (r.totalPrice === maxTotal) rowBg = 'background:#f8d7da;';
           }
+          const strikeStyle = hasSelection && !isSelected ? 'opacity:0.4; text-decoration:line-through; color:#999;' : '';
+          const selectedBadge = isSelected ? ' <span style="background:#28a745;color:#fff;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:bold;">✓ Selected</span>' : '';
           const supplierEmail = (r.emailPrefix && r.emailDomain) ? r.emailPrefix + '@' + r.emailDomain : '-';
           tableHtml += `
-            <tr style="${rowBg}">
-              ${!viewOnly ? `<td style="border:1px solid #ccc; padding:8px; text-align:center;"><input type="radio" name="selectedSupplier" value="${idx}" style="cursor:pointer; width:18px; height:18px;"></td>` : ''}
-              <td style="border:1px solid #ccc; padding:8px;">${r.companyName}</td>
+            <tr style="${rowBg} ${strikeStyle}">
+              ${!viewOnly ? `<td style="border:1px solid #ccc; padding:8px; text-align:center;"><input type="radio" name="selectedSupplier" value="${idx}" style="cursor:pointer; width:18px; height:18px;" ${isSelected ? 'checked' : ''}></td>` : ''}
+              <td style="border:1px solid #ccc; padding:8px;">${r.companyName}${selectedBadge}</td>
               <td style="border:1px solid #ccc; padding:8px;">${r.memberName}</td>
               <td style="border:1px solid #ccc; padding:8px;">${supplierEmail}</td>
               <td style="border:1px solid #ccc; padding:8px; text-align:right;">${r.unitPrice ? r.unitPrice.toFixed(2) : 'N/A'}</td>
@@ -12146,7 +12356,8 @@
         'send to customer': 'Await Confirm',
         'await customer confirm price': 'Confirm Price',
         'price confirmed': 'Start Sampling',
-        'sampling': 'Mark Delivered',
+        'sampling': 'Chase Sample Date',
+        'await sample ready date': 'Mark Delivered',
         'sample delivered': 'Completed'
       };
 
@@ -12607,6 +12818,31 @@
     function populateQuotationViewForm(quotation) {
       console.log('Setting up view form (fields already populated):', quotation);
 
+      // Initialize profile image preview with existing image
+      const profileImagePreview = document.getElementById('profileImagePreview');
+      const profileImagePlaceholder = document.getElementById('profileImagePlaceholder');
+      const removeProfileImageBtn = document.getElementById('removeProfileImageBtn');
+      const profileImageDropZone = document.getElementById('profileImageDropZone');
+
+      if (profileImagePreview && profileImagePlaceholder && profileImageDropZone) {
+        let imageUrl = null;
+        if (quotation.hasProfileImage) {
+          imageUrl = `/api/quotations/${quotation.id}/profile-image`;
+        } else if (quotation.profileImagePath) {
+          imageUrl = `/${quotation.profileImagePath}`;
+        }
+
+        if (imageUrl) {
+          profileImagePreview.style.backgroundImage = `url(${imageUrl})`;
+          profileImagePreview.style.display = 'block';
+          profileImagePlaceholder.style.display = 'none';
+          if (removeProfileImageBtn) removeProfileImageBtn.style.display = 'inline-block';
+          profileImageDropZone.style.borderColor = '#000';
+          profileImageDropZone.style.backgroundColor = '#f9f9f9';
+          profileImageDropZone.style.cursor = 'default';
+        }
+      }
+
       // Wait for DOM to be fully ready, then disable all form elements for view mode
       setTimeout(() => {
         console.log('Disabling form fields for view mode...');
@@ -12649,6 +12885,9 @@
         input.style.cursor = 'text';
       });
 
+      // Initialize drag-and-drop for profile image in edit mode
+      initializeViewModeProfileImageDrop(quotationId);
+
       // Update modal actions to show Save and Cancel buttons
       const actionsDiv = document.querySelector('.modal-actions');
       if (actionsDiv) {
@@ -12659,9 +12898,154 @@
       }
 
       // Store original quotation data for cancel functionality
-      const quotations = await loadQuotationsFromStorage();
-      const quotation = quotations.find(q => q.id === quotationId);
+      let quotation = null;
+      try {
+        const qRes = await fetch(`/api/quotations/${quotationId}`);
+        const qData = await qRes.json();
+        if (qData.success && qData.quotation) quotation = qData.quotation;
+      } catch (e) { console.error('Failed to fetch quotation for edit:', e); }
+      if (!quotation) {
+        const quotations = await loadQuotationsFromStorage();
+        quotation = quotations.find(q => q.id === quotationId);
+      }
+      if (!quotation) {
+        const outsourcingQuotations = await loadOutsourcingQuotationsFromStorage();
+        quotation = outsourcingQuotations.find(q => q.id === quotationId);
+      }
       window.originalQuotationData = quotation;
+    }
+
+    // Initialize profile image drag-and-drop for the view/edit modal
+    function initializeViewModeProfileImageDrop(quotationId) {
+      const profileImageDropZone = document.getElementById('profileImageDropZone');
+      const profileImageInput = document.getElementById('profileImageInput');
+      const profileImagePreview = document.getElementById('profileImagePreview');
+      const profileImagePlaceholder = document.getElementById('profileImagePlaceholder');
+      const removeProfileImageBtn = document.getElementById('removeProfileImageBtn');
+
+      if (!profileImageDropZone || !profileImageInput || !profileImagePreview || !profileImagePlaceholder) {
+        console.warn('Profile image elements not found, skipping drag-drop init');
+        return;
+      }
+
+      // Enable cursor
+      profileImageDropZone.style.cursor = 'pointer';
+
+      // Remove old listeners by cloning the element (cleanest approach)
+      const newDropZone = profileImageDropZone.cloneNode(true);
+      profileImageDropZone.parentNode.replaceChild(newDropZone, profileImageDropZone);
+
+      // Re-query after clone
+      const dropZone = document.getElementById('profileImageDropZone');
+      const input = document.getElementById('profileImageInput');
+      const preview = document.getElementById('profileImagePreview');
+      const placeholder = document.getElementById('profileImagePlaceholder');
+      const removeBtn = document.getElementById('removeProfileImageBtn');
+
+      // Profile Image: Click to browse
+      dropZone.addEventListener('click', () => {
+        input.click();
+      });
+
+      // Profile Image: File input change
+      input.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          handleViewModeProfileImageFile(file, preview, placeholder, removeBtn, dropZone, quotationId);
+        }
+      });
+
+      // Profile Image: Drag over
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#000';
+        dropZone.style.backgroundColor = '#f0f0f0';
+      });
+
+      // Profile Image: Drag leave
+      dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#ccc';
+        dropZone.style.backgroundColor = '#fff';
+      });
+
+      // Profile Image: Drop
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#ccc';
+        dropZone.style.backgroundColor = '#fff';
+
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+          handleViewModeProfileImageFile(file, preview, placeholder, removeBtn, dropZone, quotationId);
+        } else {
+          showModal({
+            title: 'Invalid File',
+            body: 'Please drop an image file.',
+            buttons: [{ text: 'OK', action: 'close' }]
+          });
+        }
+      });
+
+      // Profile Image: Paste functionality (Ctrl+V)
+      const pasteHandler = (e) => {
+        if (document.activeElement && document.activeElement.closest('#profileImageDropZone')) {
+          const items = e.clipboardData.items;
+          for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+              const file = items[i].getAsFile();
+              handleViewModeProfileImageFile(file, preview, placeholder, removeBtn, dropZone, quotationId);
+              break;
+            }
+          }
+        }
+      };
+      document.addEventListener('paste', pasteHandler);
+
+      // Remove button
+      if (removeBtn) {
+        const newRemoveBtn = removeBtn.cloneNode(true);
+        removeBtn.parentNode.replaceChild(newRemoveBtn, removeBtn);
+        newRemoveBtn.addEventListener('click', () => {
+          preview.style.backgroundImage = '';
+          preview.style.display = 'none';
+          placeholder.style.display = 'block';
+          newRemoveBtn.style.display = 'none';
+          input.value = '';
+          dropZone.style.borderColor = '#ccc';
+          dropZone.style.backgroundColor = '#fff';
+          delete window.tempProfileImageFile;
+          window.profileImageRemoved = true;
+        });
+      }
+    }
+
+    // Handle profile image file selection in view/edit mode
+    function handleViewModeProfileImageFile(file, preview, placeholder, removeBtn, dropZone, quotationId) {
+      if (!file.type.startsWith('image/')) {
+        showModal({
+          title: 'Invalid File',
+          body: 'Please select an image file.',
+          buttons: [{ text: 'OK', action: 'close' }]
+        });
+        return;
+      }
+
+      // Show preview immediately
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        preview.style.backgroundImage = `url(${e.target.result})`;
+        preview.style.display = 'block';
+        placeholder.style.display = 'none';
+        if (removeBtn) removeBtn.style.display = 'inline-block';
+        dropZone.style.borderColor = '#000';
+        dropZone.style.backgroundColor = '#f9f9f9';
+      };
+      reader.readAsDataURL(file);
+
+      // Store file for upload on save
+      window.tempProfileImageFile = file;
+      window.profileImageRemoved = false;
     }
 
     window.cancelInlineEdit = async function(quotationId) {
@@ -12677,9 +13061,24 @@
       console.log('Quotation ID:', quotationId);
 
       try {
-        // Get the original quotation to preserve fields we're not editing
-        const quotations = await loadQuotationsFromStorage();
-        const originalQuotation = quotations.find(q => q.id === quotationId);
+        // Fetch the original quotation directly by ID (works for both regular and outsourcing)
+        let originalQuotation = null;
+        try {
+          const qRes = await fetch(`/api/quotations/${quotationId}`);
+          const qData = await qRes.json();
+          if (qData.success && qData.quotation) originalQuotation = qData.quotation;
+        } catch (e) { console.error('Failed to fetch quotation for edit:', e); }
+
+        // Fallback: search in regular quotations
+        if (!originalQuotation) {
+          const quotations = await loadQuotationsFromStorage();
+          originalQuotation = quotations.find(q => q.id === quotationId);
+        }
+        // Fallback: search in outsourcing quotations
+        if (!originalQuotation) {
+          const outsourcingQuotations = await loadOutsourcingQuotationsFromStorage();
+          originalQuotation = outsourcingQuotations.find(q => q.id === quotationId);
+        }
 
         if (!originalQuotation) {
           throw new Error('Original quotation not found');
@@ -12743,6 +13142,33 @@
 
         const result = await response.json();
         console.log('Update result:', result);
+
+        // Upload profile image if a new one was selected
+        if (window.tempProfileImageFile) {
+          try {
+            console.log('Uploading profile image for edited quotation:', quotationId);
+            const profileFormData = new FormData();
+            profileFormData.append('profileImage', window.tempProfileImageFile, window.tempProfileImageFile.name);
+
+            const profileResponse = await fetch(`/api/quotations/${quotationId}/upload-profile-image`, {
+              method: 'POST',
+              body: profileFormData
+            });
+
+            if (profileResponse.ok) {
+              const profileResult = await profileResponse.json();
+              console.log('Profile image upload result:', profileResult);
+            } else {
+              console.error('Profile image upload failed:', profileResponse.status);
+            }
+          } catch (profileError) {
+            console.error('Failed to upload profile image:', profileError);
+          }
+          delete window.tempProfileImageFile;
+        }
+
+        // Clear the profile image removed flag
+        delete window.profileImageRemoved;
 
         // Show success message
         showModal({
@@ -13961,26 +14387,23 @@
           // Profile Image Upload (upper 30%)
           '<div style="flex:0 0 30%; border:1px solid #000; padding:10px; background:#fafafa; margin:20px;">' +
             '<h5 style="margin:0 0 10px 0; font-size:14px;">Profile Image</h5>' +
-            '<div id="profileImageDropZone" style="width:100%; height:120px; border:2px dashed #ccc; border-radius:0; display:flex; align-items:center; justify-content:center; background:#fff; position:relative; overflow:hidden;">' +
+            '<div id="profileImageDropZone" style="width:100%; height:120px; border:2px dashed #ccc; border-radius:0; display:flex; align-items:center; justify-content:center; background:#fff; cursor:pointer; position:relative; overflow:hidden;">' +
+              '<div id="profileImagePreview" style="width:100%; height:100%; display:none; background-size:contain; background-repeat:no-repeat; background-position:center; position:absolute; top:0; left:0; z-index:1;"></div>' +
               (quotation.hasProfileImage ?
-                '<img src="/api/quotations/' + quotation.id + '/profile-image" style="width:100%; height:100%; object-fit:contain;" alt="Profile Image">' +
-                '<div style="display:none; text-align:center; color:#666; width:100%;">' +
-                  '<div style="font-size:24px; margin-bottom:5px;">🖼️❌</div>' +
-                  '<div style="font-size:12px;">Image failed to load</div>' +
-                '</div>'
-              : quotation.profileImagePath ?
-                '<img src="/' + quotation.profileImagePath + '" style="width:100%; height:100%; object-fit:contain;" alt="Profile Image" onerror="console.error(\'Failed to load image: /' + quotation.profileImagePath + '\'); this.style.display=\'none\'; this.nextElementSibling.style.display=\'block\';">' +
-                '<div style="display:none; text-align:center; color:#666; width:100%;">' +
-                  '<div style="font-size:24px; margin-bottom:5px;">🖼️❌</div>' +
-                  '<div style="font-size:12px;">Image failed to load</div>' +
-                  '<div style="font-size:10px; margin-top:5px;">' + quotation.profileImagePath + '</div>' +
+                '<div id="profileImagePlaceholder" style="text-align:center; color:#666; position:relative; z-index:2; display:none;">' +
+                  '<div style="font-size:24px; margin-bottom:5px;">📷</div>' +
+                  '<div style="font-size:12px;">Drop image here or click to browse</div>' +
                 '</div>'
               :
-                '<div style="text-align:center; color:#666;">' +
+                '<div id="profileImagePlaceholder" style="text-align:center; color:#666; position:relative; z-index:2;">' +
                   '<div style="font-size:24px; margin-bottom:5px;">📷</div>' +
                   '<div style="font-size:12px;">No image uploaded</div>' +
                 '</div>'
               ) +
+              '<input type="file" id="profileImageInput" accept="image/*" style="display:none; position:relative; z-index:3;">' +
+            '</div>' +
+            '<div style="margin-top:5px; text-align:center; position:relative; z-index:4;">' +
+              '<button type="button" class="btn" id="removeProfileImageBtn" style="display:none; font-size:12px; padding:4px 8px;" onclick="removeProfileImage()">Remove</button>' +
             '</div>' +
           '</div>' +
 
@@ -16686,9 +17109,12 @@
             'draft': '#6c757d', 'pending': '#17a2b8', 'send to customer': '#007bff',
             'price confirmed': '#28a745', 'sampling': '#6f42c1', 'sample delivered': '#20c997',
             'send to outsourcing supplier': '#007bff', 'await quotation': '#ffc107',
-            'compare quotation': '#fd7e14', 'await customer confirm price': '#6f42c1'
+            'compare quotation': '#fd7e14', 'await customer confirm price': '#6f42c1',
+            'await sample ready date': '#e83e8c'
           };
           const dotColor = statusColors[toLabel] || '#333';
+
+          const noteHtml = entry.note ? `<div style="font-size:11px; color:#888; font-style:italic; margin-top:2px;">${entry.note}</div>` : '';
 
           html += `
             <div style="position:relative; margin-bottom:${idx < history.length - 1 ? '16px' : '0'}; padding-left:16px;">
@@ -16699,6 +17125,7 @@
                 <span style="color:${dotColor};">${toLabel}</span>
               </div>
               <div style="font-size:11px; color:#999;">${formattedDate}</div>
+              ${noteHtml}
             </div>`;
         });
 
@@ -17181,7 +17608,8 @@
       'sample delivered': '#20c997',
       'send to outsourcing supplier': '#5a6268',
       'await quotation': '#856404',
-      'compare quotation': '#fd7e14'
+      'compare quotation': '#fd7e14',
+      'await sample ready date': '#e83e8c'
     };
 
     function getStatusBadge(status) {

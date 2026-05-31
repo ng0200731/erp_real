@@ -1,5 +1,5 @@
 import express from 'express';
-import { getTasksDb, getProfiles, getQuotationProfileImage } from '../db/tasksDb.js';
+import { getTasksDb, getProfiles, getQuotationProfileImage, logStatusChange } from '../db/tasksDb.js';
 import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -325,8 +325,16 @@ router.post('/sampling/:token/submit', async (req, res) => {
     const usedAt = new Date().toISOString();
     await db.run(`UPDATE supplier_sampling_tokens SET usedAt = ? WHERE id = ?`, [usedAt, tokenData.id]);
 
-    // Send notification email to both parties (non-blocking)
+    // Update status from 'sampling' to 'await sample ready date'
     const quotation = await db.get(`SELECT * FROM quotations WHERE id = ?`, [tokenData.quotationId]);
+    if (quotation && quotation.status === 'sampling') {
+      await db.run(`UPDATE quotations SET status = ? WHERE id = ?`, ['await sample ready date', tokenData.quotationId]);
+      // Log status change in history
+      logStatusChange(tokenData.quotationId, 'sampling', 'await sample ready date', `Sample ready date submitted: ${sampleReadyDate}`)
+        .catch(err => console.error('History log error:', err));
+    }
+
+    // Send notification email to both parties (non-blocking)
     const supplier = await db.get(`SELECT * FROM suppliers WHERE id = ?`, [tokenData.supplierId]);
     const member = await db.get(`SELECT * FROM supplier_members WHERE id = ?`, [tokenData.supplierMemberId]);
 
@@ -540,6 +548,14 @@ router.post('/:token/submit', async (req, res) => {
     if (quotation && supplier && supplierMember) {
       sendSubmissionNotification(quotation, supplier, supplierMember, { unitPrice, totalPrice, deliveryDays, notes })
         .catch(err => console.error('Notification error:', err));
+
+      // Log supplier response in quotation history
+      logStatusChange(
+        tokenData.quotationId,
+        'await quotation',
+        'await quotation',
+        `Supplier "${supplier.companyName}" submitted quotation`
+      ).catch(err => console.error('History log error:', err));
     }
 
     res.json({
