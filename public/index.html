@@ -9671,6 +9671,38 @@
         'Diamond Group', 'Phoenix Trading', 'Crown Textiles', 'Royal Garments'
       ];
 
+      const dummyItemNames = [
+        'Embroidery Badge-500pcs', 'Silk Screen Print-1000pcs', 'Heat Transfer Label-2000pcs',
+        'Woven Patch-800pcs', 'Rubber Patch-300pcs', 'Sublimation Print-1500pcs',
+        'PVC Label-600pcs', 'Metal Badge-200pcs', 'Leather Patch-400pcs',
+        'Printed Ribbon-5000pcs'
+      ];
+
+      const dummyImages = [
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172339_127.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172356_184.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172421_543.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172445_063.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172501_563.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172518_390.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172638_157.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172652_458.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172703_705.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172712_175.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172722_004.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172738_692.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172747_939.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172848_834.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172859_250.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172925_226.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173054_638.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173118_588.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173133_961.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173202_765.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173320_677.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173350_577.png'
+      ];
+
       try {
         // Get existing suppliers
         const suppliersResponse = await fetch('/api/suppliers');
@@ -9718,7 +9750,8 @@
             type: 'non email',
             dateCreated: new Date().toISOString(),
             status: statuses[Math.floor(Math.random() * statuses.length)],
-            brandId: brands.length > 0 ? brands[Math.floor(Math.random() * brands.length)].id : null
+            brandId: brands.length > 0 ? brands[Math.floor(Math.random() * brands.length)].id : null,
+            customerItemName: dummyItemNames[i]
           };
 
           // Create quotation
@@ -9731,6 +9764,18 @@
 
           if (result.success && result.quotation) {
             const quotationId = result.quotation.id;
+
+            // Attach a random dummy image
+            const randomImage = dummyImages[Math.floor(Math.random() * dummyImages.length)];
+            try {
+              await fetch(`/api/quotations/${quotationId}/set-profile-image-from-file`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filePath: randomImage })
+              });
+            } catch (imgErr) {
+              console.warn('Failed to set dummy image for outsourcing quotation', quotationId, imgErr);
+            }
 
             // Link suppliers based on distribution
             const supplierCount = supplierDistribution[i];
@@ -9778,6 +9823,37 @@
         'Red Lion Trading', 'Green Valley Fabrics', 'White Pearl Fashion', 'Black Diamond Wear'
       ];
 
+      const dummyItemNames = [
+        'HT-Cotton-1000', 'WL-Satin-500', 'CL-Polyester-2000', 'HT-Kraft-800',
+        'WL-Damask-1500', 'CL-Nylon-3000', 'HT-Art-600', 'WL-Taffeta-1200',
+        'CL-Adhesive-2500', 'HT-Coated-400'
+      ];
+
+      const dummyImages = [
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172339_127.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172356_184.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172421_543.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172445_063.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172501_563.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172518_390.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172638_157.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172652_458.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172703_705.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172712_175.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172722_004.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172738_692.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172747_939.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172848_834.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172859_250.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172925_226.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173054_638.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173118_588.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173133_961.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173202_765.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173320_677.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173350_577.png'
+      ];
+
       try {
         // Get brands for dummy data
         let brands = [];
@@ -9807,14 +9883,30 @@
             type: 'non email',
             dateCreated: new Date().toISOString(),
             status: statuses[Math.floor(Math.random() * statuses.length)],
-            brandId: brands.length > 0 ? brands[Math.floor(Math.random() * brands.length)].id : null
+            brandId: brands.length > 0 ? brands[Math.floor(Math.random() * brands.length)].id : null,
+            customerItemName: dummyItemNames[i]
           };
 
-          await fetch('/api/quotations', {
+          const response = await fetch('/api/quotations', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(quotationData)
           });
+          const result = await response.json();
+
+          // Attach a random dummy image
+          if (result.success && result.quotation) {
+            const randomImage = dummyImages[Math.floor(Math.random() * dummyImages.length)];
+            try {
+              await fetch(`/api/quotations/${result.quotation.id}/set-profile-image-from-file`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filePath: randomImage })
+              });
+            } catch (imgErr) {
+              console.warn('Failed to set dummy image for quotation', result.quotation.id, imgErr);
+            }
+          }
         }
 
         alert('Generated 10 quotations successfully!');
@@ -16483,6 +16575,14 @@
       modal.style.display = 'flex';
 
       try {
+        // Fetch quotation details for the header
+        let quotation = null;
+        try {
+          const qRes = await fetch(`/api/quotations/${quotationId}`);
+          const qData = await qRes.json();
+          if (qData.success && qData.quotation) quotation = qData.quotation;
+        } catch (e) { console.warn('Failed to fetch quotation for history header:', e); }
+
         const response = await fetch(`/api/quotations/${quotationId}/status-history`);
         const data = await response.json();
 
@@ -16491,14 +16591,32 @@
           return;
         }
 
+        let html = '';
+
+        // Quotation details header
+        if (quotation) {
+          const seqLabel = quotation.quotationSeq || quotation.outsourcingSeq || '';
+          html += '<div style="display:flex; align-items:center; gap:12px; padding-bottom:12px; margin-bottom:12px; border-bottom:1px solid #eee;">';
+          if (quotation.hasProfileImage) {
+            html += '<img src="/api/quotations/' + quotation.id + '/profile-image" style="width:48px; height:48px; object-fit:cover; border:1px solid #ddd; border-radius:4px; flex-shrink:0; cursor:pointer;" onclick="showImagePreview(this.src)">';
+          }
+          html += '<div style="flex:1;">';
+          if (seqLabel) html += '<div style="font-size:13px; font-weight:700; color:#333;">' + seqLabel + '</div>';
+          html += '<div style="font-size:12px; color:#555;"><strong>' + quotation.customerName + '</strong></div>';
+          if (quotation.customerItemName) html += '<div style="font-size:11px; color:#888;">Item: ' + quotation.customerItemName + '</div>';
+          html += '<div style="font-size:11px; color:#888;">Status: ' + (quotation.status || 'Draft') + '</div>';
+          html += '</div></div>';
+        }
+
         const history = data.history || [];
 
         if (history.length === 0) {
-          content.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">No status changes recorded yet.</div>';
+          html += '<div style="text-align:center; padding:20px; color:#666;">No status changes recorded yet.</div>';
+          content.innerHTML = html;
           return;
         }
 
-        let html = '<div style="position:relative; padding-left:24px;">';
+        html += '<div style="position:relative; padding-left:24px;">';
         html += '<div style="position:absolute; left:10px; top:8px; bottom:8px; width:2px; background:#ddd;"></div>';
 
         history.forEach((entry, idx) => {

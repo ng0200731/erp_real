@@ -234,6 +234,50 @@ export function createQuotationRoutes(deps) {
     }
   });
 
+  // Set profile image from a local server file (for dummy data generation)
+  router.post('/:id/set-profile-image-from-file', async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const { filePath } = req.body;
+
+      if (!filePath) {
+        return res.status(400).json({ success: false, error: 'filePath is required' });
+      }
+
+      const quotation = await getQuotationById(id);
+      if (!quotation) {
+        return res.status(404).json({ success: false, error: 'Quotation not found' });
+      }
+
+      // Resolve path: if absolute (e.g. C:\...), use as-is; otherwise relative to project root
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(__dirname, '..', filePath);
+      const ext = path.extname(absolutePath).toLowerCase();
+      const allowedExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
+      if (!allowedExts.includes(ext)) {
+        return res.status(400).json({ success: false, error: 'Invalid image file type' });
+      }
+
+      // Verify the file exists
+      try {
+        await fs.access(absolutePath);
+      } catch {
+        return res.status(404).json({ success: false, error: 'Image file not found' });
+      }
+
+      // Read file and store as BLOB
+      const imageBuffer = await fs.readFile(absolutePath);
+      const mimeMap = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp' };
+      const mimeType = mimeMap[ext];
+
+      await updateQuotationProfileImage(id, imageBuffer, mimeType);
+
+      res.json({ success: true, message: 'Profile image set from file' });
+    } catch (error) {
+      console.error('Error setting profile image from file:', error);
+      res.status(500).json({ success: false, error: 'Failed to set profile image' });
+    }
+  });
+
   // Upload attachments for quotation
   router.post('/:id/upload-attachments', upload.array('attachments', 10), async (req, res) => {
     try {
