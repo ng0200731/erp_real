@@ -144,6 +144,7 @@ async function ensureSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_quotations_customerName ON quotations(customerName);
     CREATE INDEX IF NOT EXISTS idx_quotations_productType ON quotations(productType);
     CREATE INDEX IF NOT EXISTS idx_quotations_dateCreated ON quotations(dateCreated DESC);
+    CREATE INDEX IF NOT EXISTS idx_quotations_quotationSeq ON quotations(quotationSeq);
     CREATE INDEX IF NOT EXISTS idx_skills_name ON skills(name);
     CREATE INDEX IF NOT EXISTS idx_skills_status ON skills(status);
 
@@ -408,6 +409,31 @@ async function ensureSchema(db) {
     if (!err.message.includes('duplicate column name')) {
       console.warn('Error adding customerItemName column:', err);
     }
+  }
+
+  try {
+    await db.exec(`ALTER TABLE quotations ADD COLUMN quotationSeq TEXT;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding quotationSeq column:', err);
+    }
+  }
+
+  // Backfill quotationSeq for existing regular quotations (non-outsourcing)
+  try {
+    const existingSeqs = await db.all(`SELECT id FROM quotations WHERE quotationSeq IS NULL AND productType NOT IN ('other', 'others', 'outsource') ORDER BY id ASC`);
+    if (existingSeqs.length > 0) {
+      const maxRow = await db.get(`SELECT MAX(CAST(REPLACE(quotationSeq, 'IP', '') AS INTEGER)) as maxSeq FROM quotations WHERE quotationSeq IS NOT NULL`);
+      let nextSeq = (maxRow && maxRow.maxSeq ? maxRow.maxSeq : 0) + 1;
+      for (const row of existingSeqs) {
+        const seq = 'IP' + String(nextSeq).padStart(7, '0');
+        await db.run(`UPDATE quotations SET quotationSeq = ? WHERE id = ?`, [seq, row.id]);
+        nextSeq++;
+      }
+      console.log(`Backfilled quotationSeq for ${existingSeqs.length} existing quotations`);
+    }
+  } catch (err) {
+    console.warn('Error backfilling quotationSeq:', err);
   }
 
   try {
@@ -869,9 +895,18 @@ export async function findCustomerByEmail(email) {
 export async function createQuotation(quotationData) {
   const db = await getTasksDb();
 
+  const isOutsourcing = (quotationData.productType === 'other' || quotationData.productType === 'others' || quotationData.productType === 'outsource');
+
+  // Auto-generate quotationSeq (IP) for regular quotations
+  let quotationSeq = quotationData.quotationSeq || null;
+  if (!isOutsourcing && !quotationSeq) {
+    const seqRow = await db.get(`SELECT MAX(CAST(REPLACE(quotationSeq, 'IP', '') AS INTEGER)) as maxSeq FROM quotations WHERE quotationSeq IS NOT NULL`);
+    const nextSeq = (seqRow && seqRow.maxSeq ? seqRow.maxSeq : 0) + 1;
+    quotationSeq = 'IP' + String(nextSeq).padStart(7, '0');
+  }
+
   // Auto-generate OS Ref for outsourcing quotations
   let outsourcingSeq = quotationData.outsourcingSeq || null;
-  const isOutsourcing = (quotationData.productType === 'other' || quotationData.productType === 'others' || quotationData.productType === 'outsource');
   if (isOutsourcing && !outsourcingSeq) {
     const row = await db.get(`SELECT MAX(CAST(REPLACE(outsourcingSeq, 'OS', '') AS INTEGER)) as maxSeq FROM quotations WHERE outsourcingSeq IS NOT NULL`);
     const nextSeq = (row && row.maxSeq ? row.maxSeq : 0) + 1;
@@ -880,8 +915,8 @@ export async function createQuotation(quotationData) {
 
   const result = await db.run(
     `
-      INSERT INTO quotations (customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, outsourcingSeq, brandId, customerItemName)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO quotations (customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, outsourcingSeq, quotationSeq, brandId, customerItemName)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       quotationData.customerName,
@@ -903,6 +938,7 @@ export async function createQuotation(quotationData) {
       quotationData.dateCreated,
       quotationData.status || 'draft',
       outsourcingSeq,
+      quotationSeq,
       quotationData.brandId || null,
       quotationData.customerItemName || null
     ]
@@ -915,7 +951,7 @@ export async function getQuotationById(id) {
   const db = await getTasksDb();
   // Exclude profileImageBlob from general queries to avoid transferring large BLOB data
   const quotation = await db.get(
-    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, resendCount, outsourcingSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations WHERE id = ?`,
+    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations WHERE id = ?`,
     [id]
   );
 
@@ -931,7 +967,7 @@ export async function getAllQuotations() {
   const db = await getTasksDb();
   // Exclude profileImageBlob from general queries to avoid transferring large BLOB data
   const quotations = await db.all(
-    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, resendCount, outsourcingSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations ORDER BY dateCreated DESC`
+    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations ORDER BY dateCreated DESC`
   );
 
   // Parse JSON fields
@@ -949,7 +985,7 @@ export async function updateQuotation(id, quotationData) {
   await db.run(
     `
       UPDATE quotations
-      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?, outsourcingSeq = ?, selectedSupplierId = ?, selectedSupplierResponseId = ?, sampleReadyDate = ?, brandId = ?, customerItemName = ?
+      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?, outsourcingSeq = ?, quotationSeq = ?, selectedSupplierId = ?, selectedSupplierResponseId = ?, sampleReadyDate = ?, brandId = ?, customerItemName = ?
       WHERE id = ?
     `,
     [
@@ -972,6 +1008,7 @@ export async function updateQuotation(id, quotationData) {
       quotationData.status || 'draft',
       quotationData.resendCount || 0,
       quotationData.outsourcingSeq || null,
+      quotationData.quotationSeq || null,
       quotationData.selectedSupplierId || null,
       quotationData.selectedSupplierResponseId || null,
       quotationData.sampleReadyDate || null,

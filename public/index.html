@@ -1846,6 +1846,10 @@
                   <input type="checkbox" id="selectAllCheckbox" style="cursor:pointer;">
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
+                  <div>Seq#</div>
+                  <input type="text" id="quotationFilterSeq" class="filter-input" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
+                </th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Customer Name</div>
                   <input type="text" id="quotationFilterCustomer" class="filter-input" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
                 </th>
@@ -1928,7 +1932,7 @@
             </thead>
             <tbody id="quotationsTableBody">
               <tr>
-                <td colspan="17" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+                <td colspan="18" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
                   No quotations saved yet. Create quotations first.
                 </td>
               </tr>
@@ -12062,7 +12066,7 @@
       if (quotations.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="17" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="18" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No quotations saved yet. Create quotations first.
             </td>
           </tr>
@@ -12076,7 +12080,7 @@
       if (filteredQuotations.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="17" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="18" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No quotations match the current filters.
             </td>
           </tr>
@@ -12132,6 +12136,7 @@
           <td style="border:1px solid #000; padding:8px; text-align:center;" onclick="event.stopPropagation();">
             <input type="checkbox" class="quotation-checkbox" data-quotation-id="${quotation.id}" style="cursor:pointer;">
           </td>
+          <td style="border:1px solid #000; padding:8px; font-weight:600; color:#007bff;">${quotation.quotationSeq || '-'}</td>
           <td style="border:1px solid #000; padding:8px;">${quotation.customerName}</td>
           <td style="border:1px solid #000; padding:4px; text-align:center;">${quotation.hasProfileImage ? '<img src="/api/quotations/' + quotation.id + '/profile-image" style="width:40px; height:40px; object-fit:cover; border:1px solid #ddd; cursor:pointer;" onclick="event.stopPropagation(); showImagePreview(this.src)">' : '<span style="color:#ccc;">-</span>'}</td>
           <td style="border:1px solid #000; padding:8px;">${quotation.customerItemName || '<span style="color:#ccc;">-</span>'}</td>
@@ -12158,6 +12163,7 @@
 
     function applyQuotationFilters(quotations) {
       const filters = {
+        seq: document.getElementById('quotationFilterSeq').value.toLowerCase().trim(),
         customer: document.getElementById('quotationFilterCustomer').value.toLowerCase().trim(),
         contact: document.getElementById('quotationFilterContact').value.toLowerCase().trim(),
         email: document.getElementById('quotationFilterEmail').value.toLowerCase().trim(),
@@ -12171,6 +12177,7 @@
       };
 
       return quotations.filter(quotation => {
+        if (filters.seq && !(quotation.quotationSeq || '').toLowerCase().includes(filters.seq)) return false;
         if (filters.customer && !quotation.customerName.toLowerCase().includes(filters.customer)) return false;
         if (filters.contact && !quotation.contactPerson?.toLowerCase().includes(filters.contact)) return false;
         if (filters.email && !quotation.email?.toLowerCase().includes(filters.email)) return false;
@@ -12340,7 +12347,7 @@
             <div style="display:flex; align-items:center; gap:12px;">
               ${quotation.hasProfileImage ? '<img src="/api/quotations/' + quotation.id + '/profile-image" style="width:60px; height:60px; object-fit:cover; border:1px solid #ddd; flex-shrink:0; cursor:pointer;" onclick="showImagePreview(this.src)">' : ''}
               <div style="flex:1;">
-                <strong>Quotation Details</strong> - Created: ${new Date(quotation.dateCreated).toLocaleString()}
+                <strong>${quotation.quotationSeq ? quotation.quotationSeq + ' — ' : ''}Quotation Details</strong> - Created: ${new Date(quotation.dateCreated).toLocaleString()}
                 ${quotation.customerItemName ? '<div style="margin-top:4px; font-size:13px; color:#555;"><strong>Item:</strong> ' + quotation.customerItemName + '</div>' : ''}
               </div>
               <span style="font-size: 0.9em; color: #666;">Status: ${quotation.status || 'Draft'}</span>
@@ -16609,7 +16616,7 @@
     // ========== EXPORT HELPER ==========
 
     const EXPORT_COLUMNS = [
-      'OS Ref', 'Customer Name', 'Item Name', 'Contact Person', 'Email', 'Phone',
+      'Seq#', 'Customer Name', 'Item Name', 'Contact Person', 'Email', 'Phone',
       'Brand', 'Product Type', 'Quantity', 'Total (HKD)', 'Type', 'Status',
       'Date Created', 'Sample Ready Date'
     ];
@@ -16622,7 +16629,7 @@
 
     function buildExportRows(quotations) {
       return quotations.map(q => ({
-        'OS Ref': q.outsourcingSeq || '',
+        'Seq#': q.quotationSeq || q.outsourcingSeq || '',
         'Customer Name': q.customerName || '',
         'Item Name': q.customerItemName || '',
         'Contact Person': q.contactPerson || '',
@@ -16773,7 +16780,7 @@
         const rowIdx = i + 2;
         const row = ws.addRow([
           '',
-          q.outsourcingSeq || '',
+          q.quotationSeq || q.outsourcingSeq || '',
           q.customerName || '',
           q.customerItemName || '',
           q.contactPerson || '',
