@@ -21,7 +21,9 @@ import {
   // Skills functions
   getAllSkills, getSkillsStats, getSkillByName, getSkillById, createSkill, updateSkill, deleteSkill,
   // Brand functions
-  getAllBrands, getBrandById, createBrand, updateBrand, deleteBrand
+  getAllBrands, getBrandById, createBrand, updateBrand, deleteBrand,
+  // Product Profile functions
+  getAllProductProfiles, getProductProfileById, createProductProfile, updateProductProfile, deleteProductProfile, getProductProfilesByType
 } from './db/tasksDb.js';
 import SkillManager from './skills/skillManager.js';
 import { getNormalizedRelativePath } from './utils/pathUtils.js';
@@ -34,6 +36,7 @@ import { createQuotationRoutes } from './routes/quotations.js';
 import { createSkillRoutes } from './routes/skills.js';
 import { createEmailRoutes } from './routes/emails.js';
 import { createBrandRoutes } from './routes/brands.js';
+import { createProductProfileRoutes } from './routes/product-profiles.js';
 import supplierPortalRouter from './routes/supplier-portal.js';
 
 // ---------- ENV ----------
@@ -468,6 +471,17 @@ const brandRoutes = createBrandRoutes({
   deleteBrand
 });
 app.use('/api/brands', brandRoutes);
+
+// Product Profile routes
+const productProfileRoutes = createProductProfileRoutes({
+  getAllProductProfiles,
+  getProductProfileById,
+  createProductProfile,
+  updateProductProfile,
+  deleteProductProfile,
+  getProductProfilesByType
+});
+app.use('/api/product-profiles', productProfileRoutes);
 
 // Supplier portal routes
 app.use('/api/supplier-portal', supplierPortalRouter);

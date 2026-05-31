@@ -2231,6 +2231,26 @@
         </div>
       </div>
 
+      <!-- Product Profiles Panel -->
+      <div id="productProfilesPanel" style="border:0; padding:0; margin-bottom:20px; display:none;">
+        <div class="settings-section" id="sectionProductProfiles">
+          <div class="settings-section-header" onclick="toggleSettingsSection('sectionProductProfiles')">
+            <h3 class="settings-section-title">
+              <span class="settings-section-arrow">▼</span>
+              Product Profiles
+            </h3>
+            <span style="font-size:11px; opacity:0.6; letter-spacing:0.08em;">CLICK TO TOGGLE</span>
+          </div>
+          <div class="settings-section-body">
+            <p style="font-size:12px; color:#666; margin:0 0 15px 0;">Manage reusable product specification templates. These can be loaded when creating quotations.</p>
+            <div id="productProfilesList" style="margin-bottom:15px;">
+              <p style="color:#999; font-style:italic;">Loading profiles...</p>
+            </div>
+            <button type="button" onclick="loadProductProfilesList()" style="padding:6px 16px; background:#000; color:#fff; border:none; cursor:pointer; font-size:12px;">Refresh List</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Email UI (next step; hidden for now) -->
       <div id="emails" style="margin:0; display:none; width:100%;">
         <div class="topbar">
@@ -2912,6 +2932,56 @@
       if (section) section.classList.toggle('collapsed');
     }
 
+    // ========== PRODUCT PROFILES MANAGEMENT ==========
+    window.loadProductProfilesList = async function() {
+      const container = document.getElementById('productProfilesList');
+      if (!container) return;
+      try {
+        const res = await fetch('/api/product-profiles');
+        const data = await res.json();
+        const profiles = data.profiles || [];
+        if (profiles.length === 0) {
+          container.innerHTML = '<p style="color:#999; font-style:italic;">No profiles saved yet. Create one from the quotation form using "Save Profile".</p>';
+          return;
+        }
+        // Group by product type
+        const grouped = {};
+        profiles.forEach(p => {
+          const type = getProductTypeDisplayName(p.productType);
+          if (!grouped[type]) grouped[type] = [];
+          grouped[type].push(p);
+        });
+        let html = '';
+        Object.entries(grouped).forEach(([type, items]) => {
+          html += '<div style="margin-bottom:15px;"><h4 style="margin:0 0 8px; font-size:13px; color:#333; text-transform:uppercase; letter-spacing:0.08em;">' + escapeHtml(type) + '</h4>';
+          html += '<table style="width:100%; border-collapse:collapse; font-size:13px;">';
+          html += '<tr style="background:#f0f0f0;"><th style="padding:6px 10px; border:1px solid #ccc; text-align:left;">Name</th><th style="padding:6px 10px; border:1px solid #ccc; text-align:left;">Key Specs</th><th style="padding:6px 10px; border:1px solid #ccc; width:100px;">Actions</th></tr>';
+          items.forEach(p => {
+            const specs = p.specs || {};
+            const summary = Object.entries(specs).filter(([k,v]) => v).map(([k,v]) => k + ': ' + v).join(', ') || '—';
+            html += '<tr><td style="padding:6px 10px; border:1px solid #ddd;">' + escapeHtml(p.name) + '</td>';
+            html += '<td style="padding:6px 10px; border:1px solid #ddd; color:#666; max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + escapeHtml(summary) + '</td>';
+            html += '<td style="padding:6px 10px; border:1px solid #ddd;"><button type="button" onclick="deleteProductProfile(' + p.id + ')" style="padding:3px 8px; background:#dc3545; color:#fff; border:none; cursor:pointer; font-size:11px;">Delete</button></td></tr>';
+          });
+          html += '</table></div>';
+        });
+        container.innerHTML = html;
+      } catch (err) {
+        container.innerHTML = '<p style="color:#dc3545;">Failed to load profiles.</p>';
+      }
+    };
+
+    window.deleteProductProfile = async function(id) {
+      const confirmed = await showModal({ title: 'Delete Profile', body: 'Are you sure you want to delete this profile?', okText: 'Delete', cancelText: 'Cancel' });
+      if (!confirmed) return;
+      try {
+        await fetch('/api/product-profiles/' + id, { method: 'DELETE' });
+        loadProductProfilesList();
+      } catch (err) {
+        showModal({ title: 'Error', body: 'Failed to delete profile.' });
+      }
+    };
+
     // ========== BRAND DETAILS MANAGEMENT ==========
     let brandNamesList = [];
 
@@ -2953,7 +3023,7 @@
     });
 
     // ========== PRODUCT TYPE MANAGEMENT ==========
-    const PRESET_PRODUCT_TYPES = ['Hang Tag', 'Woven Label', 'Care Label', 'Heat Transfer', 'Outsource'];
+    const PRESET_PRODUCT_TYPES = ['Hang Tag', 'Woven Label', 'Care Label', 'Heat Transfer', 'Outsource', 'Silicon Patch', 'Embroidery Patch'];
     let customProductTypes = [];
 
     function getAllProductTypes() {
@@ -3156,6 +3226,7 @@
       settingsPanel.style.display = 'none';
       profilesListPanel.style.display = 'none';
       document.getElementById('quotationDefaultsPanel').style.display = 'none';
+      document.getElementById('productProfilesPanel').style.display = 'none';
       
       // Remove tab
       const tab = tabsBar.querySelector(`[data-tab-id="${id}"]`);
@@ -3184,6 +3255,7 @@
       welcomePanel.style.display = id === 'welcome' ? 'block' : 'none';
       profilesListPanel.style.display = id === 'profiles' ? 'block' : 'none';
       document.getElementById('quotationDefaultsPanel').style.display = id === 'profiles' ? 'block' : 'none';
+      document.getElementById('productProfilesPanel').style.display = id === 'profiles' ? 'block' : 'none';
       document.getElementById('emails').style.display = id === 'emails' ? 'block' : 'none';
       document.getElementById('email-send').style.display = id === 'email-send' ? 'block' : 'none';
       document.getElementById('customerPanel').style.display = id === 'customer' ? 'block' : 'none';
@@ -3202,15 +3274,31 @@
 
       if (id === 'profiles') {
         loadProfilesList().catch(() => {});
+        loadProductProfilesList();
       }
 
       if (id === 'welcome') {
-        loadBrandsCache().then(() => {
-          loadDashboardQuotations().catch(() => {});
-          loadDashboardOutsourcing().catch(() => {});
-          loadDashboardBrand().catch(() => {});
-          loadDashboardBrandValue().catch(() => {});
-        }).catch(() => {});
+        const hasExistingCharts = chartInstance || outsourcingChartInstance || brandChartInstance || brandValueChartInstance;
+        if (hasExistingCharts) {
+          // Charts already exist — just resize them after layout settles
+          // Avoids destroy/recreate cycle that causes scale mismatch
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              if (chartInstance) chartInstance.resize();
+              if (outsourcingChartInstance) outsourcingChartInstance.resize();
+              if (brandChartInstance) brandChartInstance.resize();
+              if (brandValueChartInstance) brandValueChartInstance.resize();
+            }, 50);
+          });
+        } else {
+          // First load — create charts
+          loadBrandsCache().then(() => {
+            loadDashboardQuotations().catch(() => {});
+            loadDashboardOutsourcing().catch(() => {});
+            loadDashboardBrand().catch(() => {});
+            loadDashboardBrandValue().catch(() => {});
+          }).catch(() => {});
+        }
       }
 
       if (id === 'brand-view') {
@@ -12030,7 +12118,10 @@
         'heat-transfer': 'Heat Transfer',
         'others': 'Others',
         'other': 'Other',
-        'outsource': 'Outsource'
+        'outsource': 'Outsource',
+        'silicon-patch': 'Silicon Patch',
+        'embroidery-patch': 'Embroidery Patch',
+        'embriodery-patch': 'Embroidery Patch'
       };
       return names[type] || type;
     }
@@ -12367,15 +12458,7 @@
         }
 
         // Get product-specific fields
-        let productDetails = {};
-        if (originalQuotation.productType === 'hang-tag') {
-          productDetails = {
-            material: document.getElementById('quotationMaterial')?.value || '',
-            size: document.getElementById('quotationSize')?.value || '',
-            printingMethod: document.getElementById('quotationPrintingMethod')?.value || ''
-          };
-        }
-        // Add other product types as needed
+        let productDetails = collectProductDetailsFromForm(originalQuotation.productType);
 
         // Calculate total
         const total = parseFloat(quantity) * parseFloat(unitPrice || 0);
@@ -12817,6 +12900,105 @@
 
         // Initialize file upload functionality
         initializeFileUploads(tagType);
+
+        // Initialize size ratio preview for product types with a size field
+        initSizeRatioPreview('quotationSize', 'sizeRatioPreview');
+        // For woven-label with separate width/length, use the size preview with width input
+        if (tagType === 'woven-label') {
+          const wInput = document.getElementById('quotationWidth');
+          const lInput = document.getElementById('quotationLength');
+          const previewEl = document.getElementById('sizeRatioPreview');
+          if (wInput && lInput && previewEl) {
+            const updateWL = () => {
+              const w = parseFloat(wInput.value) || 0;
+              const l = parseFloat(lInput.value) || 0;
+              if (w > 0 && l > 0) {
+                const maxD = Math.max(w, l);
+                const sc = 36 / maxD;
+                const bw = Math.round(w * sc);
+                const bh = Math.round(l * sc);
+                const r = (w / l).toFixed(2);
+                previewEl.innerHTML = `<div style="width:${bw}px;height:${bh}px;background:#e0e0e0;border:1px solid #333;position:relative;"><span style="position:absolute;bottom:-12px;left:0;right:0;font-size:8px;color:#666;text-align:center;">${r}</span></div>`;
+              } else {
+                previewEl.innerHTML = '';
+              }
+            };
+            wInput.addEventListener('input', updateWL);
+            lInput.addEventListener('input', updateWL);
+          }
+        }
+
+        // Initialize profile selector
+        (function initProfileSelector() {
+          const profileSelect = document.getElementById('quotationProfileSelect');
+          const loadBtn = document.getElementById('loadProfileBtn');
+          const saveBtn = document.getElementById('saveAsProfileBtn');
+          if (!profileSelect || !loadBtn || !saveBtn) return;
+
+          // Load profiles for current product type
+          function refreshProfiles() {
+            const type = tagType;
+            fetch('/api/product-profiles?productType=' + encodeURIComponent(type))
+              .then(r => r.json())
+              .then(data => {
+                profileSelect.innerHTML = '<option value="">-- Select a saved profile --</option>';
+                (data.profiles || []).forEach(p => {
+                  profileSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+                });
+              })
+              .catch(() => {});
+          }
+          refreshProfiles();
+
+          // Load profile into form
+          loadBtn.onclick = () => {
+            const id = profileSelect.value;
+            if (!id) return;
+            fetch('/api/product-profiles/' + id)
+              .then(r => r.json())
+              .then(data => {
+                if (!data.profile) return;
+                const specs = data.profile.specs || {};
+                Object.entries(specs).forEach(([key, val]) => {
+                  const el = document.getElementById('quotation' + key.charAt(0).toUpperCase() + key.slice(1));
+                  if (!el) return;
+                  if (el.tagName === 'SELECT') {
+                    el.value = val;
+                  } else if (el.tagName === 'TEXTAREA') {
+                    el.value = val;
+                  } else {
+                    el.value = val;
+                  }
+                });
+                // Re-trigger preview
+                initSizeRatioPreview('quotationSize', 'sizeRatioPreview');
+              })
+              .catch(() => { showModal({ title: 'Error', body: 'Failed to load profile.' }); });
+          };
+
+          // Save current form as profile
+          saveBtn.onclick = () => {
+            showModal({
+              title: 'Save as Profile',
+              body: '<label style="display:block;margin-bottom:5px;font-weight:600;">Profile Name</label><input type="text" id="profileNameInput" style="width:100%;padding:8px;border:1px solid #000;" placeholder="e.g., Standard Hang Tag">',
+              okText: 'Save',
+              cancelText: 'Cancel'
+            }).then(confirmed => {
+              if (!confirmed) return;
+              const name = document.getElementById('profileNameInput')?.value?.trim();
+              if (!name) { showModal({ title: 'Error', body: 'Profile name is required.' }); return; }
+              const specs = collectProductDetailsFromForm(tagType);
+              fetch('/api/product-profiles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, productType: tagType, specs })
+              })
+              .then(r => r.json())
+              .then(() => { refreshProfiles(); showModal({ title: 'Success', body: 'Profile saved!' }); })
+              .catch(() => { showModal({ title: 'Error', body: 'Failed to save profile.' }); });
+            });
+          };
+        })();
 
         // Add event listener for contact person selection
         const contactPersonField = document.getElementById('quotationContactPerson');
@@ -13608,6 +13790,14 @@
 
             '<div style="margin-bottom:20px;">' +
               '<h4>Product Specifications</h4>' +
+              '<div style="margin-bottom:15px; padding:10px; background:#f8f8f8; border:1px solid #ddd;">' +
+                '<label style="display:block; margin-bottom:5px; font-weight:600; font-size:12px; color:#555;">Load from Saved Profile</label>' +
+                '<div style="display:flex; gap:8px; align-items:center;">' +
+                  '<select id="quotationProfileSelect" style="flex:1; padding:6px; border:1px solid #000; font-size:13px;"><option value="">-- Select a saved profile --</option></select>' +
+                  '<button type="button" id="loadProfileBtn" style="padding:6px 12px; background:#000; color:#fff; border:1px solid #000; cursor:pointer; font-size:12px;">Load</button>' +
+                  '<button type="button" id="saveAsProfileBtn" style="padding:6px 12px; background:#fff; color:#000; border:1px solid #000; cursor:pointer; font-size:12px;">Save Profile</button>' +
+                '</div>' +
+              '</div>' +
               '<div style="margin-bottom:15px;">' +
                 '<label style="display:block; margin-bottom:5px; font-weight:600;">Product Type *</label>' +
                 getProductTypeSelectHtml(tagType) +
@@ -13700,6 +13890,63 @@
       '</div>';
     }
 
+    // Helper: collect product-specific field values from the DOM
+    function collectProductDetailsFromForm(tagType) {
+      const el = (id) => document.getElementById(id)?.value || '';
+      if (tagType === 'hang-tag') {
+        return { material: el('quotationMaterial'), size: el('quotationSize'), printingMethod: el('quotationPrintingMethod') };
+      } else if (tagType === 'woven-label') {
+        return { width: el('quotationWidth'), length: el('quotationLength'), colorCount: el('quotationColorCount'), edgeFinish: el('quotationEdgeFinish') };
+      } else if (tagType === 'care-label') {
+        return { materialType: el('quotationMaterialType'), washSymbols: el('quotationWashSymbols') };
+      } else if (tagType === 'heat-transfer') {
+        return { transferType: el('quotationTransferType'), application: el('quotationApplication') };
+      } else if (tagType === 'silicon-patch') {
+        return { size: el('quotationSize'), thickness: el('quotationThickness'), colorMode: el('quotationColorMode'), backingType: el('quotationBackingType'), designComplexity: el('quotationDesignComplexity') };
+      } else if (tagType === 'embroidery-patch' || tagType === 'embriodery-patch') {
+        return { size: el('quotationSize'), stitchType: el('quotationStitchType'), borderType: el('quotationBorderType'), backingType: el('quotationBackingType'), threadColorCount: el('quotationThreadColorCount') };
+      } else {
+        return { productDescription: el('quotationProductDescription'), category: el('quotationCategory'), complexity: el('quotationComplexity') };
+      }
+    }
+
+    // Size ratio preview: renders a small proportional rectangle based on size input
+    function initSizeRatioPreview(sizeInputId, previewContainerId) {
+      const sizeInput = document.getElementById(sizeInputId);
+      const container = document.getElementById(previewContainerId);
+      if (!sizeInput || !container) return;
+
+      function updatePreview() {
+        const value = sizeInput.value.trim();
+        // Parse size formats: "2x3", "2 x 3", "2x3 inches", "2\" x 3\"", etc.
+        const match = value.match(/(\d+\.?\d*)\s*[xX×]\s*(\d+\.?\d*)/);
+        if (!match) {
+          container.innerHTML = '';
+          return;
+        }
+        const w = parseFloat(match[1]);
+        const h = parseFloat(match[2]);
+        if (w <= 0 || h <= 0) {
+          container.innerHTML = '';
+          return;
+        }
+        // Scale to fit in 40x40px container, max dimension = 36px
+        const maxDim = Math.max(w, h);
+        const scale = 36 / maxDim;
+        const boxW = Math.round(w * scale);
+        const boxH = Math.round(h * scale);
+        const ratio = (w / h).toFixed(2);
+        container.innerHTML = `
+          <div style="width:${boxW}px; height:${boxH}px; background:#e0e0e0; border:1px solid #333; position:relative;">
+            <span style="position:absolute; bottom:-12px; left:0; right:0; font-size:8px; color:#666; text-align:center;">${ratio}</span>
+          </div>
+        `;
+      }
+
+      sizeInput.addEventListener('input', updatePreview);
+      updatePreview(); // Initial call if there's already a value
+    }
+
     function getProductSpecificFields(tagType) {
       const fields = {
         'hang-tag': `
@@ -13716,7 +13963,10 @@
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Size</label>
-              <input type="text" id="quotationSize" style="width:100%; padding:8px; border:1px solid #000;" placeholder="2x3 inches">
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input type="text" id="quotationSize" style="flex:1; padding:8px; border:1px solid #000;" placeholder="2x3 inches">
+                <div id="sizeRatioPreview" style="width:44px; height:44px; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; background:#fafafa;"></div>
+              </div>
             </div>
           </div>
           <div style="margin-bottom:15px;">
@@ -13738,7 +13988,10 @@
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Length</label>
-              <input type="text" id="quotationLength" style="width:100%; padding:8px; border:1px solid #000;" placeholder="2 inches">
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input type="text" id="quotationLength" style="flex:1; padding:8px; border:1px solid #000;" placeholder="2 inches">
+                <div id="sizeRatioPreview" style="width:44px; height:44px; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; background:#fafafa;"></div>
+              </div>
             </div>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
@@ -13821,6 +14074,112 @@
               </select>
             </div>
           </div>
+        `,
+        'silicon-patch': `
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Size</label>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input type="text" id="quotationSize" style="flex:1; padding:8px; border:1px solid #000;" placeholder="2x3 inches">
+                <div id="sizeRatioPreview" style="width:44px; height:44px; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; background:#fafafa;"></div>
+              </div>
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Thickness</label>
+              <select id="quotationThickness" style="width:100%; padding:8px; border:1px solid #000;">
+                <option value="">Select Thickness</option>
+                <option value="0.5mm">0.5mm</option>
+                <option value="1mm">1mm</option>
+                <option value="1.5mm">1.5mm</option>
+                <option value="2mm">2mm</option>
+                <option value="3mm">3mm</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Color Mode</label>
+              <select id="quotationColorMode" style="width:100%; padding:8px; border:1px solid #000;">
+                <option value="">Select Color Mode</option>
+                <option value="single-color">Single Color</option>
+                <option value="multi-color">Multi-Color</option>
+                <option value="full-color">Full Color</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Backing Type</label>
+              <select id="quotationBackingType" style="width:100%; padding:8px; border:1px solid #000;">
+                <option value="">Select Backing</option>
+                <option value="adhesive">Adhesive</option>
+                <option value="sew-on">Sew-on</option>
+                <option value="velcro">Velcro</option>
+                <option value="magnetic">Magnetic</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-bottom:15px;">
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Design Complexity</label>
+            <select id="quotationDesignComplexity" style="width:100%; padding:8px; border:1px solid #000;">
+              <option value="">Select Complexity</option>
+              <option value="simple">Simple</option>
+              <option value="medium">Medium</option>
+              <option value="complex">Complex</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+        `,
+        'embroidery-patch': `
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Size</label>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input type="text" id="quotationSize" style="flex:1; padding:8px; border:1px solid #000;" placeholder="2x3 inches">
+                <div id="sizeRatioPreview" style="width:44px; height:44px; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; background:#fafafa;"></div>
+              </div>
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Stitch Type</label>
+              <select id="quotationStitchType" style="width:100%; padding:8px; border:1px solid #000;">
+                <option value="">Select Stitch Type</option>
+                <option value="flat-stitch">Flat Stitch</option>
+                <option value="3d-puff">3D Puff</option>
+                <option value="applique">Applique</option>
+                <option value="chenille">Chenille</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Border Type</label>
+              <select id="quotationBorderType" style="width:100%; padding:8px; border:1px solid #000;">
+                <option value="">Select Border</option>
+                <option value="merrow">Merrow Border</option>
+                <option value="heat-cut">Heat Cut Border</option>
+                <option value="laser-cut">Laser Cut</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Backing Type</label>
+              <select id="quotationBackingType" style="width:100%; padding:8px; border:1px solid #000;">
+                <option value="">Select Backing</option>
+                <option value="iron-on">Iron-on</option>
+                <option value="sew-on">Sew-on</option>
+                <option value="velcro">Velcro</option>
+                <option value="adhesive">Adhesive</option>
+                <option value="none">None</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-bottom:15px;">
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Thread Color Count</label>
+            <select id="quotationThreadColorCount" style="width:100%; padding:8px; border:1px solid #000;">
+              <option value="">Select Colors</option>
+              <option value="1-3">1-3 Colors</option>
+              <option value="4-6">4-6 Colors</option>
+              <option value="7-9">7-9 Colors</option>
+              <option value="10+">10+ Colors</option>
+            </select>
+          </div>
         `
       };
 
@@ -13843,7 +14202,10 @@
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Size</label>
-              <input type="text" id="quotationSize" style="width:100%; padding:8px; border:1px solid #000;" placeholder="2x3 inches" value="${productDetails.size || ''}">
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input type="text" id="quotationSize" style="flex:1; padding:8px; border:1px solid #000;" placeholder="2x3 inches" value="${productDetails.size || ''}">
+                <div id="sizeRatioPreview" style="width:44px; height:44px; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; background:#fafafa;"></div>
+              </div>
             </div>
           </div>
           <div style="margin-bottom:15px;">
@@ -13865,7 +14227,10 @@
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Length</label>
-              <input type="text" id="quotationLength" style="width:100%; padding:8px; border:1px solid #000;" placeholder="2 inches" value="${productDetails.length || ''}">
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input type="text" id="quotationLength" style="flex:1; padding:8px; border:1px solid #000;" placeholder="2 inches" value="${productDetails.length || ''}">
+                <div id="sizeRatioPreview" style="width:44px; height:44px; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; background:#fafafa;"></div>
+              </div>
             </div>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
@@ -13947,6 +14312,112 @@
                 <option value="custom" ${productDetails.complexity === 'custom' ? 'selected' : ''}>Custom</option>
               </select>
             </div>
+          </div>
+        `,
+        'silicon-patch': `
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Size</label>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input type="text" id="quotationSize" style="flex:1; padding:8px; border:1px solid #000;" placeholder="2x3 inches" value="${productDetails.size || ''}">
+                <div id="sizeRatioPreview" style="width:44px; height:44px; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; background:#fafafa;"></div>
+              </div>
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Thickness</label>
+              <select id="quotationThickness" style="width:100%; padding:8px; border:1px solid #000;">
+                <option value="">Select Thickness</option>
+                <option value="0.5mm" ${productDetails.thickness === '0.5mm' ? 'selected' : ''}>0.5mm</option>
+                <option value="1mm" ${productDetails.thickness === '1mm' ? 'selected' : ''}>1mm</option>
+                <option value="1.5mm" ${productDetails.thickness === '1.5mm' ? 'selected' : ''}>1.5mm</option>
+                <option value="2mm" ${productDetails.thickness === '2mm' ? 'selected' : ''}>2mm</option>
+                <option value="3mm" ${productDetails.thickness === '3mm' ? 'selected' : ''}>3mm</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Color Mode</label>
+              <select id="quotationColorMode" style="width:100%; padding:8px; border:1px solid #000;">
+                <option value="">Select Color Mode</option>
+                <option value="single-color" ${productDetails.colorMode === 'single-color' ? 'selected' : ''}>Single Color</option>
+                <option value="multi-color" ${productDetails.colorMode === 'multi-color' ? 'selected' : ''}>Multi-Color</option>
+                <option value="full-color" ${productDetails.colorMode === 'full-color' ? 'selected' : ''}>Full Color</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Backing Type</label>
+              <select id="quotationBackingType" style="width:100%; padding:8px; border:1px solid #000;">
+                <option value="">Select Backing</option>
+                <option value="adhesive" ${productDetails.backingType === 'adhesive' ? 'selected' : ''}>Adhesive</option>
+                <option value="sew-on" ${productDetails.backingType === 'sew-on' ? 'selected' : ''}>Sew-on</option>
+                <option value="velcro" ${productDetails.backingType === 'velcro' ? 'selected' : ''}>Velcro</option>
+                <option value="magnetic" ${productDetails.backingType === 'magnetic' ? 'selected' : ''}>Magnetic</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-bottom:15px;">
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Design Complexity</label>
+            <select id="quotationDesignComplexity" style="width:100%; padding:8px; border:1px solid #000;">
+              <option value="">Select Complexity</option>
+              <option value="simple" ${productDetails.designComplexity === 'simple' ? 'selected' : ''}>Simple</option>
+              <option value="medium" ${productDetails.designComplexity === 'medium' ? 'selected' : ''}>Medium</option>
+              <option value="complex" ${productDetails.designComplexity === 'complex' ? 'selected' : ''}>Complex</option>
+              <option value="custom" ${productDetails.designComplexity === 'custom' ? 'selected' : ''}>Custom</option>
+            </select>
+          </div>
+        `,
+        'embroidery-patch': `
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Size</label>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input type="text" id="quotationSize" style="flex:1; padding:8px; border:1px solid #000;" placeholder="2x3 inches" value="${productDetails.size || ''}">
+                <div id="sizeRatioPreview" style="width:44px; height:44px; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; background:#fafafa;"></div>
+              </div>
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Stitch Type</label>
+              <select id="quotationStitchType" style="width:100%; padding:8px; border:1px solid #000;">
+                <option value="">Select Stitch Type</option>
+                <option value="flat-stitch" ${productDetails.stitchType === 'flat-stitch' ? 'selected' : ''}>Flat Stitch</option>
+                <option value="3d-puff" ${productDetails.stitchType === '3d-puff' ? 'selected' : ''}>3D Puff</option>
+                <option value="applique" ${productDetails.stitchType === 'applique' ? 'selected' : ''}>Applique</option>
+                <option value="chenille" ${productDetails.stitchType === 'chenille' ? 'selected' : ''}>Chenille</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Border Type</label>
+              <select id="quotationBorderType" style="width:100%; padding:8px; border:1px solid #000;">
+                <option value="">Select Border</option>
+                <option value="merrow" ${productDetails.borderType === 'merrow' ? 'selected' : ''}>Merrow Border</option>
+                <option value="heat-cut" ${productDetails.borderType === 'heat-cut' ? 'selected' : ''}>Heat Cut Border</option>
+                <option value="laser-cut" ${productDetails.borderType === 'laser-cut' ? 'selected' : ''}>Laser Cut</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Backing Type</label>
+              <select id="quotationBackingType" style="width:100%; padding:8px; border:1px solid #000;">
+                <option value="">Select Backing</option>
+                <option value="iron-on" ${productDetails.backingType === 'iron-on' ? 'selected' : ''}>Iron-on</option>
+                <option value="sew-on" ${productDetails.backingType === 'sew-on' ? 'selected' : ''}>Sew-on</option>
+                <option value="velcro" ${productDetails.backingType === 'velcro' ? 'selected' : ''}>Velcro</option>
+                <option value="adhesive" ${productDetails.backingType === 'adhesive' ? 'selected' : ''}>Adhesive</option>
+                <option value="none" ${productDetails.backingType === 'none' ? 'selected' : ''}>None</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-bottom:15px;">
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Thread Color Count</label>
+            <select id="quotationThreadColorCount" style="width:100%; padding:8px; border:1px solid #000;">
+              <option value="">Select Colors</option>
+              <option value="1-3" ${productDetails.threadColorCount === '1-3' ? 'selected' : ''}>1-3 Colors</option>
+              <option value="4-6" ${productDetails.threadColorCount === '4-6' ? 'selected' : ''}>4-6 Colors</option>
+              <option value="7-9" ${productDetails.threadColorCount === '7-9' ? 'selected' : ''}>7-9 Colors</option>
+              <option value="10+" ${productDetails.threadColorCount === '10+' ? 'selected' : ''}>10+ Colors</option>
+            </select>
           </div>
         `
       };
@@ -14262,15 +14733,7 @@
         });
 
         // Get product-specific fields
-        let productDetails = {};
-        if (tagType === 'hang-tag') {
-          productDetails = {
-            material: document.getElementById('quotationMaterial')?.value || '',
-            size: document.getElementById('quotationSize')?.value || '',
-            printingMethod: document.getElementById('quotationPrintingMethod')?.value || ''
-          };
-        }
-        // Add other product types as needed
+        let productDetails = collectProductDetailsFromForm(tagType);
 
         // Validation
         if (!customerName) {

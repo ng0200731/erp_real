@@ -235,6 +235,19 @@ async function ensureSchema(db) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_brands_name ON brands(name);
+
+    CREATE TABLE IF NOT EXISTS product_profiles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      productType TEXT NOT NULL,
+      specs TEXT NOT NULL,
+      notes TEXT,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_product_profiles_productType ON product_profiles(productType);
+    CREATE INDEX IF NOT EXISTS idx_product_profiles_name ON product_profiles(name);
   `);
 
   // Add new columns if they don't exist (for database migration)
@@ -1327,5 +1340,66 @@ export async function updateBrand(id, brandData) {
 export async function deleteBrand(id) {
   const db = await getTasksDb();
   await db.run(`DELETE FROM brands WHERE id = ?`, [id]);
+  return true;
+}
+
+// ========== Product Profile Functions ==========
+
+export async function createProductProfile(profileData) {
+  const db = await getTasksDb();
+  const now = new Date().toISOString();
+  const specs = typeof profileData.specs === 'string' ? profileData.specs : JSON.stringify(profileData.specs || {});
+
+  const result = await db.run(
+    `INSERT INTO product_profiles (name, productType, specs, notes, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)`,
+    [profileData.name, profileData.productType, specs, profileData.notes || null, now, now]
+  );
+
+  return result.lastID;
+}
+
+export async function getProductProfileById(id) {
+  const db = await getTasksDb();
+  const profile = await db.get(`SELECT * FROM product_profiles WHERE id = ?`, [id]);
+  if (profile && profile.specs) {
+    try { profile.specs = JSON.parse(profile.specs); } catch (e) { /* keep as string */ }
+  }
+  return profile;
+}
+
+export async function getAllProductProfiles() {
+  const db = await getTasksDb();
+  const profiles = await db.all(`SELECT * FROM product_profiles ORDER BY productType, name`);
+  return profiles.map(p => {
+    if (p.specs) { try { p.specs = JSON.parse(p.specs); } catch (e) { /* keep as string */ } }
+    return p;
+  });
+}
+
+export async function getProductProfilesByType(productType) {
+  const db = await getTasksDb();
+  const profiles = await db.all(`SELECT * FROM product_profiles WHERE productType = ? ORDER BY name`, [productType]);
+  return profiles.map(p => {
+    if (p.specs) { try { p.specs = JSON.parse(p.specs); } catch (e) { /* keep as string */ } }
+    return p;
+  });
+}
+
+export async function updateProductProfile(id, profileData) {
+  const db = await getTasksDb();
+  const now = new Date().toISOString();
+  const specs = typeof profileData.specs === 'string' ? profileData.specs : JSON.stringify(profileData.specs || {});
+
+  await db.run(
+    `UPDATE product_profiles SET name = ?, productType = ?, specs = ?, notes = ?, updatedAt = ? WHERE id = ?`,
+    [profileData.name, profileData.productType, specs, profileData.notes || null, now, id]
+  );
+
+  return true;
+}
+
+export async function deleteProductProfile(id) {
+  const db = await getTasksDb();
+  await db.run(`DELETE FROM product_profiles WHERE id = ?`, [id]);
   return true;
 }
