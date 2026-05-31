@@ -12347,7 +12347,7 @@
             <div style="display:flex; align-items:center; gap:12px;">
               ${quotation.hasProfileImage ? '<img src="/api/quotations/' + quotation.id + '/profile-image" style="width:60px; height:60px; object-fit:cover; border:1px solid #ddd; flex-shrink:0; cursor:pointer;" onclick="showImagePreview(this.src)">' : ''}
               <div style="flex:1;">
-                <strong>${quotation.quotationSeq ? quotation.quotationSeq + ' — ' : ''}Quotation Details</strong> - Created: ${new Date(quotation.dateCreated).toLocaleString()}
+                <strong>${(quotation.quotationSeq || quotation.outsourcingSeq) ? (quotation.quotationSeq || quotation.outsourcingSeq) + ' — ' : ''}Quotation Details</strong> - Created: ${new Date(quotation.dateCreated).toLocaleString()}
                 ${quotation.customerItemName ? '<div style="margin-top:4px; font-size:13px; color:#555;"><strong>Item:</strong> ' + quotation.customerItemName + '</div>' : ''}
               </div>
               <span style="font-size: 0.9em; color: #666;">Status: ${quotation.status || 'Draft'}</span>
