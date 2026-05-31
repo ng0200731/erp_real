@@ -1858,6 +1858,7 @@
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Item Name</div>
+                  <input type="text" id="quotationFilterItemName" class="filter-input" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Contact Person</div>
@@ -1921,6 +1922,14 @@
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Action</div>
+                  <select id="quotationFilterAction" class="filter-input" style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
+                    <option value="">All Actions</option>
+                    <option value="Send to Customer">Send to Customer</option>
+                    <option value="Confirm Price">Confirm Price</option>
+                    <option value="Start Sampling">Start Sampling</option>
+                    <option value="Mark Delivered">Mark Delivered</option>
+                    <option value="Completed">Completed</option>
+                  </select>
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:center;">
                   <div>Delete</div>
@@ -1980,6 +1989,7 @@
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Item Name</div>
+                  <input type="text" id="outsourcingFilterItemName" class="filter-input" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Contact Person</div>
@@ -2045,6 +2055,18 @@
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:center;">
                   <div>Action</div>
+                  <select id="outsourcingFilterAction" class="filter-input" style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
+                    <option value="">All Actions</option>
+                    <option value="Send to Supplier">Send to Supplier</option>
+                    <option value="Compare Quotation">Compare Quotation</option>
+                    <option value="View Submitted">View Submitted</option>
+                    <option value="Resend Reminder">Resend Reminder</option>
+                    <option value="Await Confirm">Await Confirm</option>
+                    <option value="Confirm Price">Confirm Price</option>
+                    <option value="Start Sampling">Start Sampling</option>
+                    <option value="Mark Delivered">Mark Delivered</option>
+                    <option value="Completed">Completed</option>
+                  </select>
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:center;">
                   <div>Delete</div>
@@ -12117,8 +12139,20 @@
 
     // Apply filters for outsourcing quotations
     function applyOutsourcingFilters(quotations) {
+      const outsourcingStatusActionMap = {
+        'pending': 'Send to Supplier',
+        'await quotation': 'Compare Quotation',
+        'compare quotation': 'Compare Quotation',
+        'send to customer': 'Await Confirm',
+        'await customer confirm price': 'Confirm Price',
+        'price confirmed': 'Start Sampling',
+        'sampling': 'Mark Delivered',
+        'sample delivered': 'Completed'
+      };
+
       const filters = {
         customer: document.getElementById('outsourcingFilterCustomer')?.value.toLowerCase().trim() || '',
+        itemName: document.getElementById('outsourcingFilterItemName')?.value.toLowerCase().trim() || '',
         contact: document.getElementById('outsourcingFilterContact')?.value.toLowerCase().trim() || '',
         email: document.getElementById('outsourcingFilterEmail')?.value.toLowerCase().trim() || '',
         phone: document.getElementById('outsourcingFilterPhone')?.value.toLowerCase().trim() || '',
@@ -12128,11 +12162,13 @@
         total: document.getElementById('outsourcingFilterTotal')?.value.toLowerCase().trim() || '',
         sourceType: document.getElementById('outsourcingFilterSourceType')?.value || '',
         status: document.getElementById('outsourcingFilterStatus')?.value || '',
-        date: document.getElementById('outsourcingFilterDate')?.value.toLowerCase().trim() || ''
+        date: document.getElementById('outsourcingFilterDate')?.value.toLowerCase().trim() || '',
+        action: document.getElementById('outsourcingFilterAction')?.value || ''
       };
 
       return quotations.filter(quotation => {
         if (filters.customer && !quotation.customerName.toLowerCase().includes(filters.customer)) return false;
+        if (filters.itemName && !(quotation.customerItemName || '').toLowerCase().includes(filters.itemName)) return false;
         if (filters.contact && !quotation.contactPerson?.toLowerCase().includes(filters.contact)) return false;
         if (filters.email && !quotation.email?.toLowerCase().includes(filters.email)) return false;
         if (filters.phone && !quotation.phone?.toLowerCase().includes(filters.phone)) return false;
@@ -12143,6 +12179,11 @@
         if (filters.sourceType && (quotation.type || 'non email') !== filters.sourceType) return false;
         if (filters.status && quotation.status !== filters.status) return false;
         if (filters.date && !new Date(quotation.dateCreated).toLocaleDateString().toLowerCase().includes(filters.date)) return false;
+        if (filters.action) {
+          const status = quotation.status || 'pending';
+          const actionLabel = outsourcingStatusActionMap[status] || '';
+          if (actionLabel !== filters.action) return false;
+        }
         return true;
       });
     }
@@ -12254,9 +12295,18 @@
     }
 
     function applyQuotationFilters(quotations) {
+      const quotationStatusMap = {
+        'pending': 'Send to Customer',
+        'send to customer': 'Confirm Price',
+        'price confirmed': 'Start Sampling',
+        'sampling': 'Mark Delivered',
+        'sample delivered': 'Completed'
+      };
+
       const filters = {
         seq: document.getElementById('quotationFilterSeq').value.toLowerCase().trim(),
         customer: document.getElementById('quotationFilterCustomer').value.toLowerCase().trim(),
+        itemName: document.getElementById('quotationFilterItemName')?.value.toLowerCase().trim() || '',
         contact: document.getElementById('quotationFilterContact').value.toLowerCase().trim(),
         email: document.getElementById('quotationFilterEmail').value.toLowerCase().trim(),
         phone: document.getElementById('quotationFilterPhone').value.toLowerCase().trim(),
@@ -12265,12 +12315,14 @@
         quantity: document.getElementById('quotationFilterQuantity').value.toLowerCase().trim(),
         total: document.getElementById('quotationFilterTotal').value.toLowerCase().trim(),
         status: document.getElementById('quotationFilterStatus').value,
-        date: document.getElementById('quotationFilterDate').value.toLowerCase().trim()
+        date: document.getElementById('quotationFilterDate').value.toLowerCase().trim(),
+        action: document.getElementById('quotationFilterAction')?.value || ''
       };
 
       return quotations.filter(quotation => {
         if (filters.seq && !(quotation.quotationSeq || '').toLowerCase().includes(filters.seq)) return false;
         if (filters.customer && !quotation.customerName.toLowerCase().includes(filters.customer)) return false;
+        if (filters.itemName && !(quotation.customerItemName || '').toLowerCase().includes(filters.itemName)) return false;
         if (filters.contact && !quotation.contactPerson?.toLowerCase().includes(filters.contact)) return false;
         if (filters.email && !quotation.email?.toLowerCase().includes(filters.email)) return false;
         if (filters.phone && !quotation.phone?.toLowerCase().includes(filters.phone)) return false;
@@ -12280,6 +12332,11 @@
         if (filters.total && !quotation.total.toString().includes(filters.total)) return false;
         if (filters.status && quotation.status !== filters.status) return false;
         if (filters.date && !new Date(quotation.dateCreated).toLocaleDateString().toLowerCase().includes(filters.date)) return false;
+        if (filters.action) {
+          const status = quotation.status || 'pending';
+          const actionLabel = quotationStatusMap[status] || '';
+          if (actionLabel !== filters.action) return false;
+        }
         return true;
       });
     }
