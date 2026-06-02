@@ -232,9 +232,10 @@
     }
 
     .chart-container canvas {
-      max-width: 100%;
-      max-height: 100%;
-      overflow: visible;
+      max-width: 280px !important;
+      max-height: 280px !important;
+      width: 280px !important;
+      height: 280px !important;
     }
 
     .chart-loading {
@@ -1093,6 +1094,144 @@
     .add-type-btn:hover {
       background: #333;
     }
+
+    /* ─── Workshop Stepper ─────────────────────────── */
+    .ws-stepper { display:flex; gap:0; height: calc(100vh - 140px); }
+    .ws-step-nav {
+      width: 220px; min-width: 220px; border-right: 2px solid #000;
+      padding: 0; display: flex; flex-direction: column;
+    }
+    .ws-step-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; cursor: pointer; font-size: 13px;
+      border-bottom: 1px solid #e0e0e0; transition: all 0.15s;
+      position: relative;
+    }
+    .ws-step-item:hover { background: #f5f5f5; }
+    .ws-step-item.active { background: #000; color: #fff; font-weight: 700; }
+    .ws-step-item.completed .ws-step-num { background: #28a745; color: #fff; border-color: #28a745; }
+    .ws-step-num {
+      width: 24px; height: 24px; border-radius: 50%; border: 2px solid #999;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+    }
+    .ws-step-item.active .ws-step-num { border-color: #fff; background: #333; color: #fff; }
+    .ws-content { flex: 1; padding: 24px 30px 12px 30px; overflow: hidden; display: flex; flex-direction: column; }
+    .ws-scroll-content { flex: 1; overflow-y: auto; padding-right: 8px; }
+    .ws-scroll-content::-webkit-scrollbar { width: 6px; }
+    .ws-scroll-content::-webkit-scrollbar-track { background: #f0f0f0; }
+    .ws-scroll-content::-webkit-scrollbar-thumb { background: #999; border-radius: 3px; }
+    .ws-scroll-content::-webkit-scrollbar-thumb:hover { background: #666; }
+    .ws-section { display: none; }
+    .ws-section.active { display: block; }
+    .ws-section-title {
+      font-size: 18px; font-weight: 700; margin: 0 0 20px 0;
+      padding-bottom: 10px; border-bottom: 2px solid #000;
+    }
+    .ws-field-group { margin-bottom: 16px; }
+    .ws-field-group > label {
+      display: block; font-size: 12px; font-weight: 600;
+      margin-bottom: 4px; color: #333; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .ws-field-group > label .req { color: #dc3545; }
+    .ws-field-group input[type="text"],
+    .ws-field-group input[type="number"],
+    .ws-field-group input[type="email"],
+    .ws-field-group input[type="tel"],
+    .ws-field-group input[type="url"],
+    .ws-field-group input[type="date"],
+    .ws-field-group textarea,
+    .ws-field-group select {
+      width: 100%; border: 1px solid #000; padding: 8px 10px;
+      font-size: 14px; background: #fff; transition: border-color 0.15s;
+    }
+    .ws-field-group input:focus,
+    .ws-field-group textarea:focus,
+    .ws-field-group select:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 2px rgba(0,123,255,0.15); }
+    .ws-row { display: flex; gap: 16px; }
+    .ws-row > .ws-field-group { flex: 1; }
+    .ws-checkbox-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ws-checkbox-item {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border: 1px solid #000; cursor: pointer;
+      font-size: 13px; transition: all 0.12s; user-select: none;
+    }
+    .ws-checkbox-item:hover { background: #f0f0f0; }
+    .ws-checkbox-item.selected { background: #000; color: #fff; }
+    .ws-checkbox-item input[type="checkbox"] { display: none; }
+    .ws-toggle-group { display: flex; gap: 0; }
+    .ws-toggle-btn {
+      padding: 6px 16px; border: 1px solid #000; cursor: pointer;
+      font-size: 13px; font-weight: 600; transition: all 0.12s; background: #fff;
+    }
+    .ws-toggle-btn:first-child { border-right: none; }
+    .ws-toggle-btn.active { background: #000; color: #fff; }
+    .ws-dynamic-row {
+      display: flex; gap: 8px; align-items: center; margin-bottom: 8px;
+    }
+    .ws-dynamic-row input { flex: 1; border: 1px solid #000; padding: 6px 8px; font-size: 13px; }
+    .ws-dynamic-row .ws-remove-row {
+      width: 28px; height: 28px; border: 1px solid #dc3545; background: #fff;
+      color: #dc3545; cursor: pointer; font-size: 16px; display: flex;
+      align-items: center; justify-content: center; transition: all 0.12s;
+    }
+    .ws-dynamic-row .ws-remove-row:hover { background: #dc3545; color: #fff; }
+    .ws-add-row-btn {
+      padding: 4px 12px; border: 1px dashed #000; background: transparent;
+      cursor: pointer; font-size: 12px; transition: all 0.12s;
+    }
+    .ws-add-row-btn:hover { background: #f0f0f0; }
+    .ws-upload-zone {
+      border: 2px dashed #ccc; padding: 20px; text-align: center;
+      cursor: pointer; transition: all 0.15s; position: relative;
+    }
+    .ws-upload-zone:hover { border-color: #000; background: #f9f9f9; }
+    .ws-upload-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    }
+    .ws-upload-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .ws-upload-preview img {
+      width: 80px; height: 80px; object-fit: cover; border: 1px solid #000;
+    }
+    .ws-upload-preview .ws-file-badge {
+      padding: 4px 10px; background: #f0f0f0; border: 1px solid #ccc;
+      font-size: 12px; display: flex; align-items: center; gap: 6px;
+    }
+    .ws-nav-btns {
+      display: flex; gap: 10px; justify-content: space-between;
+      margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;
+    }
+    .ws-nav-btns .page-btn { min-width: 120px; text-align: center; }
+    .ws-range-wrap { display: flex; align-items: center; gap: 12px; }
+    .ws-range-wrap input[type="range"] { flex: 1; }
+    .ws-range-val {
+      width: 50px; text-align: center; font-weight: 700;
+      border: 1px solid #000; padding: 4px;
+    }
+    /* Workshop view cards */
+    .ws-view-header {
+      background: #000; color: #fff; padding: 20px; margin-bottom: 20px;
+    }
+    .ws-view-card {
+      border: 1px solid #000; margin-bottom: 16px;
+    }
+    .ws-view-card-header {
+      background: #f8f8f8; padding: 10px 16px; font-weight: 700;
+      border-bottom: 1px solid #000; font-size: 14px; cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .ws-view-card-body { padding: 16px; }
+    .ws-view-field { margin-bottom: 8px; display: flex; gap: 8px; }
+    .ws-view-label { font-weight: 600; font-size: 12px; color: #666; min-width: 160px; text-transform: uppercase; }
+    .ws-view-value { font-size: 14px; }
+    .ws-view-gallery { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ws-view-gallery img {
+      width: 120px; height: 120px; object-fit: cover; border: 1px solid #000; cursor: pointer;
+    }
+    .ws-cert-badge {
+      display: inline-block; padding: 4px 10px; margin: 2px;
+      background: #000; color: #fff; font-size: 12px; font-weight: 600;
+    }
   </style>
   <!-- Chart.js library for better chart layout and responsiveness -->
   <script src="/chart.umd.js"></script>
@@ -1144,6 +1283,13 @@
         <div id="outsourcingSubmenu" class="submenu" style="display:none;">
           <button id="outsourcingCreateBtn" class="submenu-btn">Create</button>
           <button id="outsourcingViewBtn" class="submenu-btn">View</button>
+        </div>
+      </div>
+      <div class="menu-group">
+        <button id="menuWorkshop" class="page-btn" data-short="W" data-full="Workshop">W</button>
+        <div id="workshopSubmenu" class="submenu" style="display:none;">
+          <button id="workshopCreateBtn" class="submenu-btn">Create</button>
+          <button id="workshopViewBtn" class="submenu-btn">View</button>
         </div>
       </div>
       <button id="menuSettings" class="page-btn" data-short="S" data-full="Setting">S</button>
@@ -1927,7 +2073,10 @@
                     <option value="Send to Customer">Send to Customer</option>
                     <option value="Confirm Price">Confirm Price</option>
                     <option value="Start Sampling">Start Sampling</option>
-                    <option value="Mark Delivered">Mark Delivered</option>
+                    <option value="Submit for Approval">Submit for Approval</option>
+                    <option value="Awaiting Approval">Awaiting Approval</option>
+                    <option value="Complete">Complete</option>
+                    <option value="Resubmit">Resubmit</option>
                     <option value="Completed">Completed</option>
                   </select>
                 </th>
@@ -2065,7 +2214,10 @@
                     <option value="Confirm Price">Confirm Price</option>
                     <option value="Start Sampling">Start Sampling</option>
                     <option value="Chase Sample Date">Chase Sample Date</option>
-                    <option value="Mark Delivered">Mark Delivered</option>
+                    <option value="Submit for Approval">Submit for Approval</option>
+                    <option value="Awaiting Approval">Awaiting Approval</option>
+                    <option value="Complete">Complete</option>
+                    <option value="Resubmit">Resubmit</option>
                     <option value="Completed">Completed</option>
                   </select>
                 </th>
@@ -2165,6 +2317,584 @@
               </tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- ─── Workshop Create Panel ────────────────────────────────── -->
+      <div id="workshopPanel" style="border:1px solid #000; padding:0; margin-bottom:20px; display:none; flex:1; min-height:0; overflow:hidden;">
+        <div class="ws-stepper">
+          <!-- Step Navigation -->
+          <div class="ws-step-nav">
+            <div class="ws-step-item active" data-step="1"><span class="ws-step-num">1</span> Company Info</div>
+            <div class="ws-step-item" data-step="2"><span class="ws-step-num">2</span> Contact</div>
+            <div class="ws-step-item" data-step="3"><span class="ws-step-num">3</span> Location</div>
+            <div class="ws-step-item" data-step="4"><span class="ws-step-num">4</span> Production</div>
+            <div class="ws-step-item" data-step="5"><span class="ws-step-num">5</span> Departments</div>
+            <div class="ws-step-item" data-step="6"><span class="ws-step-num">6</span> Quality & Certs</div>
+            <div class="ws-step-item" data-step="7"><span class="ws-step-num">7</span> Sustainability</div>
+            <div class="ws-step-item" data-step="8"><span class="ws-step-num">8</span> Capacity</div>
+            <div class="ws-step-item" data-step="9"><span class="ws-step-num">9</span> Uploads</div>
+            <div class="ws-step-item" data-step="10"><span class="ws-step-num">10</span> Additional</div>
+          </div>
+
+          <!-- Step Content -->
+          <div class="ws-content">
+            <!-- Top Action Bar -->
+            <div class="ws-nav-btns" style="margin-top:0; margin-bottom:16px; padding-top:0; padding-bottom:12px; border-top:none; border-bottom:1px solid #e0e0e0;">
+              <div>
+                <button type="button" class="page-btn" id="ws-prevBtn" onclick="wsGoStep(-1)" style="display:none;">&#9664; Previous</button>
+              </div>
+              <div style="display:flex; gap:10px;">
+                <button type="button" class="page-btn" id="ws-dummyBtn" style="background:#17a2b8; color:#fff;">Dummy Input</button>
+                <button type="button" class="page-btn" id="ws-saveDraftBtn">Save Draft</button>
+                <button type="button" class="page-btn" id="ws-submitBtn" style="background:#28a745; color:#fff;">Submit</button>
+              </div>
+              <div>
+                <button type="button" class="page-btn" id="ws-nextBtn" onclick="wsGoStep(1)">Next &#9654;</button>
+              </div>
+            </div>
+            <div class="ws-scroll-content">
+
+            <!-- Section 1: Company Basic Information -->
+            <div class="ws-section active" data-section="1">
+              <h3 class="ws-section-title">1. Company Basic Information</h3>
+              <div class="ws-row">
+                <div class="ws-field-group">
+                  <label>Full Company Name (Legal) <span class="req">*</span></label>
+                  <input type="text" id="ws-fullCompanyName" required>
+                </div>
+              </div>
+              <div class="ws-row">
+                <div class="ws-field-group">
+                  <label>Trading Name / Brand Name</label>
+                  <input type="text" id="ws-tradingName">
+                </div>
+                <div class="ws-field-group">
+                  <label>Year of Establishment</label>
+                  <input type="number" id="ws-yearEstablished" min="1900" max="2026">
+                </div>
+              </div>
+              <div class="ws-row">
+                <div class="ws-field-group">
+                  <label>Company Type <span class="req">*</span></label>
+                  <select id="ws-companyType">
+                    <option value="">Select...</option>
+                    <option value="Manufacturer">Manufacturer</option>
+                    <option value="Exporter">Exporter</option>
+                    <option value="Trader">Trader</option>
+                    <option value="Agent">Agent</option>
+                  </select>
+                </div>
+                <div class="ws-field-group">
+                  <label>Legal Structure</label>
+                  <select id="ws-legalStructure">
+                    <option value="">Select...</option>
+                    <option value="LLC">LLC</option>
+                    <option value="Private Limited">Private Limited</option>
+                    <option value="Partnership">Partnership</option>
+                    <option value="Sole Proprietorship">Sole Proprietorship</option>
+                    <option value="Public Limited">Public Limited</option>
+                    <option value="Cooperative">Cooperative</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+              <div class="ws-row">
+                <div class="ws-field-group">
+                  <label>Business Registration Number / Tax ID</label>
+                  <input type="text" id="ws-businessRegNumber">
+                </div>
+                <div class="ws-field-group">
+                  <label>GST / VAT Number</label>
+                  <input type="text" id="ws-gstVatNumber">
+                </div>
+              </div>
+              <div class="ws-row">
+                <div class="ws-field-group">
+                  <label>Website</label>
+                  <input type="url" id="ws-website" placeholder="https://">
+                </div>
+                <div class="ws-field-group">
+                  <label>Yearly Turnover (USD)</label>
+                  <input type="number" id="ws-yearlyTurnover" min="0" step="1000">
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 2: Contact Information -->
+            <div class="ws-section" data-section="2">
+              <h3 class="ws-section-title">2. Contact Information</h3>
+              <div class="ws-row">
+                <div class="ws-field-group">
+                  <label>Primary Contact Person</label>
+                  <input type="text" id="ws-primaryContactName" placeholder="Full Name">
+                </div>
+                <div class="ws-field-group">
+                  <label>Designation</label>
+                  <input type="text" id="ws-primaryContactDesignation" placeholder="e.g. Production Manager">
+                </div>
+              </div>
+              <div class="ws-row">
+                <div class="ws-field-group">
+                  <label>Mobile / WhatsApp</label>
+                  <input type="tel" id="ws-mobileWhatsapp">
+                </div>
+                <div class="ws-field-group">
+                  <label>Email Address</label>
+                  <input type="email" id="ws-emailAddress">
+                </div>
+              </div>
+              <div class="ws-field-group">
+                <label>Alternative Contact Person</label>
+                <input type="text" id="ws-altContactPerson" placeholder="Name & designation">
+              </div>
+              <div class="ws-field-group">
+                <label>Company Address <span class="req">*</span></label>
+                <textarea id="ws-companyAddress" rows="3"></textarea>
+              </div>
+              <div class="ws-field-group">
+                <label>Google Map Link <small>(optional)</small></label>
+                <input type="url" id="ws-googleMapLink" placeholder="https://maps.google.com/...">
+              </div>
+            </div>
+
+            <!-- Section 3: Location & Facility -->
+            <div class="ws-section" data-section="3">
+              <h3 class="ws-section-title">3. Location & Facility Details</h3>
+              <div class="ws-row">
+                <div class="ws-field-group">
+                  <label>Country</label>
+                  <select id="ws-country">
+                    <option value="">Select...</option>
+                    <option value="China">China</option>
+                    <option value="India">India</option>
+                    <option value="Bangladesh">Bangladesh</option>
+                    <option value="Vietnam">Vietnam</option>
+                    <option value="Turkey">Turkey</option>
+                    <option value="Pakistan">Pakistan</option>
+                    <option value="Indonesia">Indonesia</option>
+                    <option value="Thailand">Thailand</option>
+                    <option value="Cambodia">Cambodia</option>
+                    <option value="Sri Lanka">Sri Lanka</option>
+                    <option value="Myanmar">Myanmar</option>
+                    <option value="Philippines">Philippines</option>
+                    <option value="South Korea">South Korea</option>
+                    <option value="Taiwan">Taiwan</option>
+                    <option value="Hong Kong">Hong Kong</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="ws-field-group">
+                  <label>City / Province</label>
+                  <input type="text" id="ws-cityProvince">
+                </div>
+              </div>
+              <div class="ws-row">
+                <div class="ws-field-group">
+                  <label>Factory Area</label>
+                  <input type="text" id="ws-factoryArea" placeholder="e.g. 15000 sq.m">
+                </div>
+                <div class="ws-field-group">
+                  <label>Number of Buildings / Floors</label>
+                  <input type="text" id="ws-numBuildings" placeholder="e.g. 3 buildings, 5 floors">
+                </div>
+              </div>
+              <div class="ws-row">
+                <div class="ws-field-group">
+                  <label>Total Number of Employees</label>
+                  <input type="number" id="ws-totalEmployees" min="0">
+                </div>
+                <div class="ws-field-group">
+                  <label>Production Workers</label>
+                  <input type="number" id="ws-numProductionWorkers" min="0">
+                </div>
+              </div>
+              <div class="ws-row">
+                <div class="ws-field-group">
+                  <label>Quality Control Staff</label>
+                  <input type="number" id="ws-numQCStaff" min="0">
+                </div>
+                <div class="ws-field-group">
+                  <label>Administrative / Sales Staff</label>
+                  <input type="number" id="ws-numAdminSalesStaff" min="0">
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 4: Production Capabilities -->
+            <div class="ws-section" data-section="4">
+              <h3 class="ws-section-title">4. Production Capabilities</h3>
+              <div class="ws-field-group">
+                <label>Main Production Types <small>(click to select)</small></label>
+                <div class="ws-checkbox-grid" id="ws-productionTypes">
+                  <label class="ws-checkbox-item"><input type="checkbox" value="Woven Labels">Woven Labels</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="Printed Labels">Printed Labels</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="Hang Tags">Hang Tags</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="Paper Tags">Paper Tags</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="Heat Transfer Labels">Heat Transfer Labels</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="Leather / PU Patches">Leather / PU Patches</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="Metal Trims">Metal Trims</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="Plastic Trims">Plastic Trims</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="Elastic & Tapes">Elastic & Tapes</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="Embroidery / Badges">Embroidery / Badges</label>
+                </div>
+              </div>
+              <div class="ws-field-group">
+                <label>Others (please specify)</label>
+                <input type="text" id="ws-productionTypesOther" placeholder="e.g. Screen Printing, Sublimation">
+              </div>
+              <div class="ws-field-group">
+                <label>Machinery List</label>
+                <div id="ws-machineryList"></div>
+                <button type="button" class="ws-add-row-btn" onclick="wsAddMachineryRow()">+ Add Machine</button>
+              </div>
+              <div class="ws-field-group">
+                <label>Monthly Production Capacity <small>(per product type)</small></label>
+                <textarea id="ws-monthlyCapacity" rows="3" placeholder="e.g. Hang Tags: 5 million pcs/month, Woven Labels: 3 million yards/month"></textarea>
+              </div>
+              <div class="ws-field-group">
+                <label>Minimum Order Quantity (MOQ)</label>
+                <textarea id="ws-moq" rows="2" placeholder="e.g. Hang Tags: 10,000 pcs, Woven Labels: 5,000 yards"></textarea>
+              </div>
+              <div class="ws-field-group">
+                <label>Average Lead Time</label>
+                <input type="text" id="ws-avgLeadTime" placeholder="e.g. 14-21 days from order confirmation">
+              </div>
+            </div>
+
+            <!-- Section 5: Departments & Workflow -->
+            <div class="ws-section" data-section="5">
+              <h3 class="ws-section-title">5. Departments & Workflow</h3>
+              <div class="ws-field-group">
+                <label>Departments Present</label>
+                <div class="ws-checkbox-grid" id="ws-departments">
+                  <label class="ws-checkbox-item"><input type="checkbox" value="Design & Sampling">Design & Sampling</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="Production">Production</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="Quality Control">Quality Control</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="Packaging">Packaging</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="Logistics / Shipping">Logistics / Shipping</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="R&D / Innovation">R&D / Innovation</label>
+                </div>
+              </div>
+              <div class="ws-field-group">
+                <label>Workflow Description</label>
+                <textarea id="ws-workflowDescription" rows="4" placeholder="Brief description of your production workflow..."></textarea>
+              </div>
+              <div class="ws-field-group">
+                <label>Sample Development Lead Time</label>
+                <input type="text" id="ws-sampleLeadTime" placeholder="e.g. 7-10 days">
+              </div>
+              <div class="ws-field-group">
+                <label>Production Process Flow <small>(upload image/PDF)</small></label>
+                <div class="ws-upload-zone">
+                  <input type="file" accept="image/*,.pdf" onchange="wsHandleUpload(this, 'processFlow')">
+                  <div>Click or drag to upload flowchart</div>
+                </div>
+                <div class="ws-upload-preview" id="ws-processFlowPreview"></div>
+              </div>
+            </div>
+
+            <!-- Section 6: Quality & Certifications -->
+            <div class="ws-section" data-section="6">
+              <h3 class="ws-section-title">6. Quality & Certifications</h3>
+              <div class="ws-field-group">
+                <label>ISO 9001 Certified?</label>
+                <div class="ws-toggle-group">
+                  <button type="button" class="ws-toggle-btn" data-field="ws-iso9001" data-val="yes">Yes</button>
+                  <button type="button" class="ws-toggle-btn active" data-field="ws-iso9001" data-val="no">No</button>
+                </div>
+                <input type="hidden" id="ws-iso9001" value="no">
+              </div>
+              <div class="ws-field-group" id="ws-iso9001ExpiryWrap" style="display:none;">
+                <label>ISO 9001 Expiry Date</label>
+                <input type="date" id="ws-iso9001Expiry">
+              </div>
+              <div class="ws-field-group">
+                <label>Other Quality Certificates</label>
+                <div id="ws-otherCertsList"></div>
+                <button type="button" class="ws-add-row-btn" onclick="wsAddCertRow()">+ Add Certificate</button>
+              </div>
+              <div class="ws-field-group">
+                <label>Social & Compliance Certifications</label>
+                <div class="ws-checkbox-grid" id="ws-socialCerts">
+                  <label class="ws-checkbox-item"><input type="checkbox" value="BSCI">BSCI</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="SEDEX">SEDEX</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="GRS">GRS</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="OEKO-TEX">OEKO-TEX</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="GOTS">GOTS</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="SA8000">SA8000</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="WRAP">WRAP</label>
+                </div>
+              </div>
+              <div class="ws-field-group">
+                <label>Certificate Numbers & Expiry Dates</label>
+                <textarea id="ws-certNumbers" rows="3" placeholder="e.g. BSCI #12345 exp 2027-06, OEKO-TEX #67890 exp 2026-12"></textarea>
+              </div>
+              <div class="ws-row">
+                <div class="ws-field-group">
+                  <label>Accept Third-party Inspections?</label>
+                  <div class="ws-toggle-group">
+                    <button type="button" class="ws-toggle-btn" data-field="ws-thirdPartyInspection" data-val="yes">Yes</button>
+                    <button type="button" class="ws-toggle-btn active" data-field="ws-thirdPartyInspection" data-val="no">No</button>
+                  </div>
+                  <input type="hidden" id="ws-thirdPartyInspection" value="no">
+                </div>
+                <div class="ws-field-group">
+                  <label>Inspection Company Preference</label>
+                  <input type="text" id="ws-inspectionCompany" placeholder="e.g. SGS, BV, Intertek">
+                </div>
+              </div>
+            </div>
+
+            <!-- Section 7: Sustainability -->
+            <div class="ws-section" data-section="7">
+              <h3 class="ws-section-title">7. Sustainability & Compliance</h3>
+              <div class="ws-row">
+                <div class="ws-field-group">
+                  <label>Use Recycled / Sustainable Materials?</label>
+                  <div class="ws-toggle-group">
+                    <button type="button" class="ws-toggle-btn" data-field="ws-recycledMaterials" data-val="yes">Yes</button>
+                    <button type="button" class="ws-toggle-btn active" data-field="ws-recycledMaterials" data-val="no">No</button>
+                  </div>
+                  <input type="hidden" id="ws-recycledMaterials" value="no">
+                </div>
+                <div class="ws-field-group">
+                  <label>Environmental Policy?</label>
+                  <div class="ws-toggle-group">
+                    <button type="button" class="ws-toggle-btn" data-field="ws-envPolicy" data-val="yes">Yes</button>
+                    <button type="button" class="ws-toggle-btn active" data-field="ws-envPolicy" data-val="no">No</button>
+                  </div>
+                  <input type="hidden" id="ws-envPolicy" value="no">
+                </div>
+              </div>
+              <div class="ws-row">
+                <div class="ws-field-group">
+                  <label>Child Labor / Forced Labor Policy?</label>
+                  <div class="ws-toggle-group">
+                    <button type="button" class="ws-toggle-btn" data-field="ws-childLaborPolicy" data-val="yes">Yes</button>
+                    <button type="button" class="ws-toggle-btn active" data-field="ws-childLaborPolicy" data-val="no">No</button>
+                  </div>
+                  <input type="hidden" id="ws-childLaborPolicy" value="no">
+                </div>
+                <div class="ws-field-group">
+                  <label>Carbon Footprint Awareness?</label>
+                  <div class="ws-toggle-group">
+                    <button type="button" class="ws-toggle-btn" data-field="ws-carbonFootprint" data-val="yes">Yes</button>
+                    <button type="button" class="ws-toggle-btn active" data-field="ws-carbonFootprint" data-val="no">No</button>
+                  </div>
+                  <input type="hidden" id="ws-carbonFootprint" value="no">
+                </div>
+              </div>
+              <div class="ws-field-group">
+                <label>Chemical Compliance</label>
+                <div class="ws-checkbox-grid" id="ws-chemicalCompliance">
+                  <label class="ws-checkbox-item"><input type="checkbox" value="REACH">REACH</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="CPSIA">CPSIA</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="OEKO-TEX Standard 100">OEKO-TEX Standard 100</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="ZDHC">ZDHC</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="Other">Other</label>
+                </div>
+                <input type="text" id="ws-chemicalComplianceOther" placeholder="Specify other compliance standards" style="margin-top:8px;">
+              </div>
+            </div>
+
+            <!-- Section 8: Capacity & Reliability -->
+            <div class="ws-section" data-section="8">
+              <h3 class="ws-section-title">8. Capacity & Reliability</h3>
+              <div class="ws-field-group">
+                <label>Current Capacity Utilization</label>
+                <div class="ws-range-wrap">
+                  <input type="range" id="ws-capacityUtilization" min="0" max="100" value="50" oninput="document.getElementById('ws-capacityVal').textContent=this.value+'%'">
+                  <span class="ws-range-val" id="ws-capacityVal">50%</span>
+                </div>
+              </div>
+              <div class="ws-field-group">
+                <label>Peak Season Management</label>
+                <textarea id="ws-peakSeasonManagement" rows="3" placeholder="How do you manage peak season demand?"></textarea>
+              </div>
+              <div class="ws-field-group">
+                <label>Major Clients <small>(optional, top 3-5)</small></label>
+                <textarea id="ws-majorClients" rows="2" placeholder="e.g. H&M, Zara, Nike"></textarea>
+              </div>
+              <div class="ws-field-group">
+                <label>Export Markets</label>
+                <input type="text" id="ws-exportMarkets" placeholder="e.g. USA, Europe, Japan, Australia">
+              </div>
+              <div class="ws-field-group">
+                <label>Payment Terms Preferred</label>
+                <div class="ws-checkbox-grid" id="ws-paymentTerms">
+                  <label class="ws-checkbox-item"><input type="checkbox" value="T/T">T/T</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="L/C">L/C</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="D/P">D/P</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="Western Union">Western Union</label>
+                  <label class="ws-checkbox-item"><input type="checkbox" value="PayPal">PayPal</label>
+                </div>
+              </div>
+              <div class="ws-field-group">
+                <label>Bank Details <small>(for verification)</small></label>
+                <textarea id="ws-bankDetails" rows="3" placeholder="Bank name, account number, SWIFT code"></textarea>
+              </div>
+            </div>
+
+            <!-- Section 9: Visual & Documentation Uploads -->
+            <div class="ws-section" data-section="9">
+              <h3 class="ws-section-title">9. Visual & Documentation Uploads</h3>
+              <div class="ws-field-group">
+                <label>Factory Exterior Photo</label>
+                <div class="ws-upload-zone">
+                  <input type="file" accept="image/*" multiple onchange="wsHandleUpload(this, 'factoryExterior')">
+                  <div>Click or drag to upload</div>
+                </div>
+                <div class="ws-upload-preview" id="ws-factoryExteriorPreview"></div>
+              </div>
+              <div class="ws-field-group">
+                <label>Factory Interior / Production Floor Photos <small>(at least 3)</small></label>
+                <div class="ws-upload-zone">
+                  <input type="file" accept="image/*" multiple onchange="wsHandleUpload(this, 'factoryInterior')">
+                  <div>Click or drag to upload (multiple)</div>
+                </div>
+                <div class="ws-upload-preview" id="ws-factoryInteriorPreview"></div>
+              </div>
+              <div class="ws-field-group">
+                <label>Machinery Photos</label>
+                <div class="ws-upload-zone">
+                  <input type="file" accept="image/*" multiple onchange="wsHandleUpload(this, 'machinery')">
+                  <div>Click or drag to upload (multiple)</div>
+                </div>
+                <div class="ws-upload-preview" id="ws-machineryPreview"></div>
+              </div>
+              <div class="ws-field-group">
+                <label>Quality Control Department Photo</label>
+                <div class="ws-upload-zone">
+                  <input type="file" accept="image/*" multiple onchange="wsHandleUpload(this, 'qcDept')">
+                  <div>Click or drag to upload</div>
+                </div>
+                <div class="ws-upload-preview" id="ws-qcDeptPreview"></div>
+              </div>
+              <div class="ws-field-group">
+                <label>Sample Room Photo</label>
+                <div class="ws-upload-zone">
+                  <input type="file" accept="image/*" multiple onchange="wsHandleUpload(this, 'sampleRoom')">
+                  <div>Click or drag to upload</div>
+                </div>
+                <div class="ws-upload-preview" id="ws-sampleRoomPreview"></div>
+              </div>
+              <div class="ws-field-group">
+                <label>Product Catalog / Brochure (PDF)</label>
+                <div class="ws-upload-zone">
+                  <input type="file" accept=".pdf" onchange="wsHandleUpload(this, 'catalog')">
+                  <div>Click or drag to upload PDF</div>
+                </div>
+                <div class="ws-upload-preview" id="ws-catalogPreview"></div>
+              </div>
+              <div class="ws-field-group">
+                <label>Latest Audit Report <small>(optional)</small></label>
+                <div class="ws-upload-zone">
+                  <input type="file" accept=".pdf,.doc,.docx" onchange="wsHandleUpload(this, 'auditReport')">
+                  <div>Click or drag to upload</div>
+                </div>
+                <div class="ws-upload-preview" id="ws-auditReportPreview"></div>
+              </div>
+            </div>
+
+            <!-- Section 10: Additional & Declaration -->
+            <div class="ws-section" data-section="10">
+              <h3 class="ws-section-title">10. Additional Information</h3>
+              <div class="ws-field-group">
+                <label>How did you hear about us?</label>
+                <select id="ws-howDidYouHear">
+                  <option value="">Select...</option>
+                  <option value="Referral">Referral</option>
+                  <option value="Trade Show">Trade Show</option>
+                  <option value="Online Search">Online Search</option>
+                  <option value="Social Media">Social Media</option>
+                  <option value="Industry Directory">Industry Directory</option>
+                  <option value="Cold Call">Cold Call</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="ws-field-group">
+                <label>Existing Relationship with Trims Trading Company?</label>
+                <textarea id="ws-existingRelationship" rows="3" placeholder="Describe any existing business relationship..."></textarea>
+              </div>
+              <div class="ws-field-group">
+                <label>Client References <small>(2-3)</small></label>
+                <div id="ws-referencesList"></div>
+                <button type="button" class="ws-add-row-btn" onclick="wsAddReferenceRow()">+ Add Reference</button>
+              </div>
+              <div class="ws-field-group" style="margin-top:24px; padding:16px; border:2px solid #000; background:#f8f8f8;">
+                <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; text-transform:none; font-size:14px;">
+                  <input type="checkbox" id="ws-declarationAccepted" style="width:20px; height:20px; margin-top:2px; flex-shrink:0;">
+                  <span>I hereby declare that all information provided above is true and accurate to the best of my knowledge.</span>
+                </label>
+              </div>
+              <div class="ws-row" style="margin-top:16px;">
+                <div class="ws-field-group">
+                  <label>Digital Signature (Full Name)</label>
+                  <input type="text" id="ws-digitalSignature" placeholder="Type your full name as signature">
+                </div>
+                <div class="ws-field-group">
+                  <label>Date</label>
+                  <input type="text" id="ws-signatureDate" readonly>
+                </div>
+              </div>
+            </div>
+
+            </div><!-- end ws-scroll-content -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Workshop View Panel ────────────────────────────────── -->
+      <div id="workshopViewPanel" style="border:1px solid #000; padding:0; margin-bottom:20px; display:none; flex:1; min-height:0; overflow-y:auto;">
+        <!-- List view -->
+        <div id="workshopListView">
+          <div style="display:flex; gap:10px; padding:20px; border-bottom:1px solid #000; position:sticky; top:0; background:#fff; z-index:50;">
+            <button id="refreshWorkshopsBtn" class="page-btn">Refresh List</button>
+            <input type="text" id="workshopSearchInput" placeholder="Search workshops..." style="border:1px solid #000; padding:8px 12px; flex:1; font-size:14px;">
+          </div>
+          <div style="padding:0 20px 20px 20px;">
+            <table id="workshopsTable" style="width:100%; border-collapse:collapse; border:1px solid #000;">
+              <thead>
+                <tr style="background:#f8f8f8;">
+                  <th style="border:1px solid #000; padding:8px; text-align:left;">Company Name</th>
+                  <th style="border:1px solid #000; padding:8px; text-align:left;">Country</th>
+                  <th style="border:1px solid #000; padding:8px; text-align:left;">Type</th>
+                  <th style="border:1px solid #000; padding:8px; text-align:left;">Contact</th>
+                  <th style="border:1px solid #000; padding:8px; text-align:left;">Status</th>
+                  <th style="border:1px solid #000; padding:8px; text-align:left;">Created</th>
+                  <th style="border:1px solid #000; padding:8px; text-align:center;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="workshopsTableBody">
+                <tr><td colspan="7" style="padding:20px; text-align:center; border:1px solid #000;">Loading workshops...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- Detail view -->
+        <div id="workshopDetailView" style="display:none; padding:20px;">
+          <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+            <button class="page-btn" onclick="wsShowList()">&#9664; Back to List</button>
+            <div style="display:flex; gap:10px;">
+              <button class="page-btn" id="ws-editDetailBtn">Edit</button>
+              <button class="page-btn" id="ws-deleteDetailBtn" style="background:#dc3545; color:#fff;">Delete</button>
+            </div>
+          </div>
+          <div id="workshopDetailContent"></div>
+        </div>
+      </div>
+
+      <!-- Workshop Delete Confirmation Modal -->
+      <div id="workshopDeleteModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#fff; border:2px solid #000; padding:30px; min-width:350px; max-width:450px; text-align:center;">
+          <h3 style="margin:0 0 15px 0; font-weight:700;">Delete Workshop</h3>
+          <p style="margin:0 0 20px 0;">Are you sure you want to delete<br><strong id="workshopDeleteName"></strong>?</p>
+          <p style="margin:0 0 20px 0; font-size:12px; color:#666;">This action cannot be undone.</p>
+          <div style="display:flex; gap:10px; justify-content:center;">
+            <button id="workshopDeleteConfirmBtn" class="page-btn" style="background:#dc3545; color:#fff; padding:8px 24px; font-weight:600;">Confirm</button>
+            <button id="workshopDeleteCancelBtn" class="page-btn" style="padding:8px 24px; font-weight:600;">Cancel</button>
+          </div>
         </div>
       </div>
 
@@ -2564,6 +3294,7 @@
     const menuQuotationBtn = document.getElementById('menuQuotation');
     const menuOutsourcingBtn = document.getElementById('menuOutsourcing');
     const menuBrandBtn = document.getElementById('menuBrand');
+    const menuWorkshopBtn = document.getElementById('menuWorkshop');
     const addProfileBtn = document.getElementById('addProfileBtn');
     const profilesListEl = document.getElementById('profilesList');
     const settingsNoteEl = document.getElementById('settingsNote');
@@ -3346,6 +4077,8 @@
       document.getElementById('outsourcingViewPanel').style.display = id === 'outsourcing-view' ? 'block' : 'none';
       document.getElementById('brandCreatePanel').style.display = id === 'brand-create' ? 'block' : 'none';
       document.getElementById('brandViewPanel').style.display = id === 'brand-view' ? 'block' : 'none';
+      document.getElementById('workshopPanel').style.display = id === 'workshop' ? 'block' : 'none';
+      document.getElementById('workshopViewPanel').style.display = id === 'workshop-view' ? 'block' : 'none';
       // settingsPanel is shown inline within profiles when a profile is clicked
       settingsPanel.style.display = 'none';
 
@@ -3357,14 +4090,13 @@
       if (id === 'welcome') {
         const hasExistingCharts = chartInstance || outsourcingChartInstance || brandChartInstance || brandValueChartInstance;
         if (hasExistingCharts) {
-          // Charts already exist — just resize them after layout settles
-          // Avoids destroy/recreate cycle that causes scale mismatch
+          // Charts already exist — redraw without resizing to prevent expansion
           requestAnimationFrame(() => {
             setTimeout(() => {
-              if (chartInstance) chartInstance.resize();
-              if (outsourcingChartInstance) outsourcingChartInstance.resize();
-              if (brandChartInstance) brandChartInstance.resize();
-              if (brandValueChartInstance) brandValueChartInstance.resize();
+              if (chartInstance) chartInstance.draw();
+              if (outsourcingChartInstance) outsourcingChartInstance.draw();
+              if (brandChartInstance) brandChartInstance.draw();
+              if (brandValueChartInstance) brandValueChartInstance.draw();
             }, 50);
           });
         } else {
@@ -3546,7 +4278,11 @@
           'send to customer': 0,
           'price confirmed': 0,
           'sampling': 0,
-          'sample delivered': 0
+          'sample delivered': 0,
+          'await approval': 0,
+          'approved': 0,
+          'rejected': 0,
+          'complete': 0
         };
 
         quotations.forEach(q => {
@@ -3565,7 +4301,11 @@
             { name: 'Send to Customer', key: 'send to customer', count: statusCounts['send to customer'], color: '#007bff', icon: '📧' },
             { name: 'Price Confirmed', key: 'price confirmed', count: statusCounts['price confirmed'], color: '#28a745', icon: '✅' },
             { name: 'Sampling', key: 'sampling', count: statusCounts['sampling'], color: '#6f42c1', icon: '🔬' },
-            { name: 'Sample Delivered', key: 'sample delivered', count: statusCounts['sample delivered'], color: '#20c997', icon: '📦' }
+            { name: 'Sample Delivered', key: 'sample delivered', count: statusCounts['sample delivered'], color: '#20c997', icon: '📦' },
+            { name: 'Await Approval', key: 'await approval', count: statusCounts['await approval'], color: '#fd7e14', icon: '⏳' },
+            { name: 'Approved', key: 'approved', count: statusCounts['approved'], color: '#28a745', icon: '✅' },
+            { name: 'Rejected', key: 'rejected', count: statusCounts['rejected'], color: '#dc3545', icon: '❌' },
+            { name: 'Complete', key: 'complete', count: statusCounts['complete'], color: '#6c757d', icon: '✔' }
           ],
           total: total
         };
@@ -3697,35 +4437,6 @@
           }
         },
         plugins: [{
-          id: 'centerText',
-          beforeDraw: function(chart) {
-            const width = chart.width;
-            const height = chart.height;
-            const ctx = chart.ctx;
-            ctx.restore();
-
-            const fontSize = (height / 180).toFixed(2);
-            ctx.font = `300 ${fontSize}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#000';
-
-            const text = dashboardData.total.toString();
-            const textX = Math.round((width - ctx.measureText(text).width) / 2);
-            const textY = height / 2 - 10;
-
-            ctx.fillText(text, textX, textY);
-
-            // Label below number
-            ctx.font = `600 ${(fontSize * 0.25).toFixed(2)}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-            ctx.fillStyle = '#666';
-            const label = 'TOTAL';
-            const labelX = Math.round((width - ctx.measureText(label).width) / 2);
-            const labelY = height / 2 + 20;
-            ctx.fillText(label, labelX, labelY);
-
-            ctx.save();
-          }
-        }, {
           id: 'sliceLabels',
           afterDraw: function(chart) {
             const ctx = chart.ctx;
@@ -3735,11 +4446,14 @@
             const activeEls = chart.getActiveElements();
             const hoveredIndex = activeEls.length > 0 ? activeEls[0].index : -1;
 
+            // Pass 1: draw non-hovered slice labels first
             meta.data.forEach((arc, i) => {
               const value = chart.data.datasets[0].data[i];
               if (value === 0) return;
+              const isHovered = (i === hoveredIndex);
+              if (isHovered) return; // skip hovered — draw it last
+
               const statusName = dashboardData.statuses[i].name;
-              const percentage = ((value / dashboardData.total) * 100).toFixed(1);
               const midAngle = (arc.startAngle + arc.endAngle) / 2;
               const outerRadius = arc.outerRadius;
               const edgeX = centerX + Math.cos(midAngle) * outerRadius;
@@ -3747,22 +4461,52 @@
               const labelDist = outerRadius + 15;
               const labelX = centerX + Math.cos(midAngle) * labelDist;
               const labelY = centerY + Math.sin(midAngle) * labelDist;
-              const isHovered = (i === hoveredIndex);
 
               ctx.save();
-
               ctx.beginPath();
               ctx.arc(edgeX, edgeY, 2, 0, Math.PI * 2);
               ctx.fillStyle = '#000';
               ctx.fill();
-
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
+              ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+              const textWidth = ctx.measureText(statusName).width;
+              const padX = 6, padY = 4, rad = 4;
+              const rw = textWidth + padX * 2;
+              const rh = 12 + padY * 2;
+              const rx = labelX - rw / 2;
+              const ry = labelY - rh / 2;
+              ctx.beginPath();
+              ctx.moveTo(rx + rad, ry);
+              ctx.lineTo(rx + rw - rad, ry);
+              ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
+              ctx.lineTo(rx + rw, ry + rh - rad);
+              ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
+              ctx.lineTo(rx + rad, ry + rh);
+              ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
+              ctx.lineTo(rx, ry + rad);
+              ctx.quadraticCurveTo(rx, ry, rx + rad, ry);
+              ctx.closePath();
+              ctx.fillStyle = '#fff';
+              ctx.fill();
+              ctx.strokeStyle = '#000';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+              ctx.fillStyle = '#000';
+              ctx.fillText(statusName, labelX, labelY);
+              ctx.restore();
+            });
 
-              if (isHovered) {
-                // Draw black tooltip above chart
+            // Pass 2: draw hovered tooltip on top of all labels
+            if (hoveredIndex >= 0) {
+              const arc = meta.data[hoveredIndex];
+              const value = chart.data.datasets[0].data[hoveredIndex];
+              if (value > 0) {
+                const statusName = dashboardData.statuses[hoveredIndex].name;
+                const percentage = ((value / dashboardData.total) * 100).toFixed(1);
                 const line1 = statusName.toUpperCase();
                 const line2 = value + '  (' + percentage + '%)';
+                ctx.save();
                 ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
                 const l1W = ctx.measureText(line1).width;
                 ctx.font = '300 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
@@ -3794,35 +4538,29 @@
                 ctx.fillText(line1, centerX, by + boxH / 2 - 7);
                 ctx.font = '300 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
                 ctx.fillText(line2, centerX, by + boxH / 2 + 7);
-              } else {
-                ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-                const textWidth = ctx.measureText(statusName).width;
-                const padX = 6, padY = 4, rad = 4;
-                const rw = textWidth + padX * 2;
-                const rh = 12 + padY * 2;
-                const rx = labelX - rw / 2;
-                const ry = labelY - rh / 2;
-                ctx.beginPath();
-                ctx.moveTo(rx + rad, ry);
-                ctx.lineTo(rx + rw - rad, ry);
-                ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
-                ctx.lineTo(rx + rw, ry + rh - rad);
-                ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
-                ctx.lineTo(rx + rad, ry + rh);
-                ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
-                ctx.lineTo(rx, ry + rad);
-                ctx.quadraticCurveTo(rx, ry, rx + rad, ry);
-                ctx.closePath();
-                ctx.fillStyle = '#fff';
-                ctx.fill();
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 1;
-                ctx.stroke();
-                ctx.fillStyle = '#000';
-                ctx.fillText(statusName, labelX, labelY);
+                ctx.restore();
               }
-              ctx.restore();
-            });
+            }
+
+            // Draw center text on top of everything (including hovered slices)
+            const width = chart.width;
+            const height = chart.height;
+            ctx.restore();
+            const fontSize = (height / 180).toFixed(2);
+            ctx.font = `300 ${fontSize}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#000';
+            const text = dashboardData.total.toString();
+            const textX = Math.round((width - ctx.measureText(text).width) / 2);
+            const textY = height / 2 - 10;
+            ctx.fillText(text, textX, textY);
+            ctx.font = `600 ${(fontSize * 0.25).toFixed(2)}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+            ctx.fillStyle = '#666';
+            const lbl = 'TOTAL';
+            const lblX = Math.round((width - ctx.measureText(lbl).width) / 2);
+            const lblY = height / 2 + 20;
+            ctx.fillText(lbl, lblX, lblY);
+            ctx.save();
           }
         }]
       });
@@ -4174,7 +4912,12 @@
           'send to customer': 0,
           'price confirmed': 0,
           'sampling': 0,
-          'sample delivered': 0
+          'await sample ready date': 0,
+          'sample delivered': 0,
+          'await approval': 0,
+          'approved': 0,
+          'rejected': 0,
+          'complete': 0
         };
 
         quotations.forEach(q => {
@@ -4196,7 +4939,11 @@
             { name: 'Price Confirmed', key: 'price confirmed', count: statusCounts['price confirmed'], color: '#28a745' },
             { name: 'Sampling', key: 'sampling', count: statusCounts['sampling'], color: '#20c997' },
             { name: 'Await Sample Date', key: 'await sample ready date', count: statusCounts['await sample ready date'], color: '#e83e8c' },
-            { name: 'Sample Delivered', key: 'sample delivered', count: statusCounts['sample delivered'], color: '#6c757d' }
+            { name: 'Sample Delivered', key: 'sample delivered', count: statusCounts['sample delivered'], color: '#6c757d' },
+            { name: 'Await Approval', key: 'await approval', count: statusCounts['await approval'], color: '#fd7e14' },
+            { name: 'Approved', key: 'approved', count: statusCounts['approved'], color: '#28a745' },
+            { name: 'Rejected', key: 'rejected', count: statusCounts['rejected'], color: '#dc3545' },
+            { name: 'Complete', key: 'complete', count: statusCounts['complete'], color: '#6c757d' }
           ],
           total: total
         };
@@ -4292,35 +5039,6 @@
           }
         },
         plugins: [{
-          id: 'outsourcingCenterText',
-          beforeDraw: function(chart) {
-            const width = chart.width;
-            const height = chart.height;
-            const ctx = chart.ctx;
-            ctx.restore();
-
-            const fontSize = (height / 180).toFixed(2);
-            ctx.font = `300 ${fontSize}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#000';
-
-            const text = outsourcingDashboardData.total.toString();
-            const textX = Math.round((width - ctx.measureText(text).width) / 2);
-            const textY = height / 2 - 10;
-
-            ctx.fillText(text, textX, textY);
-
-            // Label below number
-            ctx.font = `600 ${(fontSize * 0.25).toFixed(2)}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-            ctx.fillStyle = '#666';
-            const label = 'TOTAL';
-            const labelX = Math.round((width - ctx.measureText(label).width) / 2);
-            const labelY = height / 2 + 20;
-            ctx.fillText(label, labelX, labelY);
-
-            ctx.save();
-          }
-        }, {
           id: 'outsourcingSliceLabels',
           afterDraw: function(chart) {
             const ctx = chart.ctx;
@@ -4330,11 +5048,14 @@
             const activeEls = chart.getActiveElements();
             const hoveredIndex = activeEls.length > 0 ? activeEls[0].index : -1;
 
+            // Pass 1: draw non-hovered slice labels first
             meta.data.forEach((arc, i) => {
               const value = chart.data.datasets[0].data[i];
               if (value === 0) return;
+              const isHovered = (i === hoveredIndex);
+              if (isHovered) return; // skip hovered — draw it last
+
               const statusName = outsourcingDashboardData.statuses[i].name;
-              const percentage = ((value / outsourcingDashboardData.total) * 100).toFixed(1);
               const midAngle = (arc.startAngle + arc.endAngle) / 2;
               const outerRadius = arc.outerRadius;
               const edgeX = centerX + Math.cos(midAngle) * outerRadius;
@@ -4342,22 +5063,52 @@
               const labelDist = outerRadius + 15;
               const labelX = centerX + Math.cos(midAngle) * labelDist;
               const labelY = centerY + Math.sin(midAngle) * labelDist;
-              const isHovered = (i === hoveredIndex);
 
               ctx.save();
-
               ctx.beginPath();
               ctx.arc(edgeX, edgeY, 2, 0, Math.PI * 2);
               ctx.fillStyle = '#000';
               ctx.fill();
-
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
+              ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+              const textWidth = ctx.measureText(statusName).width;
+              const padX = 6, padY = 4, rad = 4;
+              const rw = textWidth + padX * 2;
+              const rh = 12 + padY * 2;
+              const rx = labelX - rw / 2;
+              const ry = labelY - rh / 2;
+              ctx.beginPath();
+              ctx.moveTo(rx + rad, ry);
+              ctx.lineTo(rx + rw - rad, ry);
+              ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
+              ctx.lineTo(rx + rw, ry + rh - rad);
+              ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
+              ctx.lineTo(rx + rad, ry + rh);
+              ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
+              ctx.lineTo(rx, ry + rad);
+              ctx.quadraticCurveTo(rx, ry, rx + rad, ry);
+              ctx.closePath();
+              ctx.fillStyle = '#fff';
+              ctx.fill();
+              ctx.strokeStyle = '#000';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+              ctx.fillStyle = '#000';
+              ctx.fillText(statusName, labelX, labelY);
+              ctx.restore();
+            });
 
-              if (isHovered) {
-                // Draw black tooltip above chart
+            // Pass 2: draw hovered tooltip on top of all labels
+            if (hoveredIndex >= 0) {
+              const arc = meta.data[hoveredIndex];
+              const value = chart.data.datasets[0].data[hoveredIndex];
+              if (value > 0) {
+                const statusName = outsourcingDashboardData.statuses[hoveredIndex].name;
+                const percentage = ((value / outsourcingDashboardData.total) * 100).toFixed(1);
                 const line1 = statusName.toUpperCase();
                 const line2 = value + '  (' + percentage + '%)';
+                ctx.save();
                 ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
                 const l1W = ctx.measureText(line1).width;
                 ctx.font = '300 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
@@ -4389,35 +5140,29 @@
                 ctx.fillText(line1, centerX, by + boxH / 2 - 7);
                 ctx.font = '300 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
                 ctx.fillText(line2, centerX, by + boxH / 2 + 7);
-              } else {
-                ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-                const textWidth = ctx.measureText(statusName).width;
-                const padX = 6, padY = 4, rad = 4;
-                const rw = textWidth + padX * 2;
-                const rh = 12 + padY * 2;
-                const rx = labelX - rw / 2;
-                const ry = labelY - rh / 2;
-                ctx.beginPath();
-                ctx.moveTo(rx + rad, ry);
-                ctx.lineTo(rx + rw - rad, ry);
-                ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
-                ctx.lineTo(rx + rw, ry + rh - rad);
-                ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
-                ctx.lineTo(rx + rad, ry + rh);
-                ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
-                ctx.lineTo(rx, ry + rad);
-                ctx.quadraticCurveTo(rx, ry, rx + rad, ry);
-                ctx.closePath();
-                ctx.fillStyle = '#fff';
-                ctx.fill();
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 1;
-                ctx.stroke();
-                ctx.fillStyle = '#000';
-                ctx.fillText(statusName, labelX, labelY);
+                ctx.restore();
               }
-              ctx.restore();
-            });
+            }
+
+            // Draw center text on top of everything (including hovered slices)
+            const width = chart.width;
+            const height = chart.height;
+            ctx.restore();
+            const fontSize = (height / 180).toFixed(2);
+            ctx.font = `300 ${fontSize}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#000';
+            const text = outsourcingDashboardData.total.toString();
+            const textX = Math.round((width - ctx.measureText(text).width) / 2);
+            const textY = height / 2 - 10;
+            ctx.fillText(text, textX, textY);
+            ctx.font = `600 ${(fontSize * 0.25).toFixed(2)}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+            ctx.fillStyle = '#666';
+            const lbl = 'TOTAL';
+            const lblX = Math.round((width - ctx.measureText(lbl).width) / 2);
+            const lblY = height / 2 + 20;
+            ctx.fillText(lbl, lblX, lblY);
+            ctx.save();
           }
         }]
       });
@@ -4884,7 +5629,7 @@
       };
 
       // Compute status breakdown for side panels
-      const statusCounts = { 'pending': 0, 'send to customer': 0, 'price confirmed': 0, 'sampling': 0, 'sample delivered': 0 };
+      const statusCounts = { 'pending': 0, 'send to customer': 0, 'price confirmed': 0, 'sampling': 0, 'sample delivered': 0, 'await approval': 0, 'approved': 0, 'rejected': 0, 'complete': 0 };
       quotations.forEach(q => {
         const st = (q.status || '').toLowerCase();
         if (statusCounts.hasOwnProperty(st)) statusCounts[st]++;
@@ -4897,7 +5642,11 @@
           { name: 'Send to Customer', key: 'send to customer', count: statusCounts['send to customer'], color: '#007bff' },
           { name: 'Price Confirmed', key: 'price confirmed', count: statusCounts['price confirmed'], color: '#28a745' },
           { name: 'Sampling', key: 'sampling', count: statusCounts['sampling'], color: '#6f42c1' },
-          { name: 'Sample Delivered', key: 'sample delivered', count: statusCounts['sample delivered'], color: '#20c997' }
+          { name: 'Sample Delivered', key: 'sample delivered', count: statusCounts['sample delivered'], color: '#20c997' },
+          { name: 'Await Approval', key: 'await approval', count: statusCounts['await approval'], color: '#fd7e14' },
+          { name: 'Approved', key: 'approved', count: statusCounts['approved'], color: '#28a745' },
+          { name: 'Rejected', key: 'rejected', count: statusCounts['rejected'], color: '#dc3545' },
+          { name: 'Complete', key: 'complete', count: statusCounts['complete'], color: '#6c757d' }
         ],
         total: statusTotal
       };
@@ -4984,34 +5733,6 @@
           }
         },
         plugins: [{
-          id: 'brandCenterText',
-          beforeDraw: function(chart) {
-            const width = chart.width;
-            const height = chart.height;
-            const ctx = chart.ctx;
-            ctx.restore();
-
-            const fontSize = (height / 180).toFixed(2);
-            ctx.font = `300 ${fontSize}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#000';
-
-            const text = brandDashboardData.total.toString();
-            const textX = Math.round((width - ctx.measureText(text).width) / 2);
-            const textY = height / 2 - 10;
-
-            ctx.fillText(text, textX, textY);
-
-            ctx.font = `600 ${(fontSize * 0.25).toFixed(2)}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-            ctx.fillStyle = '#666';
-            const label = 'TOTAL';
-            const labelX = Math.round((width - ctx.measureText(label).width) / 2);
-            const labelY = height / 2 + 20;
-            ctx.fillText(label, labelX, labelY);
-
-            ctx.save();
-          }
-        }, {
           id: 'brandSliceLabels',
           afterDraw: function(chart) {
             const ctx = chart.ctx;
@@ -5021,12 +5742,15 @@
             const activeEls = chart.getActiveElements();
             const hoveredIndex = activeEls.length > 0 ? activeEls[0].index : -1;
 
+            // Pass 1: draw non-hovered slice labels first
             meta.data.forEach((arc, i) => {
               const value = chart.data.datasets[0].data[i];
               if (value === 0) return;
+              const isHovered = (i === hoveredIndex);
+              if (isHovered) return; // skip hovered — draw it last
+
               const status = brandDashboardData.statuses[i];
               const statusName = status.name;
-              const percentage = ((value / brandDashboardData.total) * 100).toFixed(1);
               const midAngle = (arc.startAngle + arc.endAngle) / 2;
               const outerRadius = arc.outerRadius;
               const edgeX = centerX + Math.cos(midAngle) * outerRadius;
@@ -5034,21 +5758,68 @@
               const labelDist = outerRadius + 15;
               const labelX = centerX + Math.cos(midAngle) * labelDist;
               const labelY = centerY + Math.sin(midAngle) * labelDist;
-              const isHovered = (i === hoveredIndex);
 
               ctx.save();
-
               ctx.beginPath();
               ctx.arc(edgeX, edgeY, 2, 0, Math.PI * 2);
               ctx.fillStyle = '#000';
               ctx.fill();
-
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
 
-              if (isHovered) {
+              const logoSize = 14;
+              const logoPad = 4;
+              ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+              const textWidth = ctx.measureText(statusName).width;
+              const hasLogo = status.logoPath;
+              const contentW = hasLogo ? logoSize + logoPad + textWidth : textWidth;
+              const padX = 6, padY = 4, rad = 4;
+              const rw = contentW + padX * 2;
+              const rh = Math.max(logoSize, 12) + padY * 2;
+              const rx = labelX - rw / 2;
+              const ry = labelY - rh / 2;
+              ctx.beginPath();
+              ctx.moveTo(rx + rad, ry);
+              ctx.lineTo(rx + rw - rad, ry);
+              ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
+              ctx.lineTo(rx + rw, ry + rh - rad);
+              ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
+              ctx.lineTo(rx + rad, ry + rh);
+              ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
+              ctx.lineTo(rx, ry + rad);
+              ctx.quadraticCurveTo(rx, ry, rx + rad, ry);
+              ctx.closePath();
+              ctx.fillStyle = '#fff';
+              ctx.fill();
+              ctx.strokeStyle = '#000';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+              ctx.fillStyle = '#000';
+
+              if (hasLogo) {
+                const logoX = rx + padX;
+                const logoY = labelY - logoSize / 2;
+                if (status._logoImg && status._logoImg.complete && status._logoImg.naturalWidth > 0) {
+                  ctx.drawImage(status._logoImg, logoX, logoY, logoSize, logoSize);
+                }
+                ctx.fillText(statusName, logoX + logoSize + logoPad + textWidth / 2, labelY);
+              } else {
+                ctx.fillText(statusName, labelX, labelY);
+              }
+              ctx.restore();
+            });
+
+            // Pass 2: draw hovered tooltip on top of all labels
+            if (hoveredIndex >= 0) {
+              const arc = meta.data[hoveredIndex];
+              const value = chart.data.datasets[0].data[hoveredIndex];
+              if (value > 0) {
+                const status = brandDashboardData.statuses[hoveredIndex];
+                const statusName = status.name;
+                const percentage = ((value / brandDashboardData.total) * 100).toFixed(1);
                 const line1 = statusName.toUpperCase();
                 const line2 = value + '  (' + percentage + '%)';
+                ctx.save();
                 ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
                 const l1W = ctx.measureText(line1).width;
                 ctx.font = '300 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
@@ -5080,50 +5851,29 @@
                 ctx.fillText(line1, centerX, by + boxH / 2 - 7);
                 ctx.font = '300 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
                 ctx.fillText(line2, centerX, by + boxH / 2 + 7);
-              } else {
-                const logoSize = 14;
-                const logoPad = 4;
-                ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-                const textWidth = ctx.measureText(statusName).width;
-                const hasLogo = status.logoPath;
-                const contentW = hasLogo ? logoSize + logoPad + textWidth : textWidth;
-                const padX = 6, padY = 4, rad = 4;
-                const rw = contentW + padX * 2;
-                const rh = Math.max(logoSize, 12) + padY * 2;
-                const rx = labelX - rw / 2;
-                const ry = labelY - rh / 2;
-                ctx.beginPath();
-                ctx.moveTo(rx + rad, ry);
-                ctx.lineTo(rx + rw - rad, ry);
-                ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
-                ctx.lineTo(rx + rw, ry + rh - rad);
-                ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
-                ctx.lineTo(rx + rad, ry + rh);
-                ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
-                ctx.lineTo(rx, ry + rad);
-                ctx.quadraticCurveTo(rx, ry, rx + rad, ry);
-                ctx.closePath();
-                ctx.fillStyle = '#fff';
-                ctx.fill();
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 1;
-                ctx.stroke();
-                ctx.fillStyle = '#000';
-
-                if (hasLogo) {
-                  const logoX = rx + padX;
-                  const logoY = labelY - logoSize / 2;
-                  if (status._logoImg && status._logoImg.complete && status._logoImg.naturalWidth > 0) {
-                    ctx.drawImage(status._logoImg, logoX, logoY, logoSize, logoSize);
-                  }
-                  ctx.fillText(statusName, logoX + logoSize + logoPad + textWidth / 2, labelY);
-                } else {
-                  ctx.fillText(statusName, labelX, labelY);
-                }
+                ctx.restore();
               }
+            }
 
-              ctx.restore();
-            });
+            // Draw center text on top of everything (including hovered slices)
+            const width = chart.width;
+            const height = chart.height;
+            ctx.restore();
+            const fontSize = (height / 180).toFixed(2);
+            ctx.font = `300 ${fontSize}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#000';
+            const text = brandDashboardData.total.toString();
+            const textX = Math.round((width - ctx.measureText(text).width) / 2);
+            const textY = height / 2 - 10;
+            ctx.fillText(text, textX, textY);
+            ctx.font = `600 ${(fontSize * 0.25).toFixed(2)}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+            ctx.fillStyle = '#666';
+            const lbl = 'TOTAL';
+            const lblX = Math.round((width - ctx.measureText(lbl).width) / 2);
+            const lblY = height / 2 + 20;
+            ctx.fillText(lbl, lblX, lblY);
+            ctx.save();
           }
         }]
       });
@@ -5577,7 +6327,7 @@
       brandValueDashboardData = { statuses: chartStatuses, total: grandTotal };
 
       // Compute status breakdown by value for side panels
-      const statusTotals = { 'pending': 0, 'send to customer': 0, 'price confirmed': 0, 'sampling': 0, 'sample delivered': 0 };
+      const statusTotals = { 'pending': 0, 'send to customer': 0, 'price confirmed': 0, 'sampling': 0, 'sample delivered': 0, 'await approval': 0, 'approved': 0, 'rejected': 0, 'complete': 0 };
       quotations.forEach(q => {
         const val = parseFloat(q.total) || 0;
         const st = (q.status || '').toLowerCase();
@@ -5591,7 +6341,11 @@
           { name: 'Send to Customer', key: 'send to customer', count: statusTotals['send to customer'], color: '#007bff' },
           { name: 'Price Confirmed', key: 'price confirmed', count: statusTotals['price confirmed'], color: '#28a745' },
           { name: 'Sampling', key: 'sampling', count: statusTotals['sampling'], color: '#6f42c1' },
-          { name: 'Sample Delivered', key: 'sample delivered', count: statusTotals['sample delivered'], color: '#20c997' }
+          { name: 'Sample Delivered', key: 'sample delivered', count: statusTotals['sample delivered'], color: '#20c997' },
+          { name: 'Await Approval', key: 'await approval', count: statusTotals['await approval'], color: '#fd7e14' },
+          { name: 'Approved', key: 'approved', count: statusTotals['approved'], color: '#28a745' },
+          { name: 'Rejected', key: 'rejected', count: statusTotals['rejected'], color: '#dc3545' },
+          { name: 'Complete', key: 'complete', count: statusTotals['complete'], color: '#6c757d' }
         ],
         total: statusGrandTotal
       };
@@ -5646,25 +6400,6 @@
           animation: { animateRotate: true, animateScale: true, duration: 800, easing: 'easeInOutQuart' }
         },
         plugins: [{
-          id: 'brandValueCenterText',
-          afterDraw: function(chart) {
-            const width = chart.width, height = chart.height, ctx = chart.ctx;
-            ctx.restore();
-            const fontSize = (height / 280).toFixed(2);
-            ctx.font = `700 ${fontSize}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-            ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#000';
-            const text = 'HKD ' + brandValueDashboardData.total.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-            const textX = Math.round((width - ctx.measureText(text).width) / 2);
-            ctx.fillText(text, textX, height / 2 - 10);
-            ctx.font = `600 ${(fontSize * 0.35).toFixed(2)}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-            ctx.fillStyle = '#666';
-            const label = 'TOTAL';
-            const labelX = Math.round((width - ctx.measureText(label).width) / 2);
-            ctx.fillText(label, labelX, height / 2 + 20);
-            ctx.save();
-          }
-        }, {
           id: 'brandValueSliceLabels',
           afterDraw: function(chart) {
             const ctx = chart.ctx;
@@ -5674,12 +6409,15 @@
             const activeEls = chart.getActiveElements();
             const hoveredIndex = activeEls.length > 0 ? activeEls[0].index : -1;
 
+            // Pass 1: draw non-hovered slice labels first
             meta.data.forEach((arc, i) => {
               const value = chart.data.datasets[0].data[i];
               if (value === 0) return;
+              const isHovered = (i === hoveredIndex);
+              if (isHovered) return; // skip hovered — draw it last
+
               const status = brandValueDashboardData.statuses[i];
               const statusName = status.name;
-              const percentage = ((value / brandValueDashboardData.total) * 100).toFixed(1);
               const midAngle = (arc.startAngle + arc.endAngle) / 2;
               const outerRadius = arc.outerRadius;
               const edgeX = centerX + Math.cos(midAngle) * outerRadius;
@@ -5687,7 +6425,6 @@
               const labelDist = outerRadius + 15;
               const labelX = centerX + Math.cos(midAngle) * labelDist;
               const labelY = centerY + Math.sin(midAngle) * labelDist;
-              const isHovered = (i === hoveredIndex);
 
               ctx.save();
               ctx.beginPath();
@@ -5697,9 +6434,51 @@
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
 
-              if (isHovered) {
+              const logoSize = 14, logoPad = 4;
+              ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+              const textWidth = ctx.measureText(statusName).width;
+              const hasLogo = status.logoPath;
+              const contentW = hasLogo ? logoSize + logoPad + textWidth : textWidth;
+              const padX = 6, padY = 4, rad = 4;
+              const rw = contentW + padX * 2;
+              const rh = Math.max(logoSize, 12) + padY * 2;
+              const rx = labelX - rw / 2, ry = labelY - rh / 2;
+              ctx.beginPath();
+              ctx.moveTo(rx + rad, ry); ctx.lineTo(rx + rw - rad, ry);
+              ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
+              ctx.lineTo(rx + rw, ry + rh - rad);
+              ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
+              ctx.lineTo(rx + rad, ry + rh);
+              ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
+              ctx.lineTo(rx, ry + rad);
+              ctx.quadraticCurveTo(rx, ry, rx + rad, ry);
+              ctx.closePath();
+              ctx.fillStyle = '#fff'; ctx.fill();
+              ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+              ctx.fillStyle = '#000';
+              if (hasLogo) {
+                const logoX = rx + padX, logoY = labelY - logoSize / 2;
+                if (status._logoImg && status._logoImg.complete && status._logoImg.naturalWidth > 0) {
+                  ctx.drawImage(status._logoImg, logoX, logoY, logoSize, logoSize);
+                }
+                ctx.fillText(statusName, logoX + logoSize + logoPad + textWidth / 2, labelY);
+              } else {
+                ctx.fillText(statusName, labelX, labelY);
+              }
+              ctx.restore();
+            });
+
+            // Pass 2: draw hovered tooltip on top of all labels
+            if (hoveredIndex >= 0) {
+              const arc = meta.data[hoveredIndex];
+              const value = chart.data.datasets[0].data[hoveredIndex];
+              if (value > 0) {
+                const status = brandValueDashboardData.statuses[hoveredIndex];
+                const statusName = status.name;
+                const percentage = ((value / brandValueDashboardData.total) * 100).toFixed(1);
                 const line1 = statusName.toUpperCase();
                 const line2 = 'HKD ' + value.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '  (' + percentage + '%)';
+                ctx.save();
                 ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
                 const l1W = ctx.measureText(line1).width;
                 ctx.font = '300 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
@@ -5724,41 +6503,26 @@
                 ctx.fillText(line1, centerX, by + boxH / 2 - 7);
                 ctx.font = '300 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
                 ctx.fillText(line2, centerX, by + boxH / 2 + 7);
-              } else {
-                const logoSize = 14, logoPad = 4;
-                ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-                const textWidth = ctx.measureText(statusName).width;
-                const hasLogo = status.logoPath;
-                const contentW = hasLogo ? logoSize + logoPad + textWidth : textWidth;
-                const padX = 6, padY = 4, rad = 4;
-                const rw = contentW + padX * 2;
-                const rh = Math.max(logoSize, 12) + padY * 2;
-                const rx = labelX - rw / 2, ry = labelY - rh / 2;
-                ctx.beginPath();
-                ctx.moveTo(rx + rad, ry); ctx.lineTo(rx + rw - rad, ry);
-                ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
-                ctx.lineTo(rx + rw, ry + rh - rad);
-                ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
-                ctx.lineTo(rx + rad, ry + rh);
-                ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
-                ctx.lineTo(rx, ry + rad);
-                ctx.quadraticCurveTo(rx, ry, rx + rad, ry);
-                ctx.closePath();
-                ctx.fillStyle = '#fff'; ctx.fill();
-                ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
-                ctx.fillStyle = '#000';
-                if (hasLogo) {
-                  const logoX = rx + padX, logoY = labelY - logoSize / 2;
-                  if (status._logoImg && status._logoImg.complete && status._logoImg.naturalWidth > 0) {
-                    ctx.drawImage(status._logoImg, logoX, logoY, logoSize, logoSize);
-                  }
-                  ctx.fillText(statusName, logoX + logoSize + logoPad + textWidth / 2, labelY);
-                } else {
-                  ctx.fillText(statusName, labelX, labelY);
-                }
+                ctx.restore();
               }
-              ctx.restore();
-            });
+            }
+
+            // Draw center text on top of everything (including hovered slices)
+            const width = chart.width, height = chart.height;
+            ctx.restore();
+            const fontSize = (height / 280).toFixed(2);
+            ctx.font = `700 ${fontSize}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#000';
+            const text = 'HKD ' + brandValueDashboardData.total.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            const textX = Math.round((width - ctx.measureText(text).width) / 2);
+            ctx.fillText(text, textX, height / 2 - 10);
+            ctx.font = `600 ${(fontSize * 0.35).toFixed(2)}em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+            ctx.fillStyle = '#666';
+            const lbl = 'TOTAL';
+            const lblX = Math.round((width - ctx.measureText(lbl).width) / 2);
+            ctx.fillText(lbl, lblX, height / 2 + 20);
+            ctx.save();
           }
         }]
       });
@@ -6052,6 +6816,14 @@
       submenu.style.display = isVisible ? 'none' : 'block';
     };
 
+    // Menu click: toggle workshop submenu
+    menuWorkshopBtn.onclick = () => {
+      const submenu = document.getElementById('workshopSubmenu');
+      const isVisible = submenu.style.display !== 'none';
+      document.querySelectorAll('.submenu').forEach(sub => { sub.style.display = 'none'; });
+      submenu.style.display = isVisible ? 'none' : 'block';
+    };
+
     // Customer submenu buttons
     const customerCreateBtn = document.getElementById('customerCreateBtn');
     const customerViewBtn = document.getElementById('customerViewBtn');
@@ -6142,6 +6914,7 @@
       menuQuotationBtn.textContent = menuQuotationBtn.dataset.full || 'Quotation';
       menuOutsourcingBtn.textContent = menuOutsourcingBtn.dataset.full || 'Outsourcing';
       menuBrandBtn.textContent = menuBrandBtn.dataset.full || 'Brand';
+      menuWorkshopBtn.textContent = menuWorkshopBtn.dataset.full || 'Workshop';
     };
     sidebar.onmouseleave = () => {
       menuEmailBtn.textContent = menuEmailBtn.dataset.short || 'E';
@@ -6153,6 +6926,7 @@
       menuQuotationBtn.textContent = menuQuotationBtn.dataset.short || 'Q';
       menuOutsourcingBtn.textContent = menuOutsourcingBtn.dataset.short || 'O';
       menuBrandBtn.textContent = menuBrandBtn.dataset.short || 'B';
+      menuWorkshopBtn.textContent = menuWorkshopBtn.dataset.short || 'W';
       // Hide submenus on mouse leave
       document.querySelectorAll('.submenu').forEach(sub => {
         sub.style.display = 'none';
@@ -6240,6 +7014,24 @@
       ensureTab('outsourcing-view', 'Outsourcing (View)');
       activateTab('outsourcing-view');
       initializeOutsourcingViewPanel();
+    };
+
+    // Workshop submenu buttons
+    const workshopCreateBtnEl = document.getElementById('workshopCreateBtn');
+    const workshopViewBtnEl = document.getElementById('workshopViewBtn');
+
+    workshopCreateBtnEl.onclick = () => {
+      document.getElementById('workshopSubmenu').style.display = 'none';
+      ensureTab('workshop', 'Workshop (Create)');
+      activateTab('workshop');
+      initializeWorkshopPanel();
+    };
+
+    workshopViewBtnEl.onclick = () => {
+      document.getElementById('workshopSubmenu').style.display = 'none';
+      ensureTab('workshop-view', 'Workshop (View)');
+      activateTab('workshop-view');
+      initializeWorkshopViewPanel();
     };
 
     // Add profile button
@@ -6592,10 +7384,25 @@
 
           if (contentStart >= 0 && contentStart < lines.length) {
             // Collect content until we hit a boundary
+            // First, find the boundary string from the Content-Type header in the email headers
+            let boundaryStr = null;
+            const headerSection = source.substring(0, headerEndMatch.index);
+            const boundaryMatch = headerSection.match(/boundary="?([^"\s;]+)"?/i);
+            if (boundaryMatch) {
+              boundaryStr = boundaryMatch[1];
+            }
+
             const contentLines = [];
             for (let i = contentStart; i < lines.length; i++) {
-              if (lines[i].startsWith('----_') || lines[i].startsWith('--=_')) {
-                break; // Stop at boundary
+              const line = lines[i].trimEnd();
+              // Stop at any MIME boundary line: --<boundary> or --<boundary>--
+              if (boundaryStr && (line === '--' + boundaryStr || line === '--' + boundaryStr + '--')) {
+                break;
+              }
+              // Fallback: stop at any line that looks like a generic MIME boundary
+              // Pattern: starts with -- and looks like a boundary (hex, alphanumeric, dots, underscores)
+              if (/^--[a-zA-Z0-9._=+/-]+$/.test(line) && line.length > 4) {
+                break;
               }
               contentLines.push(lines[i]);
             }
@@ -6670,6 +7477,7 @@
               if (line.includes('Content-Type:') ||
                   line.includes('Content-Transfer-Encoding:') ||
                   line.startsWith('----') ||
+                  /^--[a-zA-Z0-9._=+/-]+--?\s*$/.test(line.trim()) ||
                   line.trim() === '' ||
                   line.includes('charset=')) {
                 continue;
@@ -6695,7 +7503,7 @@
               }
             }
 
-            bodyContent = extractedContent.trim() || bodyPart.replace(/----_[^\n]*\n/g, '').replace(/Content-Type:[^\n]*\n/g, '').replace(/Content-Transfer-Encoding:[^\n]*\n/g, '').replace(/^\n+/, '').replace(/\n+$/, '');
+            bodyContent = extractedContent.trim() || bodyPart.replace(/--?[a-zA-Z0-9._=+-]+--?\s*\n?/g, '').replace(/Content-Type:[^\n]*\n/g, '').replace(/Content-Transfer-Encoding:[^\n]*\n/g, '').replace(/^\n+/, '').replace(/\n+$/, '');
           }
         } else {
           // Fallback: show the whole source
@@ -11105,7 +11913,12 @@
           'price confirmed': '#28a745',
           'sampling': '#20c997',
           'await sample ready date': '#e83e8c',
-          'sample delivered': '#6c757d'
+          'sample delivered': '#6c757d',
+          'await approval': '#fd7e14',
+          'approved': '#28a745',
+          'rejected': '#dc3545',
+          'resubmit': '#dc3545',
+          'complete': '#6c757d'
         };
 
         // Special handling for "await quotation" status
@@ -11146,16 +11959,34 @@
           'await customer confirm price': { next: 'price confirmed', label: 'Confirm Price' },
           'price confirmed': { next: 'sampling', label: 'Start Sampling' },
           'sampling': { next: 'await sample ready date', label: 'Chase Sample Date' },
-          'await sample ready date': { next: 'sample delivered', label: 'Mark Delivered' },          'sample delivered': { next: null, label: 'Completed' }
+          'await sample ready date': { next: 'await approval', label: 'Submit for Approval' },
+          'await approval': { next: null, label: 'Awaiting Approval', popup: true },
+          'approved': { next: 'complete', label: 'Complete' },
+          'rejected': { next: null, label: 'Resubmit', dynamic: true },
+          'complete': { next: null, label: 'Completed' }
         };
 
         // Statuses after comparison - show view button alongside action
-        const postCompareStatuses = ['compare quotation', 'send to customer', 'await customer confirm price', 'price confirmed', 'sampling', 'await sample ready date', 'sample delivered'];
+        const postCompareStatuses = ['compare quotation', 'send to customer', 'await customer confirm price', 'price confirmed', 'sampling', 'await sample ready date', 'await approval', 'approved', 'complete'];
         const viewBtn = (postCompareStatuses.includes(status) && responseCount > 0)
           ? `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#17a2b8; color:#fff;" onclick="event.stopPropagation(); showCompareQuotationPopup(${quotation.id}, true)">View Quotations</button>`
           : '';
 
         const action = statusMap[status];
+
+        // Handle resubmit statuses (e.g. "1st resubmit", "2nd resubmit")
+        if (!action && /\d+(?:st|nd|rd|th)\s+resubmit/i.test(status)) {
+          const resubmitBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#fd7e14; color:#fff; border:1px solid #fd7e14;" onclick="event.stopPropagation(); updateOutsourcingStatus(${quotation.id}, 'await approval')">${status} - Submit for Approval</button>`;
+          return viewBtn ? `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">${resubmitBtn}${viewBtn}</div>` : resubmitBtn;
+        }
+
+        // Handle "await approval" - show Approve and Reject buttons
+        if (status === 'await approval') {
+          const approveBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#28a745; color:#fff; border:1px solid #28a745;" onclick="event.stopPropagation(); updateOutsourcingStatus(${quotation.id}, 'approved')">Approve</button>`;
+          const rejectBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#dc3545; color:#fff; border:1px solid #dc3545;" onclick="event.stopPropagation(); handleReject(${quotation.id})">Reject</button>`;
+          return `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">${approveBtn}${rejectBtn}${viewBtn}</div>`;
+        }
+
         if (!action || !action.next) {
           return `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;"><span style="color:#999;">Completed</span>${viewBtn}</div>`;
         }
@@ -11287,6 +12118,62 @@
 
       tbody.innerHTML = rows.join('');
     }
+
+    // Handle rejection - increment resubmit count and set status to ordinal resubmit string
+    window.handleReject = async function(quotationId) {
+      try {
+        const response = await fetch(`/api/quotations/${quotationId}`);
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error('Failed to fetch quotation');
+        }
+        const quotation = result.quotation;
+        const currentCount = (quotation.resubmitCount || 0) + 1;
+        const ordinalSuffixes = ['th', 'st', 'nd', 'rd'];
+        const suffix = (currentCount % 100 >= 11 && currentCount % 100 <= 13) ? 'th' : (ordinalSuffixes[currentCount % 10] || 'th');
+        const newStatus = currentCount + suffix + ' resubmit';
+
+        const updateResponse = await fetch(`/api/quotations/${quotationId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...quotation,
+            status: newStatus,
+            resubmitCount: currentCount
+          })
+        });
+
+        if (!updateResponse.ok) {
+          throw new Error('Failed to update quotation');
+        }
+
+        // Log in history
+        try {
+          await fetch(`/api/quotations/${quotationId}/log-history`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fromStatus: quotation.status,
+              toStatus: newStatus,
+              note: `Rejected - moved to ${newStatus}`
+            })
+          });
+        } catch (e) { console.warn('Failed to log history:', e); }
+
+        alert(`Rejected - status updated to "${newStatus}"`);
+
+        // Refresh both views
+        if (typeof displayOutsourcingQuotations === 'function') {
+          await displayOutsourcingQuotations();
+        }
+        if (typeof displayQuotations === 'function') {
+          await displayQuotations();
+        }
+      } catch (error) {
+        console.error('Error handling rejection:', error);
+        alert('Failed to reject. Please try again.');
+      }
+    };
 
     // Update outsourcing quotation status
     window.updateOutsourcingStatus = async function(quotationId, newStatus) {
@@ -12148,19 +13035,24 @@
     };
 
     // Generate customer email HTML for selected supplier quotation
-    function generateCustomerComparisonEmailHtml(quotation, selectedResponse) {
+    function generateCustomerComparisonEmailHtml(quotation, selectedResponse, profileImageBase64 = null) {
       const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
       const r = selectedResponse;
 
       let html = `
         <div style="font-family:Arial,sans-serif; max-width:800px; margin:0 auto; color:#000;">
           <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Supplier Quotation</h2>
+          ${profileImageBase64 ? `
+          <div style="margin-bottom:20px;">
+            <img src="${profileImageBase64}" style="max-width:200px; max-height:200px; object-fit:contain; border:1px solid #ddd; padding:5px;" alt="Product Image">
+          </div>` : ''}
           <p>Dear ${quotation.customerName},</p>
           <p>We have sourced a quotation for your request. Please review the details below:</p>
 
           <h3 style="margin-top:30px;">Your Request Details:</h3>
           <table style="width:100%; border-collapse:collapse; margin:20px 0;">
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold; width:200px;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${quotation.productType}</td></tr>
+            ${quotation.customerItemName ? `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Item Name</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerItemName}</td></tr>` : ''}
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Description</td><td style="padding:8px; border:1px solid #ccc;">${productDetails.description || 'N/A'}</td></tr>
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity.toLocaleString()}</td></tr>
           </table>
@@ -12275,8 +13167,16 @@
           }
         }
 
+        // Fetch profile image for email
+        let profileImageBase64 = null;
+        if (quotation.hasProfileImage) {
+          try {
+            profileImageBase64 = await fetchProfileImageBase64(quotation.id);
+          } catch (e) { console.warn('Could not fetch profile image for email:', e); }
+        }
+
         // Generate email HTML for the selected supplier
-        const emailHtml = generateCustomerComparisonEmailHtml(quotation, selectedResponse) + originalEmailHtml;
+        const emailHtml = generateCustomerComparisonEmailHtml(quotation, selectedResponse, profileImageBase64) + originalEmailHtml;
 
         // Build subject as reply to original email if available
         const emailSubject = originalSubject
@@ -12373,8 +13273,11 @@
         'await customer confirm price': 'Confirm Price',
         'price confirmed': 'Start Sampling',
         'sampling': 'Chase Sample Date',
-        'await sample ready date': 'Mark Delivered',
-        'sample delivered': 'Completed'
+        'await sample ready date': 'Submit for Approval',
+        'await approval': 'Awaiting Approval',
+        'approved': 'Complete',
+        'rejected': 'Resubmit',
+        'complete': 'Completed'
       };
 
       const filters = {
@@ -12408,7 +13311,11 @@
         if (filters.date && !new Date(quotation.dateCreated).toLocaleDateString().toLowerCase().includes(filters.date)) return false;
         if (filters.action) {
           const status = quotation.status || 'pending';
-          const actionLabel = outsourcingStatusActionMap[status] || '';
+          let actionLabel = outsourcingStatusActionMap[status] || '';
+          // Match resubmit statuses (e.g. "1st resubmit", "2nd resubmit") to "Resubmit"
+          if (!actionLabel && /\d+(?:st|nd|rd|th)\s+resubmit/i.test(status)) {
+            actionLabel = 'Resubmit';
+          }
           if (actionLabel !== filters.action) return false;
         }
         return true;
@@ -12471,16 +13378,37 @@
           'send to customer': '#007bff',
           'price confirmed': '#28a745',
           'sampling': '#6f42c1',
-          'sample delivered': '#20c997'
+          'sample delivered': '#20c997',
+          'await approval': '#fd7e14',
+          'approved': '#28a745',
+          'rejected': '#dc3545',
+          'resubmit': '#dc3545',
+          'complete': '#6c757d'
         };
 
         const statusMap = {
           'pending': { next: 'send to customer', label: 'Send to Customer' },
           'send to customer': { next: 'price confirmed', label: 'Confirm Price' },
           'price confirmed': { next: 'sampling', label: 'Start Sampling' },
-          'sampling': { next: 'sample delivered', label: 'Mark Delivered' },
-          'sample delivered': { next: null, label: 'Completed' }
+          'sampling': { next: 'await approval', label: 'Submit for Approval' },
+          'await approval': { next: null, label: 'Awaiting Approval', popup: true },
+          'approved': { next: 'complete', label: 'Complete' },
+          'rejected': { next: null, label: 'Resubmit', dynamic: true },
+          'complete': { next: null, label: 'Completed' }
         };
+
+        // Handle resubmit statuses (e.g. "1st resubmit", "2nd resubmit")
+        if (/\d+(?:st|nd|rd|th)\s+resubmit/i.test(status)) {
+          const resubmitBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#fd7e14; color:#fff; border:1px solid #fd7e14;" onclick="event.stopPropagation(); updateQuotationStatus(${quotation.id}, 'await approval', '${quotation.type || 'non email'}', ${JSON.stringify(quotation).replace(/"/g, '&quot;')})">${status} - Submit for Approval</button>`;
+          return resubmitBtn;
+        }
+
+        // Handle "await approval" - show Approve and Reject buttons
+        if (status === 'await approval') {
+          const approveBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#28a745; color:#fff; border:1px solid #28a745;" onclick="event.stopPropagation(); updateQuotationStatus(${quotation.id}, 'approved', '${quotation.type || 'non email'}', ${JSON.stringify(quotation).replace(/"/g, '&quot;')})">Approve</button>`;
+          const rejectBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#dc3545; color:#fff; border:1px solid #dc3545;" onclick="event.stopPropagation(); handleReject(${quotation.id})">Reject</button>`;
+          return `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">${approveBtn}${rejectBtn}</div>`;
+        }
 
         const action = statusMap[status];
         if (!action || !action.next) {
@@ -12526,8 +13454,11 @@
         'pending': 'Send to Customer',
         'send to customer': 'Confirm Price',
         'price confirmed': 'Start Sampling',
-        'sampling': 'Mark Delivered',
-        'sample delivered': 'Completed'
+        'sampling': 'Submit for Approval',
+        'await approval': 'Awaiting Approval',
+        'approved': 'Complete',
+        'rejected': 'Resubmit',
+        'complete': 'Completed'
       };
 
       const filters = {
@@ -12561,7 +13492,11 @@
         if (filters.date && !new Date(quotation.dateCreated).toLocaleDateString().toLowerCase().includes(filters.date)) return false;
         if (filters.action) {
           const status = quotation.status || 'pending';
-          const actionLabel = quotationStatusMap[status] || '';
+          let actionLabel = quotationStatusMap[status] || '';
+          // Match resubmit statuses (e.g. "1st resubmit", "2nd resubmit") to "Resubmit"
+          if (!actionLabel && /\d+(?:st|nd|rd|th)\s+resubmit/i.test(status)) {
+            actionLabel = 'Resubmit';
+          }
           if (actionLabel !== filters.action) return false;
         }
         return true;
@@ -17126,7 +18061,9 @@
             'price confirmed': '#28a745', 'sampling': '#6f42c1', 'sample delivered': '#20c997',
             'send to outsourcing supplier': '#007bff', 'await quotation': '#ffc107',
             'compare quotation': '#fd7e14', 'await customer confirm price': '#6f42c1',
-            'await sample ready date': '#e83e8c'
+            'await sample ready date': '#e83e8c',
+            'await approval': '#fd7e14', 'approved': '#28a745', 'rejected': '#dc3545',
+            'resubmit': '#dc3545', 'complete': '#6c757d'
           };
           const dotColor = statusColors[toLabel] || '#333';
 
@@ -17765,7 +18702,12 @@
       'send to outsourcing supplier': '#5a6268',
       'await quotation': '#856404',
       'compare quotation': '#fd7e14',
-      'await sample ready date': '#e83e8c'
+      'await sample ready date': '#e83e8c',
+      'await approval': '#fd7e14',
+      'approved': '#28a745',
+      'rejected': '#dc3545',
+      'resubmit': '#dc3545',
+      'complete': '#6c757d'
     };
 
     function getStatusBadge(status) {
@@ -17774,12 +18716,34 @@
     }
 
     // Open the status drill-down modal
-    function openStatusDrilldown(statusKey, statusName, dashboardType) {
+    async function openStatusDrilldown(statusKey, statusName, dashboardType) {
       // Close any existing drill-down modal
       const existing = document.getElementById('statusDrilldownOverlay');
       if (existing) existing.remove();
 
-      const quotations = getQuotationsForDashboard(dashboardType);
+      // Fetch fresh data from API to ensure item names are up to date
+      let quotations = [];
+      try {
+        if (dashboardType === 'outsourcing') {
+          const res = await fetch('/api/quotations/outsourcing');
+          const data = await res.json();
+          quotations = data.success ? data.quotations : [];
+          // Update the cache too
+          if (outsourcingDashboardData) outsourcingDashboardData._quotations = quotations;
+        } else {
+          const res = await fetch('/api/quotations');
+          const data = await res.json();
+          quotations = data.success ? data.quotations : [];
+          // Update the cache
+          if (dashboardType === 'quotation') dashboardQuotations = quotations;
+          else if (dashboardType === 'brand') brandDashboardQuotations = quotations;
+          else if (dashboardType === 'brandValue') brandValueQuotations = quotations;
+        }
+      } catch (e) {
+        console.warn('Failed to fetch fresh data for drilldown, using cache:', e);
+        quotations = getQuotationsForDashboard(dashboardType);
+      }
+
       const filtered = quotations.filter(q =>
         q.status && q.status.toLowerCase() === statusKey.toLowerCase()
       );
@@ -18021,6 +18985,676 @@
         btn.disabled = false;
       }
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // WORKSHOP MODULE
+    // ═══════════════════════════════════════════════════════════════
+
+    let wsCurrentStep = 1;
+    let wsUploadedFiles = {};
+    let wsSavedWorkshops = [];
+
+    // ── Stepper Navigation ──────────────────────────────────────
+
+    function wsGoStep(dir) {
+      const next = wsCurrentStep + dir;
+      if (next < 1 || next > 10) return;
+      wsSetStep(next);
+    }
+
+    function wsSetStep(n) {
+      wsCurrentStep = n;
+      document.querySelectorAll('#workshopPanel .ws-step-item').forEach(el => {
+        const s = parseInt(el.dataset.step);
+        el.classList.toggle('active', s === n);
+        if (s < n) el.classList.add('completed'); else el.classList.remove('completed');
+      });
+      document.querySelectorAll('#workshopPanel .ws-section').forEach(el => {
+        el.classList.toggle('active', parseInt(el.dataset.section) === n);
+      });
+      document.getElementById('ws-prevBtn').style.display = n === 1 ? 'none' : '';
+      document.getElementById('ws-nextBtn').style.display = n === 10 ? 'none' : '';
+    }
+
+    // ── Checkbox Grid Toggle ────────────────────────────────────
+
+    function wsInitCheckboxGrids() {
+      document.querySelectorAll('#workshopPanel .ws-checkbox-item').forEach(item => {
+        const cb = item.querySelector('input[type="checkbox"]');
+        if (!cb) return;
+        item.addEventListener('click', (e) => {
+          if (e.target === cb) return;
+          cb.checked = !cb.checked;
+          item.classList.toggle('selected', cb.checked);
+        });
+        if (cb.checked) item.classList.add('selected');
+      });
+    }
+
+    // ── Toggle Buttons ──────────────────────────────────────────
+
+    function wsInitToggles() {
+      document.querySelectorAll('#workshopPanel .ws-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const field = btn.dataset.field;
+          const val = btn.dataset.val;
+          document.getElementById(field).value = val;
+          btn.parentElement.querySelectorAll('.ws-toggle-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          // Conditional fields
+          if (field === 'ws-iso9001') {
+            document.getElementById('ws-iso9001ExpiryWrap').style.display = val === 'yes' ? '' : 'none';
+          }
+        });
+      });
+    }
+
+    // ── Dynamic Rows: Machinery ─────────────────────────────────
+
+    function wsAddMachineryRow(name, qty) {
+      const list = document.getElementById('ws-machineryList');
+      const row = document.createElement('div');
+      row.className = 'ws-dynamic-row';
+      row.innerHTML = '<input type="text" placeholder="Machine name" value="' + (name||'') + '">'
+        + '<input type="number" placeholder="Qty" min="1" style="max-width:80px;" value="' + (qty||'') + '">'
+        + '<button type="button" class="ws-remove-row" onclick="this.parentElement.remove()">✕</button>';
+      list.appendChild(row);
+    }
+
+    // ── Dynamic Rows: Certificates ──────────────────────────────
+
+    function wsAddCertRow(certName, certNum, certExpiry) {
+      const list = document.getElementById('ws-otherCertsList');
+      const row = document.createElement('div');
+      row.className = 'ws-dynamic-row';
+      row.innerHTML = '<input type="text" placeholder="Certificate name" value="' + (certName||'') + '">'
+        + '<input type="text" placeholder="Cert number" value="' + (certNum||'') + '">'
+        + '<input type="date" value="' + (certExpiry||'') + '">'
+        + '<button type="button" class="ws-remove-row" onclick="this.parentElement.remove()">✕</button>';
+      list.appendChild(row);
+    }
+
+    // ── Dynamic Rows: References ────────────────────────────────
+
+    function wsAddReferenceRow(refName, refContact) {
+      const list = document.getElementById('ws-referencesList');
+      const row = document.createElement('div');
+      row.className = 'ws-dynamic-row';
+      row.innerHTML = '<input type="text" placeholder="Client name" value="' + (refName||'') + '">'
+        + '<input type="text" placeholder="Contact info" value="' + (refContact||'') + '">'
+        + '<button type="button" class="ws-remove-row" onclick="this.parentElement.remove()">✕</button>';
+      list.appendChild(row);
+    }
+
+    // ── File Upload Handler ─────────────────────────────────────
+
+    function wsHandleUpload(input, category) {
+      const files = Array.from(input.files);
+      if (!wsUploadedFiles[category]) wsUploadedFiles[category] = [];
+      const preview = document.getElementById('ws-' + category + 'Preview');
+
+      files.forEach(f => {
+        wsUploadedFiles[category].push(f.name);
+        const isImg = f.type.startsWith('image/');
+        if (isImg) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            preview.appendChild(img);
+          };
+          reader.readAsDataURL(f);
+        } else {
+          const badge = document.createElement('span');
+          badge.className = 'ws-file-badge';
+          badge.textContent = f.name;
+          preview.appendChild(badge);
+        }
+      });
+      input.value = '';
+    }
+
+    // ── Gather Form Data ────────────────────────────────────────
+
+    function wsGatherData() {
+      const getChecked = (containerId) => {
+        const vals = [];
+        document.querySelectorAll('#' + containerId + ' input[type="checkbox"]:checked').forEach(cb => vals.push(cb.value));
+        return vals;
+      };
+
+      const data = {
+        fullCompanyName: document.getElementById('ws-fullCompanyName').value.trim(),
+        tradingName: document.getElementById('ws-tradingName').value.trim(),
+        yearEstablished: document.getElementById('ws-yearEstablished').value,
+        companyType: document.getElementById('ws-companyType').value,
+        legalStructure: document.getElementById('ws-legalStructure').value,
+        businessRegNumber: document.getElementById('ws-businessRegNumber').value.trim(),
+        gstVatNumber: document.getElementById('ws-gstVatNumber').value.trim(),
+        website: document.getElementById('ws-website').value.trim(),
+        yearlyTurnover: document.getElementById('ws-yearlyTurnover').value,
+
+        primaryContactName: document.getElementById('ws-primaryContactName').value.trim(),
+        primaryContactDesignation: document.getElementById('ws-primaryContactDesignation').value.trim(),
+        mobileWhatsapp: document.getElementById('ws-mobileWhatsapp').value.trim(),
+        emailAddress: document.getElementById('ws-emailAddress').value.trim(),
+        altContactPerson: document.getElementById('ws-altContactPerson').value.trim(),
+        companyAddress: document.getElementById('ws-companyAddress').value.trim(),
+        googleMapLink: document.getElementById('ws-googleMapLink').value.trim(),
+
+        country: document.getElementById('ws-country').value,
+        cityProvince: document.getElementById('ws-cityProvince').value.trim(),
+        factoryArea: document.getElementById('ws-factoryArea').value.trim(),
+        numBuildings: document.getElementById('ws-numBuildings').value.trim(),
+        totalEmployees: document.getElementById('ws-totalEmployees').value,
+        numProductionWorkers: document.getElementById('ws-numProductionWorkers').value,
+        numQCStaff: document.getElementById('ws-numQCStaff').value,
+        numAdminSalesStaff: document.getElementById('ws-numAdminSalesStaff').value,
+
+        productionCapabilities: {
+          mainProductionTypes: getChecked('ws-productionTypes'),
+          otherTypes: document.getElementById('ws-productionTypesOther').value.trim(),
+          machineryList: Array.from(document.querySelectorAll('#ws-machineryList .ws-dynamic-row')).map(r => ({
+            name: r.querySelectorAll('input')[0].value,
+            qty: r.querySelectorAll('input')[1].value
+          })),
+          monthlyCapacity: document.getElementById('ws-monthlyCapacity').value.trim(),
+          moq: document.getElementById('ws-moq').value.trim(),
+          avgLeadTime: document.getElementById('ws-avgLeadTime').value.trim()
+        },
+
+        departments: {
+          departments: getChecked('ws-departments'),
+          workflowDescription: document.getElementById('ws-workflowDescription').value.trim(),
+          sampleLeadTime: document.getElementById('ws-sampleLeadTime').value.trim()
+        },
+
+        qualityCerts: {
+          iso9001: { has: document.getElementById('ws-iso9001').value === 'yes', expiry: document.getElementById('ws-iso9001Expiry').value },
+          otherCerts: Array.from(document.querySelectorAll('#ws-otherCertsList .ws-dynamic-row')).map(r => ({
+            name: r.querySelectorAll('input')[0].value,
+            number: r.querySelectorAll('input')[1].value,
+            expiry: r.querySelector('input[type="date"]').value
+          })),
+          social: getChecked('ws-socialCerts').reduce((o, v) => { o[v] = true; return o; }, {}),
+          certNumbers: document.getElementById('ws-certNumbers').value.trim(),
+          thirdPartyInspection: document.getElementById('ws-thirdPartyInspection').value === 'yes',
+          inspectionCompany: document.getElementById('ws-inspectionCompany').value.trim()
+        },
+
+        sustainability: {
+          recycledMaterials: document.getElementById('ws-recycledMaterials').value === 'yes',
+          envPolicy: document.getElementById('ws-envPolicy').value === 'yes',
+          childLaborPolicy: document.getElementById('ws-childLaborPolicy').value === 'yes',
+          chemicalCompliance: getChecked('ws-chemicalCompliance'),
+          chemicalComplianceOther: document.getElementById('ws-chemicalComplianceOther').value.trim(),
+          carbonFootprint: document.getElementById('ws-carbonFootprint').value === 'yes'
+        },
+
+        capacityReliability: {
+          capacityUtilization: document.getElementById('ws-capacityUtilization').value,
+          peakSeasonManagement: document.getElementById('ws-peakSeasonManagement').value.trim(),
+          majorClients: document.getElementById('ws-majorClients').value.trim(),
+          exportMarkets: document.getElementById('ws-exportMarkets').value.trim(),
+          paymentTerms: getChecked('ws-paymentTerms'),
+          bankDetails: document.getElementById('ws-bankDetails').value.trim()
+        },
+
+        uploads: wsUploadedFiles,
+
+        howDidYouHear: document.getElementById('ws-howDidYouHear').value,
+        existingRelationship: document.getElementById('ws-existingRelationship').value.trim(),
+        clientReferences: Array.from(document.querySelectorAll('#ws-referencesList .ws-dynamic-row')).map(r => ({
+          name: r.querySelectorAll('input')[0].value,
+          contact: r.querySelectorAll('input')[1].value
+        })),
+        declarationAccepted: document.getElementById('ws-declarationAccepted').checked ? 1 : 0,
+        digitalSignature: document.getElementById('ws-digitalSignature').value.trim(),
+        signatureDate: document.getElementById('ws-signatureDate').value
+      };
+
+      return data;
+    }
+
+    // ── Initialize Create Panel ─────────────────────────────────
+
+    function initializeWorkshopPanel() {
+      wsCurrentStep = 1;
+      wsUploadedFiles = {};
+      wsSetStep(1);
+
+      // Reset all inputs
+      document.querySelectorAll('#workshopPanel input[type="text"], #workshopPanel input[type="number"], #workshopPanel input[type="email"], #workshopPanel input[type="tel"], #workshopPanel input[type="url"], #workshopPanel input[type="date"], #workshopPanel textarea').forEach(el => el.value = '');
+      document.querySelectorAll('#workshopPanel select').forEach(el => el.selectedIndex = 0);
+      document.querySelectorAll('#workshopPanel input[type="checkbox"]').forEach(el => { el.checked = false; });
+      document.querySelectorAll('#workshopPanel .ws-checkbox-item').forEach(el => el.classList.remove('selected'));
+      document.querySelectorAll('#workshopPanel .ws-toggle-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.val === 'no') btn.classList.add('active');
+      });
+      document.querySelectorAll('#workshopPanel input[type="hidden"]').forEach(el => el.value = 'no');
+      document.getElementById('ws-capacityUtilization').value = 50;
+      document.getElementById('ws-capacityVal').textContent = '50%';
+      document.getElementById('ws-signatureDate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('ws-iso9001ExpiryWrap').style.display = 'none';
+
+      // Clear dynamic rows
+      document.getElementById('ws-machineryList').innerHTML = '';
+      document.getElementById('ws-otherCertsList').innerHTML = '';
+      document.getElementById('ws-referencesList').innerHTML = '';
+
+      // Clear upload previews
+      document.querySelectorAll('#workshopPanel .ws-upload-preview').forEach(el => el.innerHTML = '');
+
+      // Init interactions
+      wsInitCheckboxGrids();
+      wsInitToggles();
+
+      // Step nav clicks
+      document.querySelectorAll('#workshopPanel .ws-step-item').forEach(item => {
+        item.onclick = () => wsSetStep(parseInt(item.dataset.step));
+      });
+
+      // Wire buttons
+      document.getElementById('ws-dummyBtn').onclick = () => fillWorkshopDummyData();
+      document.getElementById('ws-saveDraftBtn').onclick = () => wsSaveWorkshop('draft');
+      document.getElementById('ws-submitBtn').onclick = () => wsSaveWorkshop('active');
+    }
+
+    // ── Save Workshop ───────────────────────────────────────────
+
+    async function wsSaveWorkshop(status) {
+      const data = wsGatherData();
+      if (status === 'active' && !data.fullCompanyName) {
+        alert('Company Name is required.');
+        wsSetStep(1);
+        return;
+      }
+      data.status = status;
+      try {
+        const res = await fetch('/api/workshops', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (result.success) {
+          alert(status === 'draft' ? 'Draft saved!' : 'Workshop submitted successfully!');
+          initializeWorkshopPanel();
+        } else {
+          alert('Error: ' + result.error);
+        }
+      } catch (err) {
+        alert('Failed to save: ' + err.message);
+      }
+    }
+
+    // ── Dummy Data ──────────────────────────────────────────────
+
+    function fillWorkshopDummyData() {
+      // Section 1
+      document.getElementById('ws-fullCompanyName').value = 'Guangzhou Perfectrim Manufacturing Co., Ltd.';
+      document.getElementById('ws-tradingName').value = 'Perfectrim Labels';
+      document.getElementById('ws-yearEstablished').value = '2008';
+      document.getElementById('ws-companyType').value = 'Manufacturer';
+      document.getElementById('ws-legalStructure').value = 'Private Limited';
+      document.getElementById('ws-businessRegNumber').value = '91440300MA5F2JQN8X';
+      document.getElementById('ws-gstVatNumber').value = 'GST440165890';
+      document.getElementById('ws-website').value = 'https://www.perfectrim.com';
+      document.getElementById('ws-yearlyTurnover').value = '5000000';
+
+      // Section 2
+      document.getElementById('ws-primaryContactName').value = 'James Chen';
+      document.getElementById('ws-primaryContactDesignation').value = 'Production Manager';
+      document.getElementById('ws-mobileWhatsapp').value = '+86-138-2888-9527';
+      document.getElementById('ws-emailAddress').value = 'james.chen@perfectrim.com';
+      document.getElementById('ws-altContactPerson').value = 'Linda Wang, Sales Director';
+      document.getElementById('ws-companyAddress').value = 'Room 1205, Tower B, Jiahe Building, No.88 Huanshi East Road, Yuexiu District, Guangzhou, Guangdong, China 510075';
+      document.getElementById('ws-googleMapLink').value = 'https://maps.google.com/?q=23.1291,113.2644';
+
+      // Section 3
+      document.getElementById('ws-country').value = 'China';
+      document.getElementById('ws-cityProvince').value = 'Guangzhou, Guangdong';
+      document.getElementById('ws-factoryArea').value = '15000 sq.m';
+      document.getElementById('ws-numBuildings').value = '3 buildings, 5 floors';
+      document.getElementById('ws-totalEmployees').value = '350';
+      document.getElementById('ws-numProductionWorkers').value = '250';
+      document.getElementById('ws-numQCStaff').value = '30';
+      document.getElementById('ws-numAdminSalesStaff').value = '70';
+
+      // Section 4 - checkboxes
+      ['Woven Labels','Printed Labels','Hang Tags','Leather / PU Patches','Metal Trims','Elastic & Tapes'].forEach(v => {
+        const cb = document.querySelector('#ws-productionTypes input[value="' + v + '"]');
+        if (cb) { cb.checked = true; cb.closest('.ws-checkbox-item').classList.add('selected'); }
+      });
+      document.getElementById('ws-productionTypesOther').value = '';
+      // Machinery
+      document.getElementById('ws-machineryList').innerHTML = '';
+      wsAddMachineryRow('Computerized Jacquard Loom', '12');
+      wsAddMachineryRow('Die-Cutting Machine', '5');
+      wsAddMachineryRow('Ultrasonic Welding Machine', '3');
+      wsAddMachineryRow('Screen Printing Machine', '4');
+      wsAddMachineryRow('Heat Press Machine', '6');
+      wsAddMachineryRow('Automatic Slitting Machine', '2');
+      document.getElementById('ws-monthlyCapacity').value = 'Hang Tags: 5 million pcs/month\nWoven Labels: 3 million yards/month\nPrinted Labels: 4 million yards/month';
+      document.getElementById('ws-moq').value = 'Hang Tags: 10,000 pcs\nWoven Labels: 5,000 yards\nPrinted Labels: 5,000 yards';
+      document.getElementById('ws-avgLeadTime').value = '14-21 days from order confirmation';
+
+      // Section 5
+      ['Design & Sampling','Production','Quality Control','Packaging','Logistics / Shipping','R&D / Innovation'].forEach(v => {
+        const cb = document.querySelector('#ws-departments input[value="' + v + '"]');
+        if (cb) { cb.checked = true; cb.closest('.ws-checkbox-item').classList.add('selected'); }
+      });
+      document.getElementById('ws-workflowDescription').value = 'Order received → Design approval → Raw material sourcing → Production → In-line QC inspection → Final QC → Packaging → Shipping. Each stage has dedicated team and quality checkpoints.';
+      document.getElementById('ws-sampleLeadTime').value = '7-10 days';
+
+      // Section 6
+      // ISO 9001 = Yes
+      document.getElementById('ws-iso9001').value = 'yes';
+      document.querySelectorAll('[data-field="ws-iso9001"]').forEach(b => {
+        b.classList.toggle('active', b.dataset.val === 'yes');
+      });
+      document.getElementById('ws-iso9001ExpiryWrap').style.display = '';
+      document.getElementById('ws-iso9001Expiry').value = '2027-06-30';
+      // Other certs
+      document.getElementById('ws-otherCertsList').innerHTML = '';
+      wsAddCertRow('ISO 14001', 'EMS-2024-00456', '2027-03-15');
+      // Social certs
+      ['BSCI','SEDEX','OEKO-TEX'].forEach(v => {
+        const cb = document.querySelector('#ws-socialCerts input[value="' + v + '"]');
+        if (cb) { cb.checked = true; cb.closest('.ws-checkbox-item').classList.add('selected'); }
+      });
+      document.getElementById('ws-certNumbers').value = 'BSCI #BS-2024-881234 exp 2027-01\nSEDEX #ZT-2024-SM-76543 exp 2026-12\nOEKO-TEX #234567 exp 2027-06';
+      // Third party
+      document.getElementById('ws-thirdPartyInspection').value = 'yes';
+      document.querySelectorAll('[data-field="ws-thirdPartyInspection"]').forEach(b => {
+        b.classList.toggle('active', b.dataset.val === 'yes');
+      });
+      document.getElementById('ws-inspectionCompany').value = 'SGS, Bureau Veritas';
+
+      // Section 7
+      document.getElementById('ws-recycledMaterials').value = 'yes';
+      document.querySelectorAll('[data-field="ws-recycledMaterials"]').forEach(b => b.classList.toggle('active', b.dataset.val === 'yes'));
+      document.getElementById('ws-envPolicy').value = 'yes';
+      document.querySelectorAll('[data-field="ws-envPolicy"]').forEach(b => b.classList.toggle('active', b.dataset.val === 'yes'));
+      document.getElementById('ws-childLaborPolicy').value = 'yes';
+      document.querySelectorAll('[data-field="ws-childLaborPolicy"]').forEach(b => b.classList.toggle('active', b.dataset.val === 'yes'));
+      document.getElementById('ws-carbonFootprint').value = 'yes';
+      document.querySelectorAll('[data-field="ws-carbonFootprint"]').forEach(b => b.classList.toggle('active', b.dataset.val === 'yes'));
+      ['REACH','OEKO-TEX Standard 100'].forEach(v => {
+        const cb = document.querySelector('#ws-chemicalCompliance input[value="' + v + '"]');
+        if (cb) { cb.checked = true; cb.closest('.ws-checkbox-item').classList.add('selected'); }
+      });
+
+      // Section 8
+      document.getElementById('ws-capacityUtilization').value = 75;
+      document.getElementById('ws-capacityVal').textContent = '75%';
+      document.getElementById('ws-peakSeasonManagement').value = 'We hire 50+ temporary workers during peak season (Aug-Nov). We also maintain buffer stock of raw materials for 30 days to handle rush orders.';
+      document.getElementById('ws-majorClients').value = 'H&M, Zara, Uniqlo, Target, Nike';
+      document.getElementById('ws-exportMarkets').value = 'USA, UK, Germany, France, Japan, Australia, Canada';
+      ['T/T','L/C'].forEach(v => {
+        const cb = document.querySelector('#ws-paymentTerms input[value="' + v + '"]');
+        if (cb) { cb.checked = true; cb.closest('.ws-checkbox-item').classList.add('selected'); }
+      });
+      document.getElementById('ws-bankDetails').value = 'Bank of China, Guangzhou Branch\nAccount: 1234 5678 9012 3456\nSWIFT: BKCHCNBJ400';
+
+      // Section 9 - uploads handled by user
+
+      // Section 10
+      document.getElementById('ws-howDidYouHear').value = 'Trade Show';
+      document.getElementById('ws-existingRelationship').value = 'We have been supplying labels to a Hong Kong trading company since 2015 and are familiar with trim requirements for major brands.';
+      document.getElementById('ws-referencesList').innerHTML = '';
+      wsAddReferenceRow('ABC Garments Ltd', 'Mr. Tom Lee, +852-9876-5432');
+      wsAddReferenceRow('XYZ Fashion Inc', 'Ms. Sarah Park, +1-212-555-8900');
+      wsAddReferenceRow('Global Sportswear Co', 'Mr. Mike Johnson, +44-20-7946-0958');
+      document.getElementById('ws-declarationAccepted').checked = true;
+      document.getElementById('ws-digitalSignature').value = 'James Chen';
+      document.getElementById('ws-signatureDate').value = new Date().toISOString().split('T')[0];
+
+      // Update step completion
+      document.querySelectorAll('#workshopPanel .ws-step-item').forEach(el => el.classList.add('completed'));
+      wsSetStep(wsCurrentStep);
+    }
+
+    // ── Initialize View Panel ───────────────────────────────────
+
+    async function initializeWorkshopViewPanel() {
+      document.getElementById('workshopListView').style.display = '';
+      document.getElementById('workshopDetailView').style.display = 'none';
+      await wsLoadWorkshops();
+    }
+
+    async function wsLoadWorkshops() {
+      try {
+        const res = await fetch('/api/workshops');
+        const data = await res.json();
+        if (data.success) {
+          wsSavedWorkshops = data.workshops;
+          wsRenderTable(wsSavedWorkshops);
+        }
+      } catch (err) {
+        console.error('Error loading workshops:', err);
+      }
+    }
+
+    function wsRenderTable(workshops) {
+      const tbody = document.getElementById('workshopsTableBody');
+      if (!workshops.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="padding:20px; text-align:center; border:1px solid #000; color:#999;">No workshops found. Click Create to add one.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = workshops.map(w => '<tr style="cursor:pointer;" onclick="wsViewDetail(' + w.id + ')">'
+        + '<td style="border:1px solid #000; padding:8px;">' + (w.fullCompanyName||'') + '</td>'
+        + '<td style="border:1px solid #000; padding:8px;">' + (w.country||'') + '</td>'
+        + '<td style="border:1px solid #000; padding:8px;">' + (w.companyType||'') + '</td>'
+        + '<td style="border:1px solid #000; padding:8px;">' + (w.primaryContactName||'') + '</td>'
+        + '<td style="border:1px solid #000; padding:8px;">' + (w.status||'') + '</td>'
+        + '<td style="border:1px solid #000; padding:8px;">' + (w.createdAt ? new Date(w.createdAt).toLocaleDateString() : '') + '</td>'
+        + '<td style="border:1px solid #000; padding:8px; text-align:center;">'
+        + '<button class="page-btn" style="padding:4px 12px; font-size:12px;" onclick="event.stopPropagation(); wsViewDetail(' + w.id + ')">View</button>'
+        + ' <button class="page-btn" style="padding:4px 12px; font-size:12px; background:#dc3545; color:#fff;" onclick="event.stopPropagation(); wsConfirmDelete(' + w.id + ', \'' + (w.fullCompanyName||'').replace(/'/g, "\\'") + '\')">Delete</button>'
+        + '</td></tr>'
+      ).join('');
+    }
+
+    function wsShowList() {
+      document.getElementById('workshopListView').style.display = '';
+      document.getElementById('workshopDetailView').style.display = 'none';
+    }
+
+    async function wsViewDetail(id) {
+      try {
+        const res = await fetch('/api/workshops/' + id);
+        const data = await res.json();
+        if (!data.success) { alert('Not found'); return; }
+        const w = data.workshop;
+
+        document.getElementById('workshopListView').style.display = 'none';
+        document.getElementById('workshopDetailView').style.display = '';
+
+        const pc = w.productionCapabilities || {};
+        const dep = w.departments || {};
+        const qc = w.qualityCerts || {};
+        const sus = w.sustainability || {};
+        const cap = w.capacityReliability || {};
+        const refs = w.clientReferences || [];
+
+        let html = '<div class="ws-view-header"><h2 style="margin:0 0 5px 0;">' + (w.fullCompanyName||'') + '</h2>'
+          + '<div>' + (w.companyType||'') + (w.country ? ' · ' + w.country : '') + (w.cityProvince ? ', ' + w.cityProvince : '') + '</div></div>';
+
+        // Section 1: Company Info
+        html += '<div class="ws-view-card"><div class="ws-view-card-header">1. Company Information</div><div class="ws-view-card-body">'
+          + wsViewField('Trading Name', w.tradingName)
+          + wsViewField('Year Established', w.yearEstablished)
+          + wsViewField('Legal Structure', w.legalStructure)
+          + wsViewField('Registration Number', w.businessRegNumber)
+          + wsViewField('GST/VAT Number', w.gstVatNumber)
+          + wsViewField('Website', w.website ? '<a href="'+w.website+'" target="_blank">'+w.website+'</a>' : '')
+          + wsViewField('Yearly Turnover', w.yearlyTurnover ? '$' + Number(w.yearlyTurnover).toLocaleString() : '')
+          + '</div></div>';
+
+        // Section 2: Contact
+        html += '<div class="ws-view-card"><div class="ws-view-card-header">2. Contact Information</div><div class="ws-view-card-body">'
+          + wsViewField('Primary Contact', (w.primaryContactName||'') + (w.primaryContactDesignation ? ' (' + w.primaryContactDesignation + ')' : ''))
+          + wsViewField('Mobile / WhatsApp', w.mobileWhatsapp)
+          + wsViewField('Email', w.emailAddress)
+          + wsViewField('Alt Contact', w.altContactPerson)
+          + wsViewField('Address', w.companyAddress)
+          + (w.googleMapLink ? wsViewField('Map', '<a href="'+w.googleMapLink+'" target="_blank">View on Map</a>') : '')
+          + '</div></div>';
+
+        // Section 3: Location
+        html += '<div class="ws-view-card"><div class="ws-view-card-header">3. Location & Facility</div><div class="ws-view-card-body">'
+          + wsViewField('Factory Area', w.factoryArea)
+          + wsViewField('Buildings/Floors', w.numBuildings)
+          + wsViewField('Total Employees', w.totalEmployees)
+          + wsViewField('Production Workers', w.numProductionWorkers)
+          + wsViewField('QC Staff', w.numQCStaff)
+          + wsViewField('Admin/Sales', w.numAdminSalesStaff)
+          + '</div></div>';
+
+        // Section 4: Production
+        html += '<div class="ws-view-card"><div class="ws-view-card-header">4. Production Capabilities</div><div class="ws-view-card-body">'
+          + wsViewField('Production Types', (pc.mainProductionTypes||[]).map(t => '<span class="ws-cert-badge">' + t + '</span>').join('') + (pc.otherTypes ? ' · ' + pc.otherTypes : ''))
+          + wsViewField('Machinery', (pc.machineryList||[]).map(m => m.name + ' ×' + m.qty).join(', '))
+          + wsViewField('Monthly Capacity', pc.monthlyCapacity ? '<pre style="margin:0; white-space:pre-wrap; font-size:13px;">' + pc.monthlyCapacity + '</pre>' : '')
+          + wsViewField('MOQ', pc.moq ? '<pre style="margin:0; white-space:pre-wrap; font-size:13px;">' + pc.moq + '</pre>' : '')
+          + wsViewField('Average Lead Time', pc.avgLeadTime)
+          + '</div></div>';
+
+        // Section 5: Departments
+        html += '<div class="ws-view-card"><div class="ws-view-card-header">5. Departments & Workflow</div><div class="ws-view-card-body">'
+          + wsViewField('Departments', (dep.departments||[]).map(d => '<span class="ws-cert-badge">' + d + '</span>').join(''))
+          + wsViewField('Workflow', dep.workflowDescription ? '<pre style="margin:0; white-space:pre-wrap; font-size:13px;">' + dep.workflowDescription + '</pre>' : '')
+          + wsViewField('Sample Lead Time', dep.sampleLeadTime)
+          + '</div></div>';
+
+        // Section 6: Quality
+        html += '<div class="ws-view-card"><div class="ws-view-card-header">6. Quality & Certifications</div><div class="ws-view-card-body">'
+          + wsViewField('ISO 9001', qc.iso9001 && qc.iso9001.has ? 'Yes (exp ' + (qc.iso9001.expiry||'N/A') + ')' : 'No')
+          + wsViewField('Other Certs', (qc.otherCerts||[]).map(c => c.name + (c.number ? ' #' + c.number : '') + (c.expiry ? ' exp ' + c.expiry : '')).join('<br>'))
+          + wsViewField('Social Certs', Object.keys(qc.social||{}).map(s => '<span class="ws-cert-badge">' + s + '</span>').join(''))
+          + wsViewField('Cert Numbers', qc.certNumbers ? '<pre style="margin:0; white-space:pre-wrap; font-size:13px;">' + qc.certNumbers + '</pre>' : '')
+          + wsViewField('Third-party Inspection', qc.thirdPartyInspection ? 'Yes (' + (qc.inspectionCompany||'') + ')' : 'No')
+          + '</div></div>';
+
+        // Section 7: Sustainability
+        html += '<div class="ws-view-card"><div class="ws-view-card-header">7. Sustainability & Compliance</div><div class="ws-view-card-body">'
+          + wsViewField('Recycled Materials', sus.recycledMaterials ? 'Yes' : 'No')
+          + wsViewField('Environmental Policy', sus.envPolicy ? 'Yes' : 'No')
+          + wsViewField('Child/Forced Labor Policy', sus.childLaborPolicy ? 'Yes' : 'No')
+          + wsViewField('Chemical Compliance', (sus.chemicalCompliance||[]).join(', ') + (sus.chemicalComplianceOther ? ' · ' + sus.chemicalComplianceOther : ''))
+          + wsViewField('Carbon Footprint', sus.carbonFootprint ? 'Yes' : 'No')
+          + '</div></div>';
+
+        // Section 8: Capacity
+        html += '<div class="ws-view-card"><div class="ws-view-card-header">8. Capacity & Reliability</div><div class="ws-view-card-body">'
+          + wsViewField('Capacity Utilization', cap.capacityUtilization ? cap.capacityUtilization + '%' : '')
+          + wsViewField('Peak Season', cap.peakSeasonManagement ? '<pre style="margin:0; white-space:pre-wrap; font-size:13px;">' + cap.peakSeasonManagement + '</pre>' : '')
+          + wsViewField('Major Clients', cap.majorClients)
+          + wsViewField('Export Markets', cap.exportMarkets)
+          + wsViewField('Payment Terms', (cap.paymentTerms||[]).join(', '))
+          + wsViewField('Bank Details', cap.bankDetails ? '<pre style="margin:0; white-space:pre-wrap; font-size:13px;">' + cap.bankDetails + '</pre>' : '')
+          + '</div></div>';
+
+        // Section 10: Additional
+        html += '<div class="ws-view-card"><div class="ws-view-card-header">10. Additional Information</div><div class="ws-view-card-body">'
+          + wsViewField('How did you hear', w.howDidYouHear)
+          + wsViewField('Existing Relationship', w.existingRelationship)
+          + wsViewField('References', refs.map(r => r.name + ' (' + r.contact + ')').join('<br>'))
+          + wsViewField('Declaration', w.declarationAccepted ? 'Accepted' : 'Not accepted')
+          + wsViewField('Signature', w.digitalSignature + (w.signatureDate ? ' — ' + w.signatureDate : ''))
+          + '</div></div>';
+
+        document.getElementById('workshopDetailContent').innerHTML = html;
+
+        // Wire edit/delete
+        document.getElementById('ws-editDetailBtn').onclick = () => {
+          // Load data into create form
+          wsLoadDataToForm(w);
+          ensureTab('workshop', 'Workshop (Edit)');
+          activateTab('workshop');
+          initializeWorkshopPanel();
+          wsLoadDataToForm(w);
+        };
+        document.getElementById('ws-deleteDetailBtn').onclick = () => wsConfirmDelete(w.id, w.fullCompanyName);
+
+      } catch (err) {
+        alert('Error loading workshop: ' + err.message);
+      }
+    }
+
+    function wsViewField(label, value) {
+      if (!value) return '';
+      return '<div class="ws-view-field"><span class="ws-view-label">' + label + '</span><span class="ws-view-value">' + value + '</span></div>';
+    }
+
+    function wsLoadDataToForm(w) {
+      // Simple fields
+      const fields = ['fullCompanyName','tradingName','yearEstablished','companyType','legalStructure','businessRegNumber','gstVatNumber','website','yearlyTurnover',
+        'primaryContactName','primaryContactDesignation','mobileWhatsapp','emailAddress','altContactPerson','companyAddress','googleMapLink',
+        'country','cityProvince','factoryArea','numBuildings','totalEmployees','numProductionWorkers','numQCStaff','numAdminSalesStaff'];
+      fields.forEach(f => {
+        const el = document.getElementById('ws-' + f);
+        if (el && w[f] !== undefined) el.value = w[f];
+      });
+
+      // JSON sections
+      const pc = w.productionCapabilities || {};
+      if (pc.avgLeadTime) document.getElementById('ws-avgLeadTime').value = pc.avgLeadTime;
+      if (pc.monthlyCapacity) document.getElementById('ws-monthlyCapacity').value = pc.monthlyCapacity;
+      if (pc.moq) document.getElementById('ws-moq').value = pc.moq;
+
+      const cap = w.capacityReliability || {};
+      if (cap.capacityUtilization) {
+        document.getElementById('ws-capacityUtilization').value = cap.capacityUtilization;
+        document.getElementById('ws-capacityVal').textContent = cap.capacityUtilization + '%';
+      }
+
+      // Section 10
+      if (w.howDidYouHear) document.getElementById('ws-howDidYouHear').value = w.howDidYouHear;
+      if (w.existingRelationship) document.getElementById('ws-existingRelationship').value = w.existingRelationship;
+      if (w.digitalSignature) document.getElementById('ws-digitalSignature').value = w.digitalSignature;
+      if (w.declarationAccepted) document.getElementById('ws-declarationAccepted').checked = true;
+    }
+
+    // ── Delete ──────────────────────────────────────────────────
+
+    let wsDeleteTargetId = null;
+
+    function wsConfirmDelete(id, name) {
+      wsDeleteTargetId = id;
+      document.getElementById('workshopDeleteName').textContent = name;
+      const modal = document.getElementById('workshopDeleteModal');
+      modal.style.display = 'flex';
+
+      document.getElementById('workshopDeleteConfirmBtn').onclick = async () => {
+        try {
+          await fetch('/api/workshops/' + wsDeleteTargetId, { method: 'DELETE' });
+          modal.style.display = 'none';
+          await wsLoadWorkshops();
+        } catch (err) { alert('Delete failed: ' + err.message); }
+      };
+      document.getElementById('workshopDeleteCancelBtn').onclick = () => { modal.style.display = 'none'; };
+    }
+
+    // ── Search ──────────────────────────────────────────────────
+
+    document.getElementById('workshopSearchInput').addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase();
+      const filtered = wsSavedWorkshops.filter(w =>
+        (w.fullCompanyName||'').toLowerCase().includes(q)
+        || (w.country||'').toLowerCase().includes(q)
+        || (w.companyType||'').toLowerCase().includes(q)
+        || (w.primaryContactName||'').toLowerCase().includes(q)
+      );
+      wsRenderTable(filtered);
+    });
+
+    // ── Refresh ─────────────────────────────────────────────────
+
+    document.getElementById('refreshWorkshopsBtn').addEventListener('click', () => wsLoadWorkshops());
+
   </script>
 </body>
 </html>

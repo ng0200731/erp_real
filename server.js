@@ -27,7 +27,9 @@ import {
   // Brand functions
   getAllBrands, getBrandById, createBrand, updateBrand, deleteBrand,
   // Product Profile functions
-  getAllProductProfiles, getProductProfileById, createProductProfile, updateProductProfile, deleteProductProfile, getProductProfilesByType
+  getAllProductProfiles, getProductProfileById, createProductProfile, updateProductProfile, deleteProductProfile, getProductProfilesByType,
+  // Workshop functions
+  getAllWorkshops, getWorkshopById, createWorkshop, updateWorkshop, deleteWorkshop
 } from './db/tasksDb.js';
 import SkillManager from './skills/skillManager.js';
 import { getNormalizedRelativePath } from './utils/pathUtils.js';
@@ -41,6 +43,7 @@ import { createSkillRoutes } from './routes/skills.js';
 import { createEmailRoutes } from './routes/emails.js';
 import { createBrandRoutes } from './routes/brands.js';
 import { createProductProfileRoutes } from './routes/product-profiles.js';
+import { createWorkshopRoutes } from './routes/workshops.js';
 import supplierPortalRouter from './routes/supplier-portal.js';
 
 // ---------- ENV ----------
@@ -491,6 +494,16 @@ const productProfileRoutes = createProductProfileRoutes({
   getProductProfilesByType
 });
 app.use('/api/product-profiles', productProfileRoutes);
+
+// Workshop routes
+const workshopRoutes = createWorkshopRoutes({
+  getAllWorkshops,
+  getWorkshopById,
+  createWorkshop,
+  updateWorkshop,
+  deleteWorkshop
+});
+app.use('/api/workshops', workshopRoutes);
 
 // Supplier portal routes
 app.use('/api/supplier-portal', supplierPortalRouter);

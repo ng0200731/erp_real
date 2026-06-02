@@ -249,6 +249,53 @@ async function ensureSchema(db) {
 
     CREATE INDEX IF NOT EXISTS idx_product_profiles_productType ON product_profiles(productType);
     CREATE INDEX IF NOT EXISTS idx_product_profiles_name ON product_profiles(name);
+
+    CREATE TABLE IF NOT EXISTS workshops (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fullCompanyName TEXT NOT NULL,
+      tradingName TEXT,
+      yearEstablished TEXT,
+      companyType TEXT,
+      legalStructure TEXT,
+      businessRegNumber TEXT,
+      gstVatNumber TEXT,
+      website TEXT,
+      yearlyTurnover TEXT,
+      primaryContactName TEXT,
+      primaryContactDesignation TEXT,
+      mobileWhatsapp TEXT,
+      emailAddress TEXT,
+      altContactPerson TEXT,
+      companyAddress TEXT,
+      googleMapLink TEXT,
+      country TEXT,
+      cityProvince TEXT,
+      factoryArea TEXT,
+      numBuildings TEXT,
+      totalEmployees TEXT,
+      numProductionWorkers TEXT,
+      numQCStaff TEXT,
+      numAdminSalesStaff TEXT,
+      productionCapabilities TEXT,
+      departments TEXT,
+      qualityCerts TEXT,
+      sustainability TEXT,
+      capacityReliability TEXT,
+      uploads TEXT,
+      howDidYouHear TEXT,
+      existingRelationship TEXT,
+      clientReferences TEXT,
+      declarationAccepted INTEGER DEFAULT 0,
+      digitalSignature TEXT,
+      signatureDate TEXT,
+      status TEXT DEFAULT 'active',
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_workshops_fullCompanyName ON workshops(fullCompanyName);
+    CREATE INDEX IF NOT EXISTS idx_workshops_country ON workshops(country);
+    CREATE INDEX IF NOT EXISTS idx_workshops_status ON workshops(status);
   `);
 
   // Add new columns if they don't exist (for database migration)
@@ -408,6 +455,22 @@ async function ensureSchema(db) {
   } catch (err) {
     if (!err.message.includes('duplicate column name')) {
       console.warn('Error adding customerItemName column:', err);
+    }
+  }
+
+  try {
+    await db.exec(`ALTER TABLE quotations ADD COLUMN chaseSampleCount INTEGER DEFAULT 0;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding chaseSampleCount column:', err);
+    }
+  }
+
+  try {
+    await db.exec(`ALTER TABLE quotations ADD COLUMN resubmitCount INTEGER DEFAULT 0;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding resubmitCount column:', err);
     }
   }
 
@@ -959,7 +1022,7 @@ export async function getQuotationById(id) {
   const db = await getTasksDb();
   // Exclude profileImageBlob from general queries to avoid transferring large BLOB data
   const quotation = await db.get(
-    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations WHERE id = ?`,
+    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations WHERE id = ?`,
     [id]
   );
 
@@ -975,7 +1038,7 @@ export async function getAllQuotations() {
   const db = await getTasksDb();
   // Exclude profileImageBlob from general queries to avoid transferring large BLOB data
   const quotations = await db.all(
-    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations ORDER BY dateCreated DESC`
+    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations ORDER BY dateCreated DESC`
   );
 
   // Parse JSON fields
@@ -993,7 +1056,7 @@ export async function updateQuotation(id, quotationData) {
   await db.run(
     `
       UPDATE quotations
-      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?, outsourcingSeq = ?, quotationSeq = ?, selectedSupplierId = ?, selectedSupplierResponseId = ?, sampleReadyDate = ?, brandId = ?, customerItemName = ?
+      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?, outsourcingSeq = ?, quotationSeq = ?, selectedSupplierId = ?, selectedSupplierResponseId = ?, sampleReadyDate = ?, brandId = ?, customerItemName = ?, chaseSampleCount = ?, resubmitCount = ?
       WHERE id = ?
     `,
     [
@@ -1022,6 +1085,8 @@ export async function updateQuotation(id, quotationData) {
       quotationData.sampleReadyDate || null,
       quotationData.brandId || null,
       quotationData.customerItemName || null,
+      quotationData.chaseSampleCount || 0,
+      quotationData.resubmitCount || 0,
       id
     ]
   );
@@ -1551,5 +1616,95 @@ export async function updateProductProfile(id, profileData) {
 export async function deleteProductProfile(id) {
   const db = await getTasksDb();
   await db.run(`DELETE FROM product_profiles WHERE id = ?`, [id]);
+  return true;
+}
+
+// ─── Workshop CRUD ──────────────────────────────────────────────────────────
+
+export async function createWorkshop(data) {
+  const db = await getTasksDb();
+  const now = new Date().toISOString();
+
+  const cols = [
+    'fullCompanyName','tradingName','yearEstablished','companyType','legalStructure',
+    'businessRegNumber','gstVatNumber','website','yearlyTurnover',
+    'primaryContactName','primaryContactDesignation','mobileWhatsapp','emailAddress',
+    'altContactPerson','companyAddress','googleMapLink',
+    'country','cityProvince','factoryArea','numBuildings',
+    'totalEmployees','numProductionWorkers','numQCStaff','numAdminSalesStaff',
+    'productionCapabilities','departments','qualityCerts','sustainability',
+    'capacityReliability','uploads',
+    'howDidYouHear','existingRelationship','clientReferences',
+    'declarationAccepted','digitalSignature','signatureDate',
+    'status','createdAt','updatedAt'
+  ];
+
+  const vals = cols.map(c => {
+    if (c === 'createdAt' || c === 'updatedAt') return now;
+    if (c === 'status') return data.status || 'active';
+    const v = data[c];
+    if (v === undefined || v === null) return null;
+    if (typeof v === 'object') return JSON.stringify(v);
+    return v;
+  });
+
+  const placeholders = cols.map(() => '?').join(', ');
+  const result = await db.run(
+    `INSERT INTO workshops (${cols.join(', ')}) VALUES (${placeholders})`,
+    vals
+  );
+  return result.lastID;
+}
+
+export async function getWorkshopById(id) {
+  const db = await getTasksDb();
+  const w = await db.get(`SELECT * FROM workshops WHERE id = ?`, [id]);
+  if (!w) return null;
+  // Parse JSON fields
+  ['productionCapabilities','departments','qualityCerts','sustainability','capacityReliability','uploads','clientReferences'].forEach(k => {
+    if (w[k]) { try { w[k] = JSON.parse(w[k]); } catch(e) { /* keep as-is */ } }
+  });
+  return w;
+}
+
+export async function getAllWorkshops() {
+  const db = await getTasksDb();
+  const rows = await db.all(`SELECT * FROM workshops ORDER BY createdAt DESC`);
+  rows.forEach(w => {
+    ['productionCapabilities','departments','qualityCerts','sustainability','capacityReliability','uploads','clientReferences'].forEach(k => {
+      if (w[k]) { try { w[k] = JSON.parse(w[k]); } catch(e) { /* keep as-is */ } }
+    });
+  });
+  return rows;
+}
+
+export async function updateWorkshop(id, data) {
+  const db = await getTasksDb();
+  const now = new Date().toISOString();
+
+  const skip = ['id','createdAt','updatedAt'];
+  const sets = [];
+  const vals = [];
+
+  for (const [k, v] of Object.entries(data)) {
+    if (skip.includes(k)) continue;
+    sets.push(`${k} = ?`);
+    if (typeof v === 'object' && v !== null) {
+      vals.push(JSON.stringify(v));
+    } else {
+      vals.push(v === undefined ? null : v);
+    }
+  }
+  sets.push('updatedAt = ?');
+  vals.push(now);
+  vals.push(id);
+
+  await db.run(`UPDATE workshops SET ${sets.join(', ')} WHERE id = ?`, vals);
+  return true;
+}
+
+export async function deleteWorkshop(id) {
+  const db = await getTasksDb();
+  await db.run(`DELETE FROM workshops WHERE id = ?`, [id]);
   return true;
 }
