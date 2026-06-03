@@ -1181,6 +1181,20 @@
       cursor: pointer; font-size: 12px; transition: all 0.12s;
     }
     .ws-add-row-btn:hover { background: #f0f0f0; }
+    .ws-mini-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
+    .ws-mini-tab {
+      padding: 6px 14px; border: 1px solid #000; background: #fff;
+      cursor: pointer; font-size: 12px; font-weight: 600;
+      transition: all 0.12s; user-select: none;
+    }
+    .ws-mini-tab:hover { background: #f5f5f5; }
+    .ws-mini-tab.active { background: #000; color: #fff; }
+    .ws-mini-tab-content { display: none; }
+    .ws-mini-tab-content.active { display: block; }
+    .ws-empty-state {
+      padding: 20px; text-align: center; color: #999;
+      border: 1px dashed #ccc; font-size: 13px;
+    }
     .ws-upload-zone {
       border: 2px dashed #ccc; padding: 20px; text-align: center;
       cursor: pointer; transition: all 0.15s; position: relative;
@@ -2543,23 +2557,9 @@
                 <label>Others (please specify)</label>
                 <input type="text" id="ws-productionTypesOther" placeholder="e.g. Screen Printing, Sublimation">
               </div>
-              <div class="ws-field-group">
-                <label>Machinery List</label>
-                <div id="ws-machineryList"></div>
-                <button type="button" class="ws-add-row-btn" onclick="wsAddMachineryRow()">+ Add Machine</button>
-              </div>
-              <div class="ws-field-group">
-                <label>Monthly Production Capacity <small>(per product type)</small></label>
-                <textarea id="ws-monthlyCapacity" rows="3" placeholder="e.g. Hang Tags: 5 million pcs/month, Woven Labels: 3 million yards/month"></textarea>
-              </div>
-              <div class="ws-field-group">
-                <label>Minimum Order Quantity (MOQ)</label>
-                <textarea id="ws-moq" rows="2" placeholder="e.g. Hang Tags: 10,000 pcs, Woven Labels: 5,000 yards"></textarea>
-              </div>
-              <div class="ws-field-group">
-                <label>Average Lead Time</label>
-                <input type="text" id="ws-avgLeadTime" placeholder="e.g. 14-21 days from order confirmation">
-              </div>
+
+              <!-- Per-production-type data -->
+              <div id="ws-prodTypeContent"></div>
             </div>
 
             <!-- Section 5: Departments & Workflow -->
@@ -19026,9 +19026,18 @@
           if (e.target === cb) return;
           cb.checked = !cb.checked;
           item.classList.toggle('selected', cb.checked);
+          // Re-render production type mini tabs when checkboxes in production types change
+          if (item.closest('#ws-productionTypes')) {
+            wsRenderProdTypeContent();
+          }
         });
         if (cb.checked) item.classList.add('selected');
       });
+      // Also re-render tabs when "Others" input changes
+      const otherInput = document.getElementById('ws-productionTypesOther');
+      if (otherInput) {
+        otherInput.addEventListener('input', () => wsRenderProdTypeContent());
+      }
     }
 
     // ── Toggle Buttons ──────────────────────────────────────────
@@ -19059,6 +19068,99 @@
         + '<input type="number" placeholder="Qty" min="1" style="max-width:80px;" value="' + (qty||'') + '">'
         + '<button type="button" class="ws-remove-row" onclick="this.parentElement.remove()">✕</button>';
       list.appendChild(row);
+    }
+
+    // ── Production Type Per-Type Data ──────────────────────────────
+
+    let wsProdTypeDataCache = {};
+
+    function wsSaveAllProdTypeData() {
+      // Save data from all visible per-type blocks
+      document.querySelectorAll('#ws-prodTypeContent .ws-pt-block').forEach(block => {
+        const type = block.dataset.type;
+        const rows = block.querySelectorAll('.ws-dynamic-row');
+        const monthlyCapEl = block.querySelector('.ws-pt-monthlyCapacity');
+        const moqEl = block.querySelector('.ws-pt-moq');
+        const leadTimeEl = block.querySelector('.ws-pt-avgLeadTime');
+        if (!monthlyCapEl) return;
+        wsProdTypeDataCache[type] = {
+          machineryList: Array.from(rows).map(r => ({
+            name: r.querySelectorAll('input')[0].value,
+            qty: r.querySelectorAll('input')[1].value
+          })),
+          monthlyCapacity: monthlyCapEl.value.trim(),
+          moq: moqEl.value.trim(),
+          avgLeadTime: leadTimeEl.value.trim()
+        };
+      });
+    }
+
+    function wsRenderProdTypeContent() {
+      const contentArea = document.getElementById('ws-prodTypeContent');
+      // Save current data first
+      wsSaveAllProdTypeData();
+
+      const selected = wsGetChecked('ws-productionTypes');
+      const otherRaw = document.getElementById('ws-productionTypesOther').value.trim();
+      const types = [...selected];
+      if (otherRaw) {
+        otherRaw.split(',').map(s => s.trim()).filter(Boolean).forEach(t => {
+          if (!types.includes(t)) types.push(t);
+        });
+      }
+
+      if (types.length === 0) {
+        contentArea.innerHTML = '';
+        return;
+      }
+
+      contentArea.innerHTML = types.map(t => {
+        const cached = wsProdTypeDataCache[t] || {};
+        const machines = cached.machineryList || [];
+        return '<div class="ws-pt-block" data-type="' + t.replace(/"/g, '&quot;') + '" style="border:1px solid #ddd; padding:15px; margin-bottom:12px;">'
+          + '<h4 style="margin:0 0 12px 0; font-size:14px;">' + t + '</h4>'
+          + '<div class="ws-field-group">'
+          + '  <label>Machinery List</label>'
+          + '  <div class="ws-pt-machinery">' + machines.map(m =>
+              '<div class="ws-dynamic-row"><input type="text" placeholder="Machine name" value="' + (m.name||'').replace(/"/g, '&quot;') + '">'
+              + '<input type="number" placeholder="Qty" min="1" style="max-width:80px;" value="' + (m.qty||'') + '">'
+              + '<button type="button" class="ws-remove-row" onclick="this.parentElement.remove()">✕</button></div>'
+            ).join('') + '</div>'
+          + '  <button type="button" class="ws-add-row-btn" onclick="wsAddProdTypeMachineryRow(this)">+ Add Machine</button>'
+          + '</div>'
+          + '<div class="ws-field-group">'
+          + '  <label>Monthly Production Capacity</label>'
+          + '  <input type="text" class="ws-pt-monthlyCapacity" placeholder="e.g. 5 million pcs/month" value="' + (cached.monthlyCapacity||'').replace(/"/g, '&quot;') + '">'
+          + '</div>'
+          + '<div class="ws-field-group">'
+          + '  <label>Minimum Order Quantity (MOQ)</label>'
+          + '  <input type="text" class="ws-pt-moq" placeholder="e.g. 10,000 pcs" value="' + (cached.moq||'').replace(/"/g, '&quot;') + '">'
+          + '</div>'
+          + '<div class="ws-field-group">'
+          + '  <label>Average Lead Time</label>'
+          + '  <input type="text" class="ws-pt-avgLeadTime" placeholder="e.g. 14-21 days from order confirmation" value="' + (cached.avgLeadTime||'').replace(/"/g, '&quot;') + '">'
+          + '</div>'
+          + '</div>';
+      }).join('');
+    }
+
+    function wsAddProdTypeMachineryRow(btn) {
+      const block = btn.closest('.ws-pt-block');
+      if (!block) return;
+      const list = block.querySelector('.ws-pt-machinery');
+      if (!list) return;
+      const row = document.createElement('div');
+      row.className = 'ws-dynamic-row';
+      row.innerHTML = '<input type="text" placeholder="Machine name">'
+        + '<input type="number" placeholder="Qty" min="1" style="max-width:80px;">'
+        + '<button type="button" class="ws-remove-row" onclick="this.parentElement.remove()">✕</button>';
+      list.appendChild(row);
+    }
+
+    function wsGetAllProdTypeData() {
+      // Save all visible block data first
+      wsSaveAllProdTypeData();
+      return { ...wsProdTypeDataCache };
     }
 
     // ── Dynamic Rows: Certificates ──────────────────────────────
@@ -19114,14 +19216,18 @@
       input.value = '';
     }
 
+    // ── Helper: Get Checked Values ───────────────────────────────
+
+    function wsGetChecked(containerId) {
+      const vals = [];
+      document.querySelectorAll('#' + containerId + ' input[type="checkbox"]:checked').forEach(cb => vals.push(cb.value));
+      return vals;
+    }
+
     // ── Gather Form Data ────────────────────────────────────────
 
     function wsGatherData() {
-      const getChecked = (containerId) => {
-        const vals = [];
-        document.querySelectorAll('#' + containerId + ' input[type="checkbox"]:checked').forEach(cb => vals.push(cb.value));
-        return vals;
-      };
+      const getChecked = wsGetChecked;
 
       const data = {
         fullCompanyName: document.getElementById('ws-fullCompanyName').value.trim(),
@@ -19154,13 +19260,7 @@
         productionCapabilities: {
           mainProductionTypes: getChecked('ws-productionTypes'),
           otherTypes: document.getElementById('ws-productionTypesOther').value.trim(),
-          machineryList: Array.from(document.querySelectorAll('#ws-machineryList .ws-dynamic-row')).map(r => ({
-            name: r.querySelectorAll('input')[0].value,
-            qty: r.querySelectorAll('input')[1].value
-          })),
-          monthlyCapacity: document.getElementById('ws-monthlyCapacity').value.trim(),
-          moq: document.getElementById('ws-moq').value.trim(),
-          avgLeadTime: document.getElementById('ws-avgLeadTime').value.trim()
+          productionTypeData: wsGetAllProdTypeData()
         },
 
         departments: {
@@ -19239,9 +19339,11 @@
       document.getElementById('ws-iso9001ExpiryWrap').style.display = 'none';
 
       // Clear dynamic rows
-      document.getElementById('ws-machineryList').innerHTML = '';
       document.getElementById('ws-otherCertsList').innerHTML = '';
       document.getElementById('ws-referencesList').innerHTML = '';
+      // Clear per-type data
+      wsProdTypeDataCache = {};
+      wsRenderProdTypeContent();
 
       // Clear upload previews
       document.querySelectorAll('#workshopPanel .ws-upload-preview').forEach(el => el.innerHTML = '');
@@ -19292,123 +19394,188 @@
     // ── Dummy Data ──────────────────────────────────────────────
 
     function fillWorkshopDummyData() {
+      // Helper: pick random from array
+      const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+      const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+      const rId = () => Math.random().toString(36).substring(2, 10).toUpperCase();
+
+      // ── Random data pools ──
+      const companies = [
+        { name: 'Guangzhou Perfectrim Manufacturing Co., Ltd.', trade: 'Perfectrim Labels', city: 'Guangzhou, Guangdong', country: 'China' },
+        { name: 'Shenzhen Apex Trims Technology Co., Ltd.', trade: 'Apex Trims', city: 'Shenzhen, Guangdong', country: 'China' },
+        { name: 'Dongguan Bright Label Industrial Co., Ltd.', trade: 'Bright Label', city: 'Dongguan, Guangdong', country: 'China' },
+        { name: 'Fujian Sunrise Garment Accessories Co., Ltd.', trade: 'Sunrise Accessories', city: 'Quanzhou, Fujian', country: 'China' },
+        { name: 'Mumbai Star Trims Pvt. Ltd.', trade: 'Star Trims', city: 'Mumbai, Maharashtra', country: 'India' },
+        { name: 'Istanbul Anatolian Label & Packaging Ltd.', trade: 'Anatolian Labels', city: 'Istanbul', country: 'Turkey' },
+        { name: 'Hanoi Pacific Printing & Packaging JSC', trade: 'Pacific Labels', city: 'Hanoi', country: 'Vietnam' },
+        { name: 'Dhaka Bengal Garment Accessories Ltd.', trade: 'Bengal Trims', city: 'Dhaka', country: 'Bangladesh' },
+      ];
+      const contacts = [
+        { name: 'James Chen', title: 'Production Manager', email: 'james.chen' },
+        { name: 'Linda Wang', title: 'Sales Director', email: 'linda.wang' },
+        { name: 'Rajesh Patel', title: 'Export Manager', email: 'rajesh.patel' },
+        { name: 'Ahmet Yilmaz', title: 'General Manager', email: 'ahmet.yilmaz' },
+        { name: 'Nguyen Thi Lan', title: 'Business Development', email: 'lan.nguyen' },
+        { name: 'Karim Hossain', title: 'Managing Director', email: 'karim.hossain' },
+        { name: 'Sarah Kim', title: 'QC Manager', email: 'sarah.kim' },
+        { name: 'David Li', title: 'Operations Director', email: 'david.li' },
+      ];
+      const companyTypes = ['Manufacturer', 'Exporter', 'Manufacturer', 'Trader'];
+      const legalTypes = ['LLC', 'Private Limited', 'Partnership', 'Sole Proprietorship'];
+      const howHeard = ['Trade Show', 'Referral', 'Online Search', 'Industry Directory'];
+      const exportMarkets = ['USA, UK, Germany, France', 'USA, Canada, Japan', 'Europe, Australia, Middle East', 'USA, UK, South Korea, Japan'];
+      const clients = ['H&M, Zara, Uniqlo', 'Nike, Adidas, Puma', 'Target, Walmart, Gap', 'Ralph Lauren, Tommy Hilfiger, Calvin Klein'];
+      const inspectCompanies = ['SGS', 'Bureau Veritas', 'Intertek', 'TUV Rheinland'];
+      const departments = ['Design & Sampling','Production','Quality Control','Packaging','Logistics / Shipping','R&D / Innovation'];
+      const prodTypes = ['Woven Labels','Printed Labels','Hang Tags','Paper Tags','Heat Transfer Labels','Leather / PU Patches','Metal Trims','Plastic Trims','Elastic & Tapes','Embroidery / Badges'];
+      const socialCerts = ['BSCI','SEDEX','GRS','OEKO-TEX','GOTS','SA8000','WRAP'];
+      const chemComps = ['REACH','CPSIA','OEKO-TEX Standard 100','ZDHC'];
+      const bankNames = ['Bank of China', 'HSBC', 'Industrial and Commercial Bank of China', 'Standard Chartered', 'State Bank of India'];
+      const paymentOpts = ['T/T','L/C','D/P','Western Union'];
+      const refCompanies = ['ABC Garments Ltd','XYZ Fashion Inc','Global Sportswear Co','Metro Textiles Pvt Ltd','Euro Fashion GmbH','Pacific Apparel Corp'];
+
+      const c = pick(companies);
+      const ct = pick(contacts);
+      const domain = c.trade.toLowerCase().replace(/[^a-z0-9]/g, '') + '.com';
+
       // Section 1
-      document.getElementById('ws-fullCompanyName').value = 'Guangzhou Perfectrim Manufacturing Co., Ltd.';
-      document.getElementById('ws-tradingName').value = 'Perfectrim Labels';
-      document.getElementById('ws-yearEstablished').value = '2008';
-      document.getElementById('ws-companyType').value = 'Manufacturer';
-      document.getElementById('ws-legalStructure').value = 'Private Limited';
-      document.getElementById('ws-businessRegNumber').value = '91440300MA5F2JQN8X';
-      document.getElementById('ws-gstVatNumber').value = 'GST440165890';
-      document.getElementById('ws-website').value = 'https://www.perfectrim.com';
-      document.getElementById('ws-yearlyTurnover').value = '5000000';
+      document.getElementById('ws-fullCompanyName').value = c.name;
+      document.getElementById('ws-tradingName').value = c.trade;
+      document.getElementById('ws-yearEstablished').value = rand(1998, 2022);
+      document.getElementById('ws-companyType').value = pick(companyTypes);
+      document.getElementById('ws-legalStructure').value = pick(legalTypes);
+      document.getElementById('ws-businessRegNumber').value = rId() + rId();
+      document.getElementById('ws-gstVatNumber').value = 'GST' + rand(100000000, 999999999);
+      document.getElementById('ws-website').value = 'https://www.' + domain;
+      document.getElementById('ws-yearlyTurnover').value = rand(1, 20) * 1000000;
 
       // Section 2
-      document.getElementById('ws-primaryContactName').value = 'James Chen';
-      document.getElementById('ws-primaryContactDesignation').value = 'Production Manager';
-      document.getElementById('ws-mobileWhatsapp').value = '+86-138-2888-9527';
-      document.getElementById('ws-emailAddress').value = 'james.chen@perfectrim.com';
-      document.getElementById('ws-altContactPerson').value = 'Linda Wang, Sales Director';
-      document.getElementById('ws-companyAddress').value = 'Room 1205, Tower B, Jiahe Building, No.88 Huanshi East Road, Yuexiu District, Guangzhou, Guangdong, China 510075';
-      document.getElementById('ws-googleMapLink').value = 'https://maps.google.com/?q=23.1291,113.2644';
+      document.getElementById('ws-primaryContactName').value = ct.name;
+      document.getElementById('ws-primaryContactDesignation').value = ct.title;
+      document.getElementById('ws-mobileWhatsapp').value = '+86-1' + rand(30, 89) + '-' + rand(1000, 9999) + '-' + rand(1000, 9999);
+      document.getElementById('ws-emailAddress').value = ct.email + '@' + domain;
+      const ct2 = pick(contacts.filter(x => x.name !== ct.name));
+      document.getElementById('ws-altContactPerson').value = ct2.name + ', ' + ct2.title;
+      document.getElementById('ws-companyAddress').value = rand(100, 999) + ' Industrial Park, ' + c.city + ', ' + c.country;
+      document.getElementById('ws-googleMapLink').value = 'https://maps.google.com/?q=' + (rand(20, 40)) + '.' + rand(1000, 9999) + ',' + (rand(100, 130)) + '.' + rand(1000, 9999);
 
       // Section 3
-      document.getElementById('ws-country').value = 'China';
-      document.getElementById('ws-cityProvince').value = 'Guangzhou, Guangdong';
-      document.getElementById('ws-factoryArea').value = '15000 sq.m';
-      document.getElementById('ws-numBuildings').value = '3 buildings, 5 floors';
-      document.getElementById('ws-totalEmployees').value = '350';
-      document.getElementById('ws-numProductionWorkers').value = '250';
-      document.getElementById('ws-numQCStaff').value = '30';
-      document.getElementById('ws-numAdminSalesStaff').value = '70';
+      document.getElementById('ws-country').value = c.country;
+      document.getElementById('ws-cityProvince').value = c.city;
+      document.getElementById('ws-factoryArea').value = rand(3000, 30000) + ' sq.m';
+      document.getElementById('ws-numBuildings').value = rand(1, 5) + ' buildings, ' + rand(2, 8) + ' floors';
+      const totalEmp = rand(100, 800);
+      document.getElementById('ws-totalEmployees').value = totalEmp;
+      document.getElementById('ws-numProductionWorkers').value = Math.round(totalEmp * 0.65);
+      document.getElementById('ws-numQCStaff').value = Math.round(totalEmp * 0.08);
+      document.getElementById('ws-numAdminSalesStaff').value = Math.round(totalEmp * 0.18);
 
-      // Section 4 - checkboxes
-      ['Woven Labels','Printed Labels','Hang Tags','Leather / PU Patches','Metal Trims','Elastic & Tapes'].forEach(v => {
+      // Section 4 - pick 3-5 random production types
+      const shuffled = [...prodTypes].sort(() => Math.random() - 0.5);
+      const selectedTypes = shuffled.slice(0, rand(3, 5));
+      // Clear all checkboxes first
+      document.querySelectorAll('#ws-productionTypes input[type="checkbox"]').forEach(cb => {
+        cb.checked = false; cb.closest('.ws-checkbox-item').classList.remove('selected');
+      });
+      selectedTypes.forEach(v => {
         const cb = document.querySelector('#ws-productionTypes input[value="' + v + '"]');
         if (cb) { cb.checked = true; cb.closest('.ws-checkbox-item').classList.add('selected'); }
       });
       document.getElementById('ws-productionTypesOther').value = '';
-      // Machinery
-      document.getElementById('ws-machineryList').innerHTML = '';
-      wsAddMachineryRow('Computerized Jacquard Loom', '12');
-      wsAddMachineryRow('Die-Cutting Machine', '5');
-      wsAddMachineryRow('Ultrasonic Welding Machine', '3');
-      wsAddMachineryRow('Screen Printing Machine', '4');
-      wsAddMachineryRow('Heat Press Machine', '6');
-      wsAddMachineryRow('Automatic Slitting Machine', '2');
-      document.getElementById('ws-monthlyCapacity').value = 'Hang Tags: 5 million pcs/month\nWoven Labels: 3 million yards/month\nPrinted Labels: 4 million yards/month';
-      document.getElementById('ws-moq').value = 'Hang Tags: 10,000 pcs\nWoven Labels: 5,000 yards\nPrinted Labels: 5,000 yards';
-      document.getElementById('ws-avgLeadTime').value = '14-21 days from order confirmation';
+      // Generate per-type mock data
+      wsProdTypeDataCache = {};
+      const mockMachines = ['Jacquard Loom','Offset Printer','Die Cutter','Heat Press','Embroidery Machine','Laser Cutter','Ultrasonic Welder','Screen Printer','Digital Printer','Needle Loom'];
+      selectedTypes.forEach(t => {
+        const numMachines = rand(1, 4);
+        const machines = [];
+        for (let i = 0; i < numMachines; i++) {
+          machines.push({ name: pick(mockMachines), qty: String(rand(2, 15)) });
+        }
+        wsProdTypeDataCache[t] = {
+          machineryList: machines,
+          monthlyCapacity: rand(1, 10) + ' million pcs/month',
+          moq: (rand(5, 50) * 1000).toLocaleString() + ' pcs',
+          avgLeadTime: rand(7, 21) + '-' + rand(7, 21) + ' days from order confirmation'
+        };
+      });
+      wsRenderProdTypeContent();
+      document.getElementById('ws-sampleLeadTime').value = rand(3, 14) + '-' + rand(3, 14) + ' days';
 
-      // Section 5
-      ['Design & Sampling','Production','Quality Control','Packaging','Logistics / Shipping','R&D / Innovation'].forEach(v => {
-        const cb = document.querySelector('#ws-departments input[value="' + v + '"]');
-        if (cb) { cb.checked = true; cb.closest('.ws-checkbox-item').classList.add('selected'); }
+      // Section 5 - pick 3-6 random departments
+      const shuffledDepts = [...departments].sort(() => Math.random() - 0.5);
+      const selectedDepts = shuffledDepts.slice(0, rand(4, 6));
+      document.querySelectorAll('#ws-departmentsList .ws-dept-check input[type="checkbox"]').forEach(cb => {
+        cb.checked = false;
+        const item = cb.closest('.ws-checkbox-item');
+        if (item) item.classList.remove('selected');
+      });
+      selectedDepts.forEach(v => {
+        const cb = document.querySelector('#ws-departmentsList input[value="' + v + '"]');
+        if (cb) { cb.checked = true; cb.closest('.ws-checkbox-item')?.classList.add('selected'); }
       });
       document.getElementById('ws-workflowDescription').value = 'Order received → Design approval → Raw material sourcing → Production → In-line QC inspection → Final QC → Packaging → Shipping. Each stage has dedicated team and quality checkpoints.';
-      document.getElementById('ws-sampleLeadTime').value = '7-10 days';
 
-      // Section 6
-      // ISO 9001 = Yes
-      document.getElementById('ws-iso9001').value = 'yes';
-      document.querySelectorAll('[data-field="ws-iso9001"]').forEach(b => {
-        b.classList.toggle('active', b.dataset.val === 'yes');
+      // Section 6 - ISO 9001 random
+      const hasIso = Math.random() > 0.4;
+      document.getElementById('ws-iso9001').value = hasIso ? 'yes' : 'no';
+      document.querySelectorAll('[data-field="ws-iso9001"]').forEach(b => b.classList.toggle('active', b.dataset.val === (hasIso ? 'yes' : 'no')));
+      document.getElementById('ws-iso9001ExpiryWrap').style.display = hasIso ? '' : 'none';
+      if (hasIso) document.getElementById('ws-iso9001Expiry').value = '20' + rand(26, 29) + '-' + String(rand(1,12)).padStart(2,'0') + '-' + String(rand(1,28)).padStart(2,'0');
+
+      // Random social certs (2-4)
+      document.querySelectorAll('#ws-socialCerts input[type="checkbox"]').forEach(cb => {
+        cb.checked = false; cb.closest('.ws-checkbox-item').classList.remove('selected');
       });
-      document.getElementById('ws-iso9001ExpiryWrap').style.display = '';
-      document.getElementById('ws-iso9001Expiry').value = '2027-06-30';
-      // Other certs
-      document.getElementById('ws-otherCertsList').innerHTML = '';
-      wsAddCertRow('ISO 14001', 'EMS-2024-00456', '2027-03-15');
-      // Social certs
-      ['BSCI','SEDEX','OEKO-TEX'].forEach(v => {
+      [...socialCerts].sort(() => Math.random() - 0.5).slice(0, rand(2, 4)).forEach(v => {
         const cb = document.querySelector('#ws-socialCerts input[value="' + v + '"]');
         if (cb) { cb.checked = true; cb.closest('.ws-checkbox-item').classList.add('selected'); }
       });
-      document.getElementById('ws-certNumbers').value = 'BSCI #BS-2024-881234 exp 2027-01\nSEDEX #ZT-2024-SM-76543 exp 2026-12\nOEKO-TEX #234567 exp 2027-06';
-      // Third party
-      document.getElementById('ws-thirdPartyInspection').value = 'yes';
-      document.querySelectorAll('[data-field="ws-thirdPartyInspection"]').forEach(b => {
-        b.classList.toggle('active', b.dataset.val === 'yes');
-      });
-      document.getElementById('ws-inspectionCompany').value = 'SGS, Bureau Veritas';
 
-      // Section 7
-      document.getElementById('ws-recycledMaterials').value = 'yes';
-      document.querySelectorAll('[data-field="ws-recycledMaterials"]').forEach(b => b.classList.toggle('active', b.dataset.val === 'yes'));
-      document.getElementById('ws-envPolicy').value = 'yes';
-      document.querySelectorAll('[data-field="ws-envPolicy"]').forEach(b => b.classList.toggle('active', b.dataset.val === 'yes'));
-      document.getElementById('ws-childLaborPolicy').value = 'yes';
-      document.querySelectorAll('[data-field="ws-childLaborPolicy"]').forEach(b => b.classList.toggle('active', b.dataset.val === 'yes'));
-      document.getElementById('ws-carbonFootprint').value = 'yes';
-      document.querySelectorAll('[data-field="ws-carbonFootprint"]').forEach(b => b.classList.toggle('active', b.dataset.val === 'yes'));
-      ['REACH','OEKO-TEX Standard 100'].forEach(v => {
+      // Third party inspection random
+      const hasInspect = Math.random() > 0.3;
+      document.getElementById('ws-thirdPartyInspection').value = hasInspect ? 'yes' : 'no';
+      document.querySelectorAll('[data-field="ws-thirdPartyInspection"]').forEach(b => b.classList.toggle('active', b.dataset.val === (hasInspect ? 'yes' : 'no')));
+      document.getElementById('ws-inspectionCompany').value = hasInspect ? pick(inspectCompanies) + ', ' + pick(inspectCompanies) : '';
+
+      // Section 7 - random toggles
+      const rndToggle = (id) => {
+        const val = Math.random() > 0.35 ? 'yes' : 'no';
+        document.getElementById(id).value = val;
+        document.querySelectorAll('[data-field="' + id + '"]').forEach(b => b.classList.toggle('active', b.dataset.val === val));
+      };
+      rndToggle('ws-recycledMaterials');
+      rndToggle('ws-envPolicy');
+      rndToggle('ws-childLaborPolicy');
+      rndToggle('ws-carbonFootprint');
+      // Random chem compliance
+      document.querySelectorAll('#ws-chemicalCompliance input[type="checkbox"]').forEach(cb => {
+        cb.checked = false; cb.closest('.ws-checkbox-item').classList.remove('selected');
+      });
+      [...chemComps].sort(() => Math.random() - 0.5).slice(0, rand(1, 3)).forEach(v => {
         const cb = document.querySelector('#ws-chemicalCompliance input[value="' + v + '"]');
         if (cb) { cb.checked = true; cb.closest('.ws-checkbox-item').classList.add('selected'); }
       });
 
-      // Section 8
-      document.getElementById('ws-capacityUtilization').value = 75;
-      document.getElementById('ws-capacityVal').textContent = '75%';
-      document.getElementById('ws-peakSeasonManagement').value = 'We hire 50+ temporary workers during peak season (Aug-Nov). We also maintain buffer stock of raw materials for 30 days to handle rush orders.';
-      document.getElementById('ws-majorClients').value = 'H&M, Zara, Uniqlo, Target, Nike';
-      document.getElementById('ws-exportMarkets').value = 'USA, UK, Germany, France, Japan, Australia, Canada';
-      ['T/T','L/C'].forEach(v => {
+      // Section 9
+      document.getElementById('ws-howDidYouHear').value = pick(howHeard);
+      document.getElementById('ws-existingRelationship').value = 'We have been supplying ' + c.trade + ' since ' + rand(2012, 2022) + ' and are familiar with trim requirements for major brands.';
+      document.getElementById('ws-referencesList').innerHTML = '';
+      const shuffledRefs = [...refCompanies].sort(() => Math.random() - 0.5);
+      shuffledRefs.slice(0, rand(2, 3)).forEach(r => {
+        wsAddReferenceRow(r, (Math.random() > 0.5 ? 'Mr. ' : 'Ms. ') + pick(['Tom','Lee','John','Mike','Wei','Sarah','Linda','Amy','Lisa','Mei']) + ', +' + rand(1, 99) + '-' + rand(100, 999) + '-' + rand(1000, 9999) + '-' + rand(1000, 9999));
+      });
+      document.getElementById('ws-exportMarkets').value = pick(exportMarkets);
+      // Random payment terms
+      document.querySelectorAll('#ws-paymentTerms input[type="checkbox"]').forEach(cb => {
+        cb.checked = false; cb.closest('.ws-checkbox-item').classList.remove('selected');
+      });
+      [...paymentOpts].sort(() => Math.random() - 0.5).slice(0, rand(1, 3)).forEach(v => {
         const cb = document.querySelector('#ws-paymentTerms input[value="' + v + '"]');
         if (cb) { cb.checked = true; cb.closest('.ws-checkbox-item').classList.add('selected'); }
       });
-      document.getElementById('ws-bankDetails').value = 'Bank of China, Guangzhou Branch\nAccount: 1234 5678 9012 3456\nSWIFT: BKCHCNBJ400';
-
-      // Section 9 - uploads handled by user
-
-      // Section 10
-      document.getElementById('ws-howDidYouHear').value = 'Trade Show';
-      document.getElementById('ws-existingRelationship').value = 'We have been supplying labels to a Hong Kong trading company since 2015 and are familiar with trim requirements for major brands.';
-      document.getElementById('ws-referencesList').innerHTML = '';
-      wsAddReferenceRow('ABC Garments Ltd', 'Mr. Tom Lee, +852-9876-5432');
-      wsAddReferenceRow('XYZ Fashion Inc', 'Ms. Sarah Park, +1-212-555-8900');
-      wsAddReferenceRow('Global Sportswear Co', 'Mr. Mike Johnson, +44-20-7946-0958');
+      document.getElementById('ws-bankDetails').value = pick(bankNames) + '\nAccount: ' + rand(1000, 9999) + ' ' + rand(1000, 9999) + ' ' + rand(1000, 9999) + ' ' + rand(1000, 9999) + '\nSWIFT: ' + rId().substring(0, 4).toUpperCase() + 'CNBJ' + rand(100, 999);
       document.getElementById('ws-declarationAccepted').checked = true;
-      document.getElementById('ws-digitalSignature').value = 'James Chen';
+      document.getElementById('ws-digitalSignature').value = ct.name;
       document.getElementById('ws-signatureDate').value = new Date().toISOString().split('T')[0];
 
       // Update step completion
@@ -19514,12 +19681,31 @@
           + '</div></div>';
 
         // Section 4: Production
+        let prodTypeHtml = '';
+        const ptData = pc.productionTypeData || {};
+        const allTypes = (pc.mainProductionTypes || []);
+        if (Object.keys(ptData).length > 0) {
+          // New per-type format
+          allTypes.forEach(t => {
+            const d = ptData[t] || {};
+            prodTypeHtml += '<div style="border:1px solid #ddd; padding:10px; margin-bottom:8px;">'
+              + '<strong style="display:block; margin-bottom:6px; font-size:13px;">' + t + '</strong>'
+              + wsViewField('Machinery', (d.machineryList||[]).map(m => m.name + ' ×' + m.qty).join(', ') || '—')
+              + wsViewField('Monthly Capacity', d.monthlyCapacity || '—')
+              + wsViewField('MOQ', d.moq || '—')
+              + wsViewField('Avg Lead Time', d.avgLeadTime || '—')
+              + '</div>';
+          });
+        } else if (pc.monthlyCapacity || pc.moq || pc.avgLeadTime) {
+          // Legacy format fallback
+          prodTypeHtml = wsViewField('Machinery', (pc.machineryList||[]).map(m => m.name + ' ×' + m.qty).join(', '))
+            + wsViewField('Monthly Capacity', pc.monthlyCapacity ? '<pre style="margin:0; white-space:pre-wrap; font-size:13px;">' + pc.monthlyCapacity + '</pre>' : '')
+            + wsViewField('MOQ', pc.moq ? '<pre style="margin:0; white-space:pre-wrap; font-size:13px;">' + pc.moq + '</pre>' : '')
+            + wsViewField('Average Lead Time', pc.avgLeadTime);
+        }
         html += '<div class="ws-view-card"><div class="ws-view-card-header">4. Production Capabilities</div><div class="ws-view-card-body">'
           + wsViewField('Production Types', (pc.mainProductionTypes||[]).map(t => '<span class="ws-cert-badge">' + t + '</span>').join('') + (pc.otherTypes ? ' · ' + pc.otherTypes : ''))
-          + wsViewField('Machinery', (pc.machineryList||[]).map(m => m.name + ' ×' + m.qty).join(', '))
-          + wsViewField('Monthly Capacity', pc.monthlyCapacity ? '<pre style="margin:0; white-space:pre-wrap; font-size:13px;">' + pc.monthlyCapacity + '</pre>' : '')
-          + wsViewField('MOQ', pc.moq ? '<pre style="margin:0; white-space:pre-wrap; font-size:13px;">' + pc.moq + '</pre>' : '')
-          + wsViewField('Average Lead Time', pc.avgLeadTime)
+          + prodTypeHtml
           + '</div></div>';
 
         // Section 5: Departments
@@ -19601,9 +19787,36 @@
 
       // JSON sections
       const pc = w.productionCapabilities || {};
-      if (pc.avgLeadTime) document.getElementById('ws-avgLeadTime').value = pc.avgLeadTime;
-      if (pc.monthlyCapacity) document.getElementById('ws-monthlyCapacity').value = pc.monthlyCapacity;
-      if (pc.moq) document.getElementById('ws-moq').value = pc.moq;
+
+      // Load production type checkboxes
+      if (pc.mainProductionTypes) {
+        pc.mainProductionTypes.forEach(v => {
+          const cb = document.querySelector('#ws-productionTypes input[value="' + v + '"]');
+          if (cb) { cb.checked = true; cb.closest('.ws-checkbox-item').classList.add('selected'); }
+        });
+      }
+      if (pc.otherTypes) document.getElementById('ws-productionTypesOther').value = pc.otherTypes;
+
+      // Load per-type data into cache
+      wsProdTypeDataCache = {};
+      if (pc.productionTypeData) {
+        wsProdTypeDataCache = { ...pc.productionTypeData };
+      }
+      // Legacy support: if old format data exists, migrate it
+      if (!pc.productionTypeData && (pc.monthlyCapacity || pc.moq || pc.avgLeadTime || (pc.machineryList && pc.machineryList.length))) {
+        const types = pc.mainProductionTypes || [];
+        if (types.length > 0) {
+          types.forEach(t => {
+            wsProdTypeDataCache[t] = {
+              machineryList: pc.machineryList || [],
+              monthlyCapacity: pc.monthlyCapacity || '',
+              moq: pc.moq || '',
+              avgLeadTime: pc.avgLeadTime || ''
+            };
+          });
+        }
+      }
+      wsRenderProdTypeContent();
 
       const cap = w.capacityReliability || {};
       if (cap.capacityUtilization) {
