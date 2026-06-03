@@ -29,7 +29,10 @@ import {
   // Product Profile functions
   getAllProductProfiles, getProductProfileById, createProductProfile, updateProductProfile, deleteProductProfile, getProductProfilesByType,
   // Workshop functions
-  getAllWorkshops, getWorkshopById, createWorkshop, updateWorkshop, deleteWorkshop
+  getAllWorkshops, getWorkshopById, createWorkshop, updateWorkshop, deleteWorkshop,
+  // Order functions
+  getAllOrders, getOrderById, getOrderBySeq, createOrder, updateOrder, deleteOrder,
+  recordOrderDepartmentScan, getOrderProgress, getLastOrderScan
 } from './db/tasksDb.js';
 import SkillManager from './skills/skillManager.js';
 import { getNormalizedRelativePath } from './utils/pathUtils.js';
@@ -44,6 +47,7 @@ import { createEmailRoutes } from './routes/emails.js';
 import { createBrandRoutes } from './routes/brands.js';
 import { createProductProfileRoutes } from './routes/product-profiles.js';
 import { createWorkshopRoutes } from './routes/workshops.js';
+import { createOrderRoutes } from './routes/orders.js';
 import supplierPortalRouter from './routes/supplier-portal.js';
 
 // ---------- ENV ----------
@@ -504,6 +508,15 @@ const workshopRoutes = createWorkshopRoutes({
   deleteWorkshop
 });
 app.use('/api/workshops', workshopRoutes);
+
+// Order routes
+const orderRoutes = createOrderRoutes({
+  getAllOrders, getOrderById, getOrderBySeq,
+  createOrder, updateOrder, deleteOrder,
+  getQuotationById, getWorkshopById,
+  recordOrderDepartmentScan, getOrderProgress, getLastOrderScan
+});
+app.use('/api/orders', orderRoutes);
 
 // Supplier portal routes
 app.use('/api/supplier-portal', supplierPortalRouter);

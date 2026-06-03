@@ -296,6 +296,56 @@ async function ensureSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_workshops_fullCompanyName ON workshops(fullCompanyName);
     CREATE INDEX IF NOT EXISTS idx_workshops_country ON workshops(country);
     CREATE INDEX IF NOT EXISTS idx_workshops_status ON workshops(status);
+
+    CREATE TABLE IF NOT EXISTS orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      orderSeq TEXT NOT NULL UNIQUE,
+      quotationId INTEGER NOT NULL,
+      quotationType TEXT NOT NULL,
+      quotationSeq TEXT NOT NULL,
+      workshopId INTEGER,
+      workshopName TEXT,
+      country TEXT,
+      customerName TEXT NOT NULL,
+      contactPerson TEXT,
+      email TEXT,
+      phone TEXT,
+      productType TEXT NOT NULL,
+      productDetails TEXT,
+      quantity INTEGER NOT NULL,
+      unitPrice REAL NOT NULL,
+      total REAL NOT NULL,
+      customerItemName TEXT,
+      brandId INTEGER,
+      currentDepartment TEXT DEFAULT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      dateCreated TEXT NOT NULL,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      FOREIGN KEY (quotationId) REFERENCES quotations(id),
+      FOREIGN KEY (workshopId) REFERENCES workshops(id),
+      FOREIGN KEY (brandId) REFERENCES brands(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_orders_orderSeq ON orders(orderSeq);
+    CREATE INDEX IF NOT EXISTS idx_orders_quotationId ON orders(quotationId);
+    CREATE INDEX IF NOT EXISTS idx_orders_workshopId ON orders(workshopId);
+    CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+    CREATE INDEX IF NOT EXISTS idx_orders_dateCreated ON orders(dateCreated DESC);
+
+    CREATE TABLE IF NOT EXISTS order_progress_tracking (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      orderSeq TEXT NOT NULL,
+      orderId INTEGER NOT NULL,
+      department TEXT NOT NULL,
+      scannedAt TEXT NOT NULL,
+      notes TEXT,
+      FOREIGN KEY (orderId) REFERENCES orders(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_opt_orderSeq ON order_progress_tracking(orderSeq);
+    CREATE INDEX IF NOT EXISTS idx_opt_orderId ON order_progress_tracking(orderId);
+    CREATE INDEX IF NOT EXISTS idx_opt_scannedAt ON order_progress_tracking(scannedAt DESC);
   `);
 
   // Add new columns if they don't exist (for database migration)
@@ -1707,4 +1757,195 @@ export async function deleteWorkshop(id) {
   const db = await getTasksDb();
   await db.run(`DELETE FROM workshops WHERE id = ?`, [id]);
   return true;
+}
+
+// ─── Order CRUD ──────────────────────────────────────────────────────────
+
+export async function createOrder(orderData) {
+  const db = await getTasksDb();
+  const now = new Date().toISOString();
+
+  // Auto-generate orderSeq (PO0000001)
+  const seqRow = await db.get(
+    `SELECT MAX(CAST(REPLACE(orderSeq, 'PO', '') AS INTEGER)) as maxSeq FROM orders`
+  );
+  const nextSeq = (seqRow && seqRow.maxSeq ? seqRow.maxSeq : 0) + 1;
+  const orderSeq = 'PO' + String(nextSeq).padStart(7, '0');
+
+  const result = await db.run(
+    `INSERT INTO orders (
+      orderSeq, quotationId, quotationType, quotationSeq,
+      workshopId, workshopName, country,
+      customerName, contactPerson, email, phone,
+      productType, productDetails, quantity, unitPrice, total,
+      customerItemName, brandId, status, dateCreated, createdAt, updatedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      orderSeq,
+      orderData.quotationId,
+      orderData.quotationType || 'quotation',
+      orderData.quotationSeq || null,
+      orderData.workshopId || null,
+      orderData.workshopName || null,
+      orderData.country || null,
+      orderData.customerName,
+      orderData.contactPerson || null,
+      orderData.email || null,
+      orderData.phone || null,
+      orderData.productType,
+      JSON.stringify(orderData.productDetails || {}),
+      orderData.quantity,
+      orderData.unitPrice,
+      orderData.total,
+      orderData.customerItemName || null,
+      orderData.brandId || null,
+      'pending',
+      now,
+      now,
+      now
+    ]
+  );
+
+  return { id: result.lastID, orderSeq };
+}
+
+export async function getOrderById(id) {
+  const db = await getTasksDb();
+  const order = await db.get(`SELECT * FROM orders WHERE id = ?`, [id]);
+  if (order) {
+    try { order.productDetails = JSON.parse(order.productDetails || '{}'); } catch (e) { order.productDetails = {}; }
+  }
+  return order;
+}
+
+export async function getOrderBySeq(orderSeq) {
+  const db = await getTasksDb();
+  const order = await db.get(`SELECT * FROM orders WHERE orderSeq = ?`, [orderSeq]);
+  if (order) {
+    try { order.productDetails = JSON.parse(order.productDetails || '{}'); } catch (e) { order.productDetails = {}; }
+  }
+  return order;
+}
+
+export async function getAllOrders() {
+  const db = await getTasksDb();
+  const orders = await db.all(`SELECT * FROM orders ORDER BY dateCreated DESC`);
+  for (const order of orders) {
+    try { order.productDetails = JSON.parse(order.productDetails || '{}'); } catch (e) { order.productDetails = {}; }
+  }
+  return orders;
+}
+
+export async function updateOrder(id, orderData) {
+  const db = await getTasksDb();
+  const now = new Date().toISOString();
+
+  const sets = [];
+  const vals = [];
+  const skip = ['id', 'orderSeq', 'quotationId', 'dateCreated', 'createdAt'];
+
+  for (const [k, v] of Object.entries(orderData)) {
+    if (skip.includes(k)) continue;
+    sets.push(`${k} = ?`);
+    if (k === 'productDetails' && typeof v === 'object') {
+      vals.push(JSON.stringify(v));
+    } else {
+      vals.push(v === undefined ? null : v);
+    }
+  }
+  sets.push('updatedAt = ?');
+  vals.push(now);
+  vals.push(id);
+
+  await db.run(`UPDATE orders SET ${sets.join(', ')} WHERE id = ?`, vals);
+  return true;
+}
+
+export async function deleteOrder(id) {
+  const db = await getTasksDb();
+  await db.run(`DELETE FROM orders WHERE id = ?`, [id]);
+  return true;
+}
+
+// ─── Order Progress Tracking ──────────────────────────────────────────
+
+const VALID_DEPARTMENTS = [
+  'CS Team', 'PMC', 'Material', 'Production',
+  'Cut and Fold', 'QC', 'Shipment', 'Account'
+];
+
+export async function recordOrderDepartmentScan(orderSeq, department, notes = null) {
+  const db = await getTasksDb();
+  const now = new Date().toISOString();
+
+  const order = await getOrderBySeq(orderSeq);
+  if (!order) {
+    return { error: 'Order not found', code: 404 };
+  }
+
+  const currentDeptIndex = VALID_DEPARTMENTS.indexOf(department);
+  if (currentDeptIndex === -1) {
+    return { error: `Invalid department: ${department}. Valid: ${VALID_DEPARTMENTS.join(', ')}`, code: 400 };
+  }
+
+  const lastScan = await getLastOrderScan(orderSeq);
+  if (lastScan) {
+    const lastDeptIndex = VALID_DEPARTMENTS.indexOf(lastScan.department);
+    if (currentDeptIndex <= lastDeptIndex) {
+      return {
+        error: 'Cannot go back or repeat department',
+        lastDepartment: lastScan.department,
+        attemptedDepartment: department,
+        code: 400
+      };
+    }
+    if (currentDeptIndex > lastDeptIndex + 1) {
+      return {
+        error: `Cannot skip departments. Must follow sequence ${VALID_DEPARTMENTS.map((d, i) => `${i + 1}.${d}`).join(' → ')}`,
+        nextExpected: VALID_DEPARTMENTS[lastDeptIndex + 1],
+        code: 400
+      };
+    }
+  } else if (department !== 'CS Team') {
+    return {
+      error: 'First scan must be CS Team',
+      code: 400
+    };
+  }
+
+  await db.run(
+    `INSERT INTO order_progress_tracking (orderSeq, orderId, department, scannedAt, notes) VALUES (?, ?, ?, ?, ?)`,
+    [orderSeq, order.id, department, now, notes]
+  );
+
+  await db.run(
+    `UPDATE orders SET currentDepartment = ?, status = 'in-production', updatedAt = ? WHERE id = ?`,
+    [department, now, order.id]
+  );
+
+  // If last department (Account), mark as completed
+  if (department === 'Account') {
+    await db.run(
+      `UPDATE orders SET status = 'completed', updatedAt = ? WHERE id = ?`,
+      [now, order.id]
+    );
+  }
+
+  return { success: true, orderSeq, department, scannedAt: now };
+}
+
+export async function getOrderProgress(orderSeq) {
+  const db = await getTasksDb();
+  return await db.all(
+    `SELECT * FROM order_progress_tracking WHERE orderSeq = ? ORDER BY scannedAt ASC`,
+    [orderSeq]
+  );
+}
+
+export async function getLastOrderScan(orderSeq) {
+  const db = await getTasksDb();
+  return await db.get(
+    `SELECT * FROM order_progress_tracking WHERE orderSeq = ? ORDER BY scannedAt DESC LIMIT 1`,
+    [orderSeq]
+  );
 }

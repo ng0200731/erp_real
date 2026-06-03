@@ -16,6 +16,8 @@
     "imapflow": "^1.0.92",
     "multer": "^1.4.5-lts.2",
     "nodemailer": "^6.9.12",
+    "pdfkit": "^0.18.0",
+    "qrcode": "^1.5.4",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7"
   },

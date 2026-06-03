@@ -1306,6 +1306,13 @@
           <button id="workshopViewBtn" class="submenu-btn">View</button>
         </div>
       </div>
+      <div class="menu-group">
+        <button id="menuOrder" class="page-btn" data-short="R" data-full="Order">R</button>
+        <div id="orderSubmenu" class="submenu" style="display:none;">
+          <button id="orderCreatedBtn" class="submenu-btn">Created</button>
+          <button id="orderViewBtn" class="submenu-btn">View</button>
+        </div>
+      </div>
       <button id="menuSettings" class="page-btn" data-short="S" data-full="Setting">S</button>
       <div style="flex:1;"></div>
       <div style="font-size:0.75em; text-align:center; color:#666; margin-top:10px; padding:5px;">
@@ -2100,11 +2107,14 @@
                 <th style="border:1px solid #000; padding:8px; text-align:center;">
                   <div>History</div>
                 </th>
+                <th style="border:1px solid #000; padding:8px; text-align:center;">
+                  <div>Convert Order</div>
+                </th>
               </tr>
             </thead>
             <tbody id="quotationsTableBody">
               <tr>
-                <td colspan="18" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+                <td colspan="19" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
                   No quotations saved yet. Create quotations first.
                 </td>
               </tr>
@@ -2241,11 +2251,14 @@
                 <th style="border:1px solid #000; padding:8px; text-align:center;">
                   <div>History</div>
                 </th>
+                <th style="border:1px solid #000; padding:8px; text-align:center;">
+                  <div>Convert Order</div>
+                </th>
               </tr>
             </thead>
             <tbody id="outsourcingTableBody">
               <tr>
-                <td colspan="18" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+                <td colspan="19" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
                   Loading...
                 </td>
               </tr>
@@ -2894,6 +2907,128 @@
           <div style="display:flex; gap:10px; justify-content:center;">
             <button id="workshopDeleteConfirmBtn" class="page-btn" style="background:#dc3545; color:#fff; padding:8px 24px; font-weight:600;">Confirm</button>
             <button id="workshopDeleteCancelBtn" class="page-btn" style="padding:8px 24px; font-weight:600;">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Order Created Panel ────────────────────────────────── -->
+      <div id="orderCreatedPanel" style="border:1px solid #000; padding:0; margin-bottom:20px; display:none; flex:1; min-height:0; overflow-y:auto;">
+        <div style="display:flex; gap:10px; padding:20px; border-bottom:1px solid #000; position:sticky; top:0; background:#fff; z-index:50;">
+          <button id="refreshOrdersBtn" class="page-btn">Refresh</button>
+          <button id="orderCreatePdfBtn" class="page-btn" style="background:#28a745; color:#fff; display:none;">Create PDF</button>
+          <input type="text" id="orderSearchInput" placeholder="Search orders..." style="border:1px solid #000; padding:8px 12px; flex:1; font-size:14px;">
+          <select id="orderFilterStatus" style="border:1px solid #000; padding:8px 12px; font-size:14px;">
+            <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="in-production">In Production</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+        <div style="padding:0 20px 20px 20px;">
+          <table id="ordersTable" style="width:100%; border-collapse:collapse; border:1px solid #000;">
+            <thead>
+              <tr style="background:#f8f8f8;">
+                <th style="border:1px solid #000; padding:8px; text-align:center;"><input type="checkbox" id="orderSelectAll" style="cursor:pointer;"></th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">PO#</th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">IP/OS Ref</th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">Customer</th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">Item</th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">Product Type</th>
+                <th style="border:1px solid #000; padding:8px; text-align:right;">Qty</th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">Factory</th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">Status</th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">Department</th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">Created</th>
+                <th style="border:1px solid #000; padding:8px; text-align:center;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="ordersTableBody">
+              <tr>
+                <td colspan="12" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+                  No orders yet. Convert approved quotations to orders.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ─── Order View Panel ────────────────────────────────── -->
+      <div id="orderViewPanel" style="border:1px solid #000; padding:0; margin-bottom:20px; display:none; flex:1; min-height:0; overflow-y:auto;">
+        <div style="padding:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <button class="page-btn" onclick="showOrderCreated()">&#9664; Back to Orders</button>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <button id="orderViewPdfBtn" class="page-btn" style="background:#28a745; color:#fff;">Download PDF</button>
+              <button id="orderScanQrBtn" class="page-btn" style="background:#007bff; color:#fff;">📷 Scan QR</button>
+            </div>
+          </div>
+          <div id="orderViewContent" style="display:flex; gap:20px; flex-wrap:wrap;">
+            <!-- Left: Order details -->
+            <div style="flex:2; min-width:300px;">
+              <div style="border:1px solid #000; padding:20px; margin-bottom:20px;">
+                <h3 style="margin:0 0 15px 0;">Order Details</h3>
+                <div id="orderViewDetails" style="font-size:14px;"></div>
+              </div>
+              <div style="border:1px solid #000; padding:20px;">
+                <h3 style="margin:0 0 15px 0;">Product Details</h3>
+                <div id="orderViewProductDetails" style="font-size:14px;"></div>
+              </div>
+            </div>
+            <!-- Right: QR + Status -->
+            <div style="flex:1; min-width:250px;">
+              <div style="border:1px solid #000; padding:20px; text-align:center; margin-bottom:20px;">
+                <h3 style="margin:0 0 15px 0;">QR Code</h3>
+                <div id="orderViewQR" style="display:flex; justify-content:center;"></div>
+              </div>
+              <div style="border:1px solid #000; padding:20px;">
+                <h3 style="margin:0 0 15px 0;">Production Progress</h3>
+                <div id="orderViewProgress"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── Order Factory Selection Modal ────────────────────────────────── -->
+      <div id="orderFactoryModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#fff; border:2px solid #000; padding:30px; min-width:400px; max-width:550px;">
+          <h3 style="margin:0 0 15px 0; font-weight:700;">Select Factory for PDF</h3>
+          <p id="orderFactoryModalCount" style="margin:0 0 15px 0; font-size:13px; color:#666;"></p>
+          <select id="orderFactorySelect" style="width:100%; border:1px solid #000; padding:10px; font-size:14px; margin-bottom:20px;">
+            <option value="">-- Select Factory --</option>
+          </select>
+          <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button id="orderFactoryCancelBtn" class="page-btn" style="padding:8px 24px;">Cancel</button>
+            <button id="orderFactoryConfirmBtn" class="page-btn" style="padding:8px 24px; background:#28a745; color:#fff; font-weight:600;">Generate PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── QR Scanner Modal (Web-based) ────────────────────────────────── -->
+      <div id="qrScannerModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+        <div style="background:#fff; border:2px solid #000; padding:20px; min-width:400px; max-width:500px; text-align:center;">
+          <h3 style="margin:0 0 15px 0; font-weight:700;">Scan Order QR Code</h3>
+          <div id="qrScannerRegion" style="width:300px; height:300px; margin:0 auto 15px auto; border:2px solid #000;"></div>
+          <p id="qrScanStatus" style="margin:10px 0; font-size:13px; color:#666;">Point camera at the QR code on the order PDF</p>
+          <div id="qrScanResult" style="display:none; margin:15px 0; padding:10px; background:#e8f5e9; border:1px solid #28a745;"></div>
+          <div style="display:flex; gap:10px; justify-content:center; margin-top:15px;">
+            <select id="qrScanDepartment" style="border:1px solid #000; padding:8px 12px; font-size:14px; width:150px;">
+              <option value="">Select Dept</option>
+              <option value="CS Team">1. CS Team</option>
+              <option value="PMC">2. PMC</option>
+              <option value="Material">3. Material</option>
+              <option value="Production">4. Production</option>
+              <option value="Cut and Fold">5. Cut and Fold</option>
+              <option value="QC">6. QC</option>
+              <option value="Shipment">7. Shipment</option>
+              <option value="Account">8. Account</option>
+            </select>
+            <input type="text" id="qrScanNotes" placeholder="Notes (optional)" style="border:1px solid #000; padding:8px 12px; font-size:14px; width:150px;">
+          </div>
+          <div style="display:flex; gap:10px; justify-content:center; margin-top:15px;">
+            <button id="qrScanSubmitBtn" class="page-btn" style="background:#28a745; color:#fff; padding:8px 20px;">Submit Scan</button>
+            <button id="qrScanCloseBtn" class="page-btn" style="padding:8px 20px;">Close</button>
           </div>
         </div>
       </div>
@@ -4079,6 +4214,8 @@
       document.getElementById('brandViewPanel').style.display = id === 'brand-view' ? 'block' : 'none';
       document.getElementById('workshopPanel').style.display = id === 'workshop' ? 'block' : 'none';
       document.getElementById('workshopViewPanel').style.display = id === 'workshop-view' ? 'block' : 'none';
+      document.getElementById('orderCreatedPanel').style.display = id === 'order-created' ? 'block' : 'none';
+      document.getElementById('orderViewPanel').style.display = id === 'order-view' ? 'block' : 'none';
       // settingsPanel is shown inline within profiles when a profile is clicked
       settingsPanel.style.display = 'none';
 
@@ -4112,6 +4249,10 @@
 
       if (id === 'brand-view') {
         loadBrands();
+      }
+
+      if (id === 'order-created') {
+        displayOrders();
       }
     }
 
@@ -6824,6 +6965,60 @@
       submenu.style.display = isVisible ? 'none' : 'block';
     };
 
+    // Order menu
+    const menuOrderBtn = document.getElementById('menuOrder');
+    menuOrderBtn.onclick = () => {
+      const submenu = document.getElementById('orderSubmenu');
+      const isVisible = submenu.style.display !== 'none';
+      document.querySelectorAll('.submenu').forEach(sub => { sub.style.display = 'none'; });
+      submenu.style.display = isVisible ? 'none' : 'block';
+    };
+
+    const orderCreatedBtn = document.getElementById('orderCreatedBtn');
+    const orderViewBtn = document.getElementById('orderViewBtn');
+
+    orderCreatedBtn.onclick = () => {
+      document.getElementById('orderSubmenu').style.display = 'none';
+      ensureTab('order-created', 'Order > Created');
+      activateTab('order-created');
+    };
+
+    orderViewBtn.onclick = () => {
+      document.getElementById('orderSubmenu').style.display = 'none';
+      // View requires selecting an order first - go to created panel
+      ensureTab('order-created', 'Order > Created');
+      activateTab('order-created');
+    };
+
+    // Refresh orders button
+    document.getElementById('refreshOrdersBtn').onclick = () => {
+      displayOrders();
+    };
+
+    // Select all checkbox for orders
+    document.getElementById('orderSelectAll').onchange = function() {
+      const checked = this.checked;
+      document.querySelectorAll('.order-checkbox').forEach(cb => { cb.checked = checked; });
+      updateOrderPdfButton();
+    };
+
+    // Create PDF button
+    document.getElementById('orderCreatePdfBtn').onclick = () => {
+      showFactorySelectionModal();
+    };
+
+    // Factory modal buttons
+    document.getElementById('orderFactoryCancelBtn').onclick = () => {
+      document.getElementById('orderFactoryModal').style.display = 'none';
+    };
+    document.getElementById('orderFactoryConfirmBtn').onclick = () => {
+      generateBulkPdf();
+    };
+
+    // Order filter
+    document.getElementById('orderFilterStatus').onchange = () => { displayOrders(); };
+    document.getElementById('orderSearchInput').oninput = () => { displayOrders(); };
+
     // Customer submenu buttons
     const customerCreateBtn = document.getElementById('customerCreateBtn');
     const customerViewBtn = document.getElementById('customerViewBtn');
@@ -6915,6 +7110,7 @@
       menuOutsourcingBtn.textContent = menuOutsourcingBtn.dataset.full || 'Outsourcing';
       menuBrandBtn.textContent = menuBrandBtn.dataset.full || 'Brand';
       menuWorkshopBtn.textContent = menuWorkshopBtn.dataset.full || 'Workshop';
+      menuOrderBtn.textContent = menuOrderBtn.dataset.full || 'Order';
     };
     sidebar.onmouseleave = () => {
       menuEmailBtn.textContent = menuEmailBtn.dataset.short || 'E';
@@ -6927,6 +7123,7 @@
       menuOutsourcingBtn.textContent = menuOutsourcingBtn.dataset.short || 'O';
       menuBrandBtn.textContent = menuBrandBtn.dataset.short || 'B';
       menuWorkshopBtn.textContent = menuWorkshopBtn.dataset.short || 'W';
+      menuOrderBtn.textContent = menuOrderBtn.dataset.short || 'R';
       // Hide submenus on mouse leave
       document.querySelectorAll('.submenu').forEach(sub => {
         sub.style.display = 'none';
@@ -11862,7 +12059,7 @@
       if (quotations.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="20" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="21" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No outsourcing quotations saved yet. Create outsourcing quotations first.
             </td>
           </tr>
@@ -11876,7 +12073,7 @@
       if (filteredQuotations.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="20" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="21" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No outsourcing quotations match the current filters.
             </td>
           </tr>
@@ -12054,6 +12251,9 @@
               <td style="border:1px solid #000; padding:8px; text-align:center;">
                 <button class="page-btn" style="padding:4px 8px; font-size:11px; background:#6c757d; color:#fff;" onclick="event.stopPropagation(); showStatusHistory(${quotation.id})">📋 History</button>
               </td>
+              <td style="border:1px solid #000; padding:8px; text-align:center;">
+                <button class="page-btn" style="padding:4px 8px; font-size:11px; background:${quotation.status === 'approved' ? '#28a745' : '#ccc'}; color:#fff; ${quotation.status === 'approved' ? '' : 'cursor:not-allowed;'}" ${quotation.status === 'approved' ? `onclick="event.stopPropagation(); convertToOrder(${quotation.id})"` : 'disabled'}>📦 Order</button>
+              </td>
             </tr>
           `);
         } else {
@@ -12097,6 +12297,9 @@
                   </td>
                   <td style="border:1px solid #000; padding:8px; text-align:center;" rowspan="${suppliers.length}">
                     <button class="page-btn" style="padding:4px 8px; font-size:11px; background:#6c757d; color:#fff;" onclick="event.stopPropagation(); showStatusHistory(${quotation.id})">📋 History</button>
+                  </td>
+                  <td style="border:1px solid #000; padding:8px; text-align:center;" rowspan="${suppliers.length}">
+                    <button class="page-btn" style="padding:4px 8px; font-size:11px; background:${quotation.status === 'approved' ? '#28a745' : '#ccc'}; color:#fff; ${quotation.status === 'approved' ? '' : 'cursor:not-allowed;'}" ${quotation.status === 'approved' ? `onclick="event.stopPropagation(); convertToOrder(${quotation.id})"` : 'disabled'}>📦 Order</button>
                   </td>
                 </tr>
               `);
@@ -13333,7 +13536,7 @@
       if (quotations.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="18" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="19" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No quotations saved yet. Create quotations first.
             </td>
           </tr>
@@ -13347,7 +13550,7 @@
       if (filteredQuotations.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="18" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="19" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No quotations match the current filters.
             </td>
           </tr>
@@ -13444,6 +13647,9 @@
           </td>
           <td style="border:1px solid #000; padding:8px; text-align:center;">
             <button class="page-btn" style="padding:4px 8px; font-size:11px; background:#6c757d; color:#fff;" onclick="event.stopPropagation(); showStatusHistory(${quotation.id})">📋 History</button>
+          </td>
+          <td style="border:1px solid #000; padding:8px; text-align:center;">
+            <button class="page-btn" style="padding:4px 8px; font-size:11px; background:${quotation.status === 'approved' ? '#28a745' : '#ccc'}; color:#fff; ${quotation.status === 'approved' ? '' : 'cursor:not-allowed;'}" ${quotation.status === 'approved' ? `onclick="event.stopPropagation(); convertToOrder(${quotation.id})"` : 'disabled'}>📦 Order</button>
           </td>
         </tr>
       `).join('');
@@ -19867,6 +20073,431 @@
     // ── Refresh ─────────────────────────────────────────────────
 
     document.getElementById('refreshWorkshopsBtn').addEventListener('click', () => wsLoadWorkshops());
+
+    // ========== ORDER FUNCTIONS ==========
+
+    let allOrdersCache = [];
+
+    // Convert quotation to order
+    window.convertToOrder = async function(quotationId) {
+      try {
+        const response = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quotationId })
+        });
+        const data = await response.json();
+        if (data.success) {
+          alert(`Order created: ${data.order.orderSeq}`);
+          // Navigate to Order > Created
+          ensureTab('order-created', 'Order > Created');
+          activateTab('order-created');
+          displayOrders();
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (err) {
+        console.error('Error converting to order:', err);
+        alert('Failed to create order');
+      }
+    };
+
+    // Load and display orders
+    async function displayOrders() {
+      const tbody = document.getElementById('ordersTableBody');
+      try {
+        const response = await fetch('/api/orders');
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error);
+        allOrdersCache = data.orders || [];
+
+        // Apply filters
+        const statusFilter = document.getElementById('orderFilterStatus').value;
+        const searchFilter = document.getElementById('orderSearchInput').value.toLowerCase().trim();
+
+        let filtered = allOrdersCache;
+        if (statusFilter) {
+          filtered = filtered.filter(o => o.status === statusFilter);
+        }
+        if (searchFilter) {
+          filtered = filtered.filter(o =>
+            (o.orderSeq || '').toLowerCase().includes(searchFilter) ||
+            (o.quotationSeq || '').toLowerCase().includes(searchFilter) ||
+            (o.customerName || '').toLowerCase().includes(searchFilter) ||
+            (o.customerItemName || '').toLowerCase().includes(searchFilter) ||
+            (o.workshopName || '').toLowerCase().includes(searchFilter)
+          );
+        }
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="12" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">No orders found.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = filtered.map(order => {
+          const statusColor = { 'pending': '#17a2b8', 'in-production': '#007bff', 'completed': '#28a745' }[order.status] || '#666';
+          return `
+            <tr style="cursor:pointer;" onclick="viewOrder(${order.id})">
+              <td style="border:1px solid #000; padding:8px; text-align:center;" onclick="event.stopPropagation();">
+                <input type="checkbox" class="order-checkbox" data-order-id="${order.id}" style="cursor:pointer;" onchange="updateOrderPdfButton()">
+              </td>
+              <td style="border:1px solid #000; padding:8px; font-weight:600; color:#007bff;">${order.orderSeq}</td>
+              <td style="border:1px solid #000; padding:8px;">${order.quotationSeq || '-'}</td>
+              <td style="border:1px solid #000; padding:8px;">${order.customerName}</td>
+              <td style="border:1px solid #000; padding:8px;">${order.customerItemName || '-'}</td>
+              <td style="border:1px solid #000; padding:8px;">${order.productType}</td>
+              <td style="border:1px solid #000; padding:8px; text-align:right;">${(order.quantity || 0).toLocaleString()}</td>
+              <td style="border:1px solid #000; padding:8px;">${order.workshopName || '<span style="color:#ccc;">Not assigned</span>'}</td>
+              <td style="border:1px solid #000; padding:8px;"><span style="background:${statusColor}; color:#fff; padding:2px 8px; border-radius:3px; font-size:12px;">${order.status}</span></td>
+              <td style="border:1px solid #000; padding:8px;">${order.currentDepartment || '-'}</td>
+              <td style="border:1px solid #000; padding:8px;">${new Date(order.dateCreated).toLocaleDateString()}</td>
+              <td style="border:1px solid #000; padding:8px; text-align:center;">
+                <button class="page-btn" style="padding:4px 8px; font-size:11px;" onclick="event.stopPropagation(); viewOrder(${order.id})">View</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error('Error loading orders:', err);
+        tbody.innerHTML = `<tr><td colspan="12" style="border:1px solid #000; padding:20px; text-align:center; color:#dc3545;">Failed to load orders.</td></tr>`;
+      }
+    }
+
+    // Update PDF button visibility based on selection
+    function updateOrderPdfButton() {
+      const selected = document.querySelectorAll('.order-checkbox:checked');
+      document.getElementById('orderCreatePdfBtn').style.display = selected.length > 0 ? 'inline-block' : 'none';
+    }
+
+    // Show factory selection modal for bulk PDF
+    async function showFactorySelectionModal() {
+      const selectedIds = Array.from(document.querySelectorAll('.order-checkbox:checked')).map(cb => Number(cb.dataset.orderId));
+      if (selectedIds.length === 0) {
+        alert('Please select at least one order.');
+        return;
+      }
+
+      document.getElementById('orderFactoryModalCount').textContent = `${selectedIds.length} order(s) selected`;
+
+      // Load workshops for dropdown
+      try {
+        const res = await fetch('/api/workshops');
+        const data = await res.json();
+        const select = document.getElementById('orderFactorySelect');
+        select.innerHTML = '<option value="">-- Select Factory --</option>';
+        if (data.success && data.workshops) {
+          data.workshops.forEach(w => {
+            const opt = document.createElement('option');
+            opt.value = w.id;
+            opt.textContent = w.fullCompanyName + (w.country ? ` (${w.country})` : '');
+            select.appendChild(opt);
+          });
+        }
+      } catch (err) {
+        console.error('Error loading workshops:', err);
+      }
+
+      document.getElementById('orderFactoryModal').style.display = 'flex';
+    }
+
+    // Generate bulk PDF
+    async function generateBulkPdf() {
+      const workshopId = Number(document.getElementById('orderFactorySelect').value);
+      if (!workshopId) {
+        alert('Please select a factory.');
+        return;
+      }
+
+      const orderIds = Array.from(document.querySelectorAll('.order-checkbox:checked')).map(cb => Number(cb.dataset.orderId));
+
+      try {
+        // Use GET with query params to avoid ad blockers blocking POST to "document" URLs
+        const params = new URLSearchParams();
+        orderIds.forEach(id => params.append('ids', id));
+        params.append('workshopId', workshopId);
+
+        const url = '/api/orders/export?' + params.toString();
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'orders.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        document.getElementById('orderFactoryModal').style.display = 'none';
+        // Refresh to show updated factory assignments
+        displayOrders();
+      } catch (err) {
+        console.error('Error generating PDF:', err);
+        alert('Failed to generate PDF');
+      }
+    }
+
+    // View single order details
+    window.viewOrder = async function(orderId) {
+      try {
+        const response = await fetch(`/api/orders/detail/${orderId}`);
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error);
+        const order = data.order;
+
+        // Switch to view panel
+        ensureTab('order-view', `Order ${order.orderSeq}`);
+        activateTab('order-view');
+        document.getElementById('orderCreatedPanel').style.display = 'none';
+        document.getElementById('orderViewPanel').style.display = 'block';
+
+        // Render details
+        const detailHtml = `
+          <table style="width:100%; border-collapse:collapse;">
+            <tr><td style="padding:6px 10px; font-weight:600; width:140px;">PO Number:</td><td style="padding:6px 10px;">${order.orderSeq}</td></tr>
+            <tr><td style="padding:6px 10px; font-weight:600;">IP/OS Ref:</td><td style="padding:6px 10px;">${order.quotationSeq || '-'}</td></tr>
+            <tr><td style="padding:6px 10px; font-weight:600;">Customer:</td><td style="padding:6px 10px;">${order.customerName}</td></tr>
+            <tr><td style="padding:6px 10px; font-weight:600;">Contact:</td><td style="padding:6px 10px;">${order.contactPerson || '-'}</td></tr>
+            <tr><td style="padding:6px 10px; font-weight:600;">Email:</td><td style="padding:6px 10px;">${order.email || '-'}</td></tr>
+            <tr><td style="padding:6px 10px; font-weight:600;">Phone:</td><td style="padding:6px 10px;">${order.phone || '-'}</td></tr>
+            <tr><td style="padding:6px 10px; font-weight:600;">Factory:</td><td style="padding:6px 10px;">${order.workshopName || '<em>Not assigned</em>'}</td></tr>
+            <tr><td style="padding:6px 10px; font-weight:600;">Country:</td><td style="padding:6px 10px;">${order.country || '-'}</td></tr>
+            <tr><td style="padding:6px 10px; font-weight:600;">Product Type:</td><td style="padding:6px 10px;">${order.productType}</td></tr>
+            <tr><td style="padding:6px 10px; font-weight:600;">Quantity:</td><td style="padding:6px 10px;">${(order.quantity || 0).toLocaleString()}</td></tr>
+            <tr><td style="padding:6px 10px; font-weight:600;">Unit Price:</td><td style="padding:6px 10px;">${order.unitPrice || '-'}</td></tr>
+            <tr><td style="padding:6px 10px; font-weight:600;">Total:</td><td style="padding:6px 10px;">${order.total || '-'}</td></tr>
+            <tr><td style="padding:6px 10px; font-weight:600;">Status:</td><td style="padding:6px 10px;">${order.status}</td></tr>
+            <tr><td style="padding:6px 10px; font-weight:600;">Department:</td><td style="padding:6px 10px;">${order.currentDepartment || '-'}</td></tr>
+            <tr><td style="padding:6px 10px; font-weight:600;">Created:</td><td style="padding:6px 10px;">${new Date(order.dateCreated).toLocaleString()}</td></tr>
+          </table>
+        `;
+        document.getElementById('orderViewDetails').innerHTML = detailHtml;
+
+        // Render product details
+        const pd = order.productDetails || {};
+        if (Object.keys(pd).length > 0) {
+          const pdHtml = '<table style="width:100%; border-collapse:collapse;">' +
+            Object.entries(pd).map(([k, v]) =>
+              `<tr><td style="padding:6px 10px; font-weight:600; width:140px;">${k}:</td><td style="padding:6px 10px;">${typeof v === 'object' ? JSON.stringify(v) : v}</td></tr>`
+            ).join('') + '</table>';
+          document.getElementById('orderViewProductDetails').innerHTML = pdHtml;
+        } else {
+          document.getElementById('orderViewProductDetails').innerHTML = '<p style="color:#999;">No product details</p>';
+        }
+
+        // Render QR code
+        const qrContainer = document.getElementById('orderViewQR');
+        qrContainer.innerHTML = '';
+        if (order.workshopId) {
+          const qrData = JSON.stringify({
+            orderSeq: order.orderSeq,
+            productType: order.productType,
+            quantity: order.quantity,
+            country: order.country || '',
+            customerName: order.customerName
+          });
+          // Load qrcode.js if not already
+          await loadQrcodeLib();
+          new QRCode(qrContainer, {
+            text: qrData,
+            width: 200,
+            height: 200,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+          });
+        } else {
+          qrContainer.innerHTML = '<p style="color:#999; font-size:13px;">QR code will be generated after factory is assigned (via Create PDF).</p>';
+        }
+
+        // Render progress timeline
+        const progressContainer = document.getElementById('orderViewProgress');
+        const departments = ['CS Team', 'PMC', 'Material', 'Production', 'Cut and Fold', 'QC', 'Shipment', 'Account'];
+        const progressMap = {};
+        (order.progressHistory || []).forEach(p => { progressMap[p.department] = p; });
+
+        const progressHtml = departments.map(dept => {
+          const scan = progressMap[dept];
+          const isDone = !!scan;
+          const isCurrent = order.currentDepartment === dept;
+          const bg = isDone ? '#28a745' : (isCurrent ? '#ffc107' : '#e9ecef');
+          const color = isDone ? '#fff' : (isCurrent ? '#000' : '#666');
+          return `
+            <div style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #eee;">
+              <div style="width:24px; height:24px; border-radius:50%; background:${bg}; color:${color}; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600;">${isDone ? '✓' : (departments.indexOf(dept) + 1)}</div>
+              <div style="flex:1;">
+                <div style="font-weight:${isCurrent ? '700' : '400'}; font-size:13px;">${dept}</div>
+                ${isDone ? `<div style="font-size:11px; color:#666;">${new Date(scan.scannedAt).toLocaleString()}${scan.notes ? ' — ' + scan.notes : ''}</div>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+        progressContainer.innerHTML = progressHtml;
+
+        // PDF button for single order
+        document.getElementById('orderViewPdfBtn').onclick = () => {
+          if (!order.workshopId) {
+            alert('Please assign a factory first via the Created panel (select order → Create PDF).');
+            return;
+          }
+          // Download the PDF
+          window.open(`/api/orders/${order.id}/pdf`, '_blank');
+        };
+
+      } catch (err) {
+        console.error('Error viewing order:', err);
+        alert('Failed to load order details');
+      }
+    };
+
+    // Show order created panel (back from view)
+    window.showOrderCreated = function() {
+      document.getElementById('orderViewPanel').style.display = 'none';
+      document.getElementById('orderCreatedPanel').style.display = 'block';
+      ensureTab('order-created', 'Order > Created');
+      activateTab('order-created');
+    };
+
+    // QR Code library loader
+    let _qrcodeLib = null;
+    async function loadQrcodeLib() {
+      if (_qrcodeLib || window.QRCode) return;
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js';
+        script.onload = () => { _qrcodeLib = window.QRCode; resolve(); };
+        script.onerror = () => reject(new Error('Failed to load QRCode library'));
+        document.head.appendChild(script);
+      });
+    }
+
+    // ========== WEB QR SCANNER ==========
+
+    let _html5QrScanner = null;
+    let _scannedOrderData = null;
+
+    // Load html5-qrcode library
+    async function loadHtml5QrLib() {
+      if (window.Html5Qrcode) return;
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('Failed to load html5-qrcode library'));
+        document.head.appendChild(script);
+      });
+    }
+
+    // Open web QR scanner from Order > View
+    document.getElementById('orderScanQrBtn').onclick = () => {
+      startWebQrScanner();
+    };
+
+    // Also add scan entry from Order > Created menu
+    // (reuse the same scanner modal)
+
+    async function startWebQrScanner() {
+      _scannedOrderData = null;
+      document.getElementById('qrScanResult').style.display = 'none';
+      document.getElementById('qrScanStatus').textContent = 'Starting camera...';
+      document.getElementById('qrScanDepartment').value = '';
+      document.getElementById('qrScanNotes').value = '';
+
+      document.getElementById('qrScannerModal').style.display = 'flex';
+
+      try {
+        await loadHtml5QrLib();
+
+        if (_html5QrScanner) {
+          _html5QrScanner.clear();
+        }
+
+        _html5QrScanner = new Html5Qrcode('qrScannerRegion');
+
+        _html5QrScanner.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          onQrScanSuccess,
+          () => {} // ignore scan failures (no match)
+        ).then(() => {
+          document.getElementById('qrScanStatus').textContent = 'Point camera at the QR code on the order PDF';
+        }).catch(err => {
+          document.getElementById('qrScanStatus').textContent = 'Camera error: ' + err;
+        });
+      } catch (err) {
+        document.getElementById('qrScanStatus').textContent = 'Failed to load scanner: ' + err.message;
+      }
+    }
+
+    function onQrScanSuccess(decodedText) {
+      // Stop scanning after first successful read
+      if (_html5QrScanner) {
+        _html5QrScanner.stop().catch(() => {});
+      }
+
+      _scannedOrderData = decodedText;
+      let orderSeq = decodedText;
+
+      // Try to parse as JSON (our QR codes are JSON)
+      try {
+        const parsed = JSON.parse(decodedText);
+        orderSeq = parsed.orderSeq || decodedText;
+      } catch (e) {
+        // Plain text QR - use as-is
+      }
+
+      document.getElementById('qrScanStatus').textContent = 'QR Code detected!';
+      document.getElementById('qrScanResult').style.display = 'block';
+      document.getElementById('qrScanResult').innerHTML = `<strong>Order:</strong> ${orderSeq}`;
+    }
+
+    // Submit scan from web scanner
+    document.getElementById('qrScanSubmitBtn').onclick = async () => {
+      if (!_scannedOrderData) {
+        alert('No QR code scanned yet. Point camera at a QR code first.');
+        return;
+      }
+
+      const department = document.getElementById('qrScanDepartment').value;
+      if (!department) {
+        alert('Please select a department.');
+        return;
+      }
+
+      const notes = document.getElementById('qrScanNotes').value.trim() || null;
+
+      // Extract orderSeq from QR data
+      let orderSeq = _scannedOrderData;
+      try {
+        const parsed = JSON.parse(_scannedOrderData);
+        orderSeq = parsed.orderSeq || _scannedOrderData;
+      } catch (e) {}
+
+      try {
+        const response = await fetch('/api/orders/progress/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderSeq, department, notes })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          document.getElementById('qrScanResult').innerHTML = `<strong style="color:#28a745;">✓ ${orderSeq} → ${department} recorded!</strong>`;
+          // Refresh order list if on that tab
+          if (document.getElementById('orderCreatedPanel').style.display !== 'none') {
+            displayOrders();
+          }
+        } else {
+          document.getElementById('qrScanResult').innerHTML = `<strong style="color:#dc3545;">✗ ${data.error || 'Failed'}</strong>${data.nextExpected ? '<br><em>Next expected: ' + data.nextExpected + '</em>' : ''}`;
+        }
+      } catch (err) {
+        alert('Network error: ' + err.message);
+      }
+    };
+
+    // Close scanner modal
+    document.getElementById('qrScanCloseBtn').onclick = () => {
+      if (_html5QrScanner) {
+        _html5QrScanner.stop().catch(() => {});
+      }
+      document.getElementById('qrScannerModal').style.display = 'none';
+    };
 
   </script>
 </body>
