@@ -174,7 +174,7 @@ class ProgressHistoryActivity : AppCompatActivity() {
                     gravity = Gravity.CENTER
 
                     val color = if (item.isScanned) {
-                        DepartmentColors.getColor(item.department)
+                        "#28a745" // Green for all completed departments
                     } else {
                         "#999999"
                     }

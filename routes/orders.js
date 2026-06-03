@@ -157,13 +157,7 @@ export function createOrderRoutes(deps) {
 
       const workshop = await getWorkshopById(order.workshopId);
 
-      const qrData = JSON.stringify({
-        orderSeq: order.orderSeq,
-        productType: order.productType,
-        quantity: order.quantity,
-        country: order.country || '',
-        customerName: order.customerName
-      });
+      const qrData = order.orderSeq;
       const qrBuffer = await QRCode.toBuffer(qrData, { width: 150, margin: 1, errorCorrectionLevel: 'H' });
 
       const doc = new PDFDocument({ size: 'A4', margin: 50, bufferPages: true });
@@ -245,13 +239,7 @@ export function createOrderRoutes(deps) {
         return res.status(404).json({ success: false, error: 'Order not found' });
       }
 
-      const qrData = JSON.stringify({
-        orderSeq: order.orderSeq,
-        productType: order.productType,
-        quantity: order.quantity,
-        country: order.country || '',
-        customerName: order.customerName
-      });
+      const qrData = order.orderSeq;
 
       const qrBuffer = await QRCode.toBuffer(qrData, {
         width: 300,

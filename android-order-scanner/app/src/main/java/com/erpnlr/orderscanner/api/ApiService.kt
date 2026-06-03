@@ -3,6 +3,7 @@ package com.erpnlr.orderscanner.api
 import com.erpnlr.orderscanner.models.ScanRequest
 import com.erpnlr.orderscanner.models.ScanResponse
 import com.erpnlr.orderscanner.models.LastScanResponse
+import com.erpnlr.orderscanner.models.OrderDetailResponse
 import com.erpnlr.orderscanner.models.ProgressHistoryResponse
 import retrofit2.Response
 import retrofit2.http.Body
@@ -19,4 +20,7 @@ interface ApiService {
 
     @GET("api/orders/progress/{orderSeq}")
     suspend fun getProgressHistory(@Path("orderSeq") orderSeq: String): Response<ProgressHistoryResponse>
+
+    @GET("api/orders/seq/{orderSeq}")
+    suspend fun getOrderBySeq(@Path("orderSeq") orderSeq: String): Response<OrderDetailResponse>
 }

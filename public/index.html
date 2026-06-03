@@ -20285,13 +20285,7 @@
         const qrContainer = document.getElementById('orderViewQR');
         qrContainer.innerHTML = '';
         if (order.workshopId) {
-          const qrData = JSON.stringify({
-            orderSeq: order.orderSeq,
-            productType: order.productType,
-            quantity: order.quantity,
-            country: order.country || '',
-            customerName: order.customerName
-          });
+          const qrData = order.orderSeq; // QR encodes PO# only
           // Load qrcode.js if not already
           await loadQrcodeLib();
           new QRCode(qrContainer, {
@@ -20322,7 +20316,7 @@
             <div style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #eee;">
               <div style="width:24px; height:24px; border-radius:50%; background:${bg}; color:${color}; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600;">${isDone ? '✓' : (departments.indexOf(dept) + 1)}</div>
               <div style="flex:1;">
-                <div style="font-weight:${isCurrent ? '700' : '400'}; font-size:13px;">${dept}</div>
+                <div style="font-weight:${isDone || isCurrent ? '700' : '400'}; font-size:13px; color:${isDone ? '#28a745' : '#333'};">${dept}</div>
                 ${isDone ? `<div style="font-size:11px; color:#666;">${new Date(scan.scannedAt).toLocaleString()}${scan.notes ? ' — ' + scan.notes : ''}</div>` : ''}
               </div>
             </div>
@@ -20431,20 +20425,52 @@
         _html5QrScanner.stop().catch(() => {});
       }
 
-      _scannedOrderData = decodedText;
-      let orderSeq = decodedText;
-
-      // Try to parse as JSON (our QR codes are JSON)
-      try {
-        const parsed = JSON.parse(decodedText);
-        orderSeq = parsed.orderSeq || decodedText;
-      } catch (e) {
-        // Plain text QR - use as-is
-      }
+      _scannedOrderData = decodedText.trim();
+      let orderSeq = _scannedOrderData;
 
       document.getElementById('qrScanStatus').textContent = 'QR Code detected!';
       document.getElementById('qrScanResult').style.display = 'block';
-      document.getElementById('qrScanResult').innerHTML = `<strong>Order:</strong> ${orderSeq}`;
+      document.getElementById('qrScanResult').innerHTML = `<strong>PO#:</strong> ${orderSeq} <em style="color:#666;">Loading order info...</em>`;
+
+      // Fetch order details to show below
+      fetch(`/api/orders/seq/${encodeURIComponent(orderSeq)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.order) {
+            const o = data.order;
+            const depts = ['CS Team', 'PMC', 'Material', 'Production', 'Cut and Fold', 'QC', 'Shipment', 'Account'];
+            const progressMap = {};
+            (o.progressHistory || []).forEach(p => { progressMap[p.department] = p; });
+
+            const progressHtml = depts.map(dept => {
+              const scan = progressMap[dept];
+              const isDone = !!scan;
+              const bg = isDone ? '#28a745' : '#e9ecef';
+              const color = isDone ? '#fff' : '#666';
+              return `<span style="display:inline-block; padding:3px 8px; margin:2px; border-radius:4px; background:${bg}; color:${color}; font-size:11px;">${isDone ? '✓ ' : ''}${dept}</span>`;
+            }).join('');
+
+            document.getElementById('qrScanResult').innerHTML = `
+              <div style="text-align:left; font-size:13px; line-height:1.6;">
+                <div style="font-size:16px; font-weight:700; margin-bottom:8px; color:#007bff;">PO# ${o.orderSeq}</div>
+                <div><strong>Ref:</strong> ${o.quotationSeq || '-'}</div>
+                <div><strong>Customer:</strong> ${o.customerName}</div>
+                <div><strong>Item:</strong> ${o.customerItemName || '-'}</div>
+                <div><strong>Product:</strong> ${o.productType}</div>
+                <div><strong>Qty:</strong> ${(o.quantity || 0).toLocaleString()}</div>
+                <div><strong>Factory:</strong> ${o.workshopName || 'Not assigned'}</div>
+                <div><strong>Status:</strong> ${o.status}</div>
+                <div style="margin-top:10px;"><strong>Progress:</strong></div>
+                <div style="margin-top:4px;">${progressHtml}</div>
+              </div>
+            `;
+          } else {
+            document.getElementById('qrScanResult').innerHTML = `<strong style="color:#dc3545;">Order not found: ${orderSeq}</strong>`;
+          }
+        })
+        .catch(() => {
+          document.getElementById('qrScanResult').innerHTML = `<strong>PO#:</strong> ${orderSeq} <em style="color:#dc3545;">Failed to load details</em>`;
+        });
     }
 
     // Submit scan from web scanner
@@ -20462,12 +20488,8 @@
 
       const notes = document.getElementById('qrScanNotes').value.trim() || null;
 
-      // Extract orderSeq from QR data
-      let orderSeq = _scannedOrderData;
-      try {
-        const parsed = JSON.parse(_scannedOrderData);
-        orderSeq = parsed.orderSeq || _scannedOrderData;
-      } catch (e) {}
+      // QR code is just the PO# text
+      let orderSeq = _scannedOrderData.trim();
 
       try {
         const response = await fetch('/api/orders/progress/scan', {
@@ -20479,10 +20501,14 @@
 
         if (data.success) {
           document.getElementById('qrScanResult').innerHTML = `<strong style="color:#28a745;">✓ ${orderSeq} → ${department} recorded!</strong>`;
-          // Refresh order list if on that tab
-          if (document.getElementById('orderCreatedPanel').style.display !== 'none') {
-            displayOrders();
-          }
+          // Refresh order list and close scanner after short delay
+          displayOrders();
+          setTimeout(() => {
+            if (_html5QrScanner) {
+              _html5QrScanner.stop().catch(() => {});
+            }
+            document.getElementById('qrScannerModal').style.display = 'none';
+          }, 1500);
         } else {
           document.getElementById('qrScanResult').innerHTML = `<strong style="color:#dc3545;">✗ ${data.error || 'Failed'}</strong>${data.nextExpected ? '<br><em>Next expected: ' + data.nextExpected + '</em>' : ''}`;
         }
