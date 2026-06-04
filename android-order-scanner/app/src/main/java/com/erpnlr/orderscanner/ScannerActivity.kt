@@ -145,12 +145,40 @@ class ScannerActivity : AppCompatActivity() {
                 }
                 setResult(RESULT_OK, resultIntent)
                 finish()
-            } else {
-                val intent = Intent(this, MainActivity::class.java).apply {
-                    putExtra(Constants.EXTRA_ORDER_SEQ, qrCode)
-                }
-                startActivity(intent)
+                return@runOnUiThread
             }
+
+            // Check if this is a bulk QR code (JSON with type: "bulk" or "cancel")
+            if (qrCode.trimStart().startsWith("{")) {
+                try {
+                    val gson = com.google.gson.Gson()
+                    val data = gson.fromJson(qrCode, Map::class.java)
+                    val type = data?.get("type") as? String
+                    if (type == "bulk") {
+                        // Navigate to orders list with bulk QR data
+                        val intent = Intent(this, OrdersListActivity::class.java).apply {
+                            putExtra("bulk_qr_data", qrCode)
+                        }
+                        startActivity(intent)
+                        return@runOnUiThread
+                    } else if (type == "cancel") {
+                        // Navigate to orders list to cancel PO#s
+                        val intent = Intent(this, OrdersListActivity::class.java).apply {
+                            putExtra("cancel_qr_data", qrCode)
+                        }
+                        startActivity(intent)
+                        return@runOnUiThread
+                    }
+                } catch (e: Exception) {
+                    // Not valid JSON, treat as regular QR
+                }
+            }
+
+            // Regular single PO# QR code
+            val intent = Intent(this, MainActivity::class.java).apply {
+                putExtra(Constants.EXTRA_ORDER_SEQ, qrCode)
+            }
+            startActivity(intent)
         }
     }
 

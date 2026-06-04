@@ -55,6 +55,23 @@
             android:exported="false"
             android:screenOrientation="portrait" />
 
+        <!-- Orders List Activity -->
+        <activity
+            android:name=".OrdersListActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <!-- FileProvider for sharing Excel exports -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- Settings Activity -->
         <activity
             android:name=".SettingsActivity"

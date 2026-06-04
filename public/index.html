@@ -2913,38 +2913,68 @@
 
       <!-- ─── Order Created Panel ────────────────────────────────── -->
       <div id="orderCreatedPanel" style="border:1px solid #000; padding:0; margin-bottom:20px; display:none; flex:1; min-height:0; overflow-y:auto;">
-        <div style="display:flex; gap:10px; padding:20px; border-bottom:1px solid #000; position:sticky; top:0; background:#fff; z-index:50;">
+        <div style="display:flex; gap:10px; padding:20px; border-bottom:1px solid #000; position:sticky; top:0; background:#fff; z-index:50; flex-wrap:wrap; align-items:center;">
           <button id="refreshOrdersBtn" class="page-btn">Refresh</button>
           <button id="orderCreatePdfBtn" class="page-btn" style="background:#28a745; color:#fff; display:none;">Create PDF</button>
-          <input type="text" id="orderSearchInput" placeholder="Search orders..." style="border:1px solid #000; padding:8px 12px; flex:1; font-size:14px;">
+          <button id="orderExportExcelBtn" class="page-btn" style="background:#0d6efd; color:#fff;">📊 Export Excel</button>
+          <button id="orderBulkDeleteBtn" class="page-btn" style="background:#dc3545; color:#fff; display:none;">🗑️ Delete Selected (<span id="orderBulkDeleteCount">0</span>)</button>
+          <button id="orderBulkScanBtn" class="page-btn" style="background:#6f42c1; color:#fff; display:none;">📷 Scan & Update Status</button>
+          <button id="orderBulkQrBtn" class="page-btn" style="background:#dc3545; color:#fff; display:none;">🔴 Generate Bulk QR</button>
           <select id="orderFilterStatus" style="border:1px solid #000; padding:8px 12px; font-size:14px;">
             <option value="">All Status</option>
             <option value="pending">Pending</option>
             <option value="in-production">In Production</option>
             <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
           </select>
         </div>
         <div style="padding:0 20px 20px 20px;">
           <table id="ordersTable" style="width:100%; border-collapse:collapse; border:1px solid #000;">
             <thead>
               <tr style="background:#f8f8f8;">
-                <th style="border:1px solid #000; padding:8px; text-align:center;"><input type="checkbox" id="orderSelectAll" style="cursor:pointer;"></th>
-                <th style="border:1px solid #000; padding:8px; text-align:left;">PO#</th>
-                <th style="border:1px solid #000; padding:8px; text-align:left;">IP/OS Ref</th>
-                <th style="border:1px solid #000; padding:8px; text-align:left;">Customer</th>
-                <th style="border:1px solid #000; padding:8px; text-align:left;">Item</th>
-                <th style="border:1px solid #000; padding:8px; text-align:left;">Product Type</th>
+                <th style="border:1px solid #000; padding:8px; text-align:center; width:30px;"><input type="checkbox" id="orderSelectAll" style="cursor:pointer;"></th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">
+                  <div>PO#</div>
+                  <input class="order-col-filter" data-field="orderSeq" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;" oninput="applyOrderColumnFilters()">
+                </th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">
+                  <div>IP/OS Ref</div>
+                  <input class="order-col-filter" data-field="quotationSeq" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;" oninput="applyOrderColumnFilters()">
+                </th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">
+                  <div>Customer</div>
+                  <input class="order-col-filter" data-field="customerName" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;" oninput="applyOrderColumnFilters()">
+                </th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">
+                  <div>Item</div>
+                  <input class="order-col-filter" data-field="customerItemName" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;" oninput="applyOrderColumnFilters()">
+                </th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">
+                  <div>Product Type</div>
+                  <input class="order-col-filter" data-field="productType" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;" oninput="applyOrderColumnFilters()">
+                </th>
                 <th style="border:1px solid #000; padding:8px; text-align:right;">Qty</th>
-                <th style="border:1px solid #000; padding:8px; text-align:left;">Factory</th>
-                <th style="border:1px solid #000; padding:8px; text-align:left;">Status</th>
-                <th style="border:1px solid #000; padding:8px; text-align:left;">Department</th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">
+                  <div>Factory</div>
+                  <input class="order-col-filter" data-field="workshopName" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;" oninput="applyOrderColumnFilters()">
+                </th>
+                <th style="border:1px solid #000; padding:8px; text-align:center; width:50px;">Image</th>
+                <th style="border:1px solid #000; padding:8px; text-align:center; width:50px;">QR</th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">
+                  <div>Status</div>
+                  <input class="order-col-filter" data-field="status" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;" oninput="applyOrderColumnFilters()">
+                </th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">
+                  <div>Department</div>
+                  <input class="order-col-filter" data-field="currentDepartment" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;" oninput="applyOrderColumnFilters()">
+                </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">Created</th>
                 <th style="border:1px solid #000; padding:8px; text-align:center;">Action</th>
               </tr>
             </thead>
             <tbody id="ordersTableBody">
               <tr>
-                <td colspan="12" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+                <td colspan="14" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
                   No orders yet. Convert approved quotations to orders.
                 </td>
               </tr>
@@ -2960,7 +2990,6 @@
             <button class="page-btn" onclick="showOrderCreated()">&#9664; Back to Orders</button>
             <div style="display:flex; gap:10px; align-items:center;">
               <button id="orderViewPdfBtn" class="page-btn" style="background:#28a745; color:#fff;">Download PDF</button>
-              <button id="orderScanQrBtn" class="page-btn" style="background:#007bff; color:#fff;">📷 Scan QR</button>
             </div>
           </div>
           <div id="orderViewContent" style="display:flex; gap:20px; flex-wrap:wrap;">
@@ -6999,13 +7028,103 @@
     document.getElementById('orderSelectAll').onchange = function() {
       const checked = this.checked;
       document.querySelectorAll('.order-checkbox').forEach(cb => { cb.checked = checked; });
-      updateOrderPdfButton();
+      updateOrderBulkButtons();
+    };
+
+    // Status filter dropdown
+    document.getElementById('orderFilterStatus').onchange = () => {
+      applyOrderFilters();
     };
 
     // Create PDF button
     document.getElementById('orderCreatePdfBtn').onclick = () => {
       showFactorySelectionModal();
     };
+
+    // Export Excel button
+    document.getElementById('orderExportExcelBtn').onclick = () => {
+      exportOrdersExcel();
+    };
+
+    // Bulk delete button
+    document.getElementById('orderBulkDeleteBtn').onclick = () => {
+      bulkDeleteOrders();
+    };
+
+    // Bulk scan update button
+    document.getElementById('orderBulkScanBtn').onclick = () => {
+      bulkScanUpdateStatus();
+    };
+
+    // Bulk QR generation button
+    document.getElementById('orderBulkQrBtn').onclick = () => {
+      generateBulkQr();
+    };
+
+    // Auto-refresh orders — polls every 5 seconds so Android scan changes appear immediately
+    setInterval(() => {
+      const panel = document.getElementById('orderCreatedPanel');
+      const viewPanel = document.getElementById('orderViewPanel');
+
+      // Refresh order list if panel is visible
+      if (panel && panel.style.display !== 'none') {
+        fetch('/api/orders').then(r => r.json()).then(data => {
+          if (data.success && data.orders) {
+            const oldStatuses = allOrdersCache.map(o => o.id + ':' + o.status + ':' + (o.currentDepartment || '')).join(',');
+            const newStatuses = data.orders.map(o => o.id + ':' + o.status + ':' + (o.currentDepartment || '')).join(',');
+            if (oldStatuses !== newStatuses) {
+              allOrdersCache = data.orders;
+              applyOrderFilters();
+            }
+          }
+        }).catch(() => {});
+      }
+
+      // Refresh individual order view if visible (e.g. Android just scanned it)
+      if (viewPanel && viewPanel.style.display !== 'none' && currentViewOrderId) {
+        fetch(`/api/orders/detail/${currentViewOrderId}`).then(r => r.json()).then(data => {
+          if (data.success && data.order) {
+            const order = data.order;
+            // Update status and department in the detail table
+            const detailDiv = document.getElementById('orderViewDetails');
+            if (detailDiv) {
+              const rows = detailDiv.querySelectorAll('tr');
+              rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length === 2) {
+                  const label = cells[0].textContent.trim();
+                  if (label === 'Status:') cells[1].textContent = order.status;
+                  if (label === 'Department:') cells[1].textContent = order.currentDepartment || '-';
+                }
+              });
+            }
+            // Update progress timeline
+            const progressContainer = document.getElementById('orderViewProgress');
+            if (progressContainer) {
+              const departments = ['CS Team', 'PMC', 'Material', 'Production', 'Cut and Fold', 'QC', 'Shipment', 'Account'];
+              const progressMap = {};
+              (order.progressHistory || []).forEach(p => { progressMap[p.department] = p; });
+              progressContainer.innerHTML = departments.map(dept => {
+                const scan = progressMap[dept];
+                const isDone = !!scan;
+                const isCurrent = order.currentDepartment === dept;
+                const bg = isDone ? '#28a745' : (isCurrent ? '#ffc107' : '#e9ecef');
+                const color = isDone ? '#fff' : (isCurrent ? '#000' : '#666');
+                return `
+                  <div style="display:flex; align-items:center; gap:10px; padding:8px; border-bottom:1px solid #eee;">
+                    <div style="width:24px; height:24px; border-radius:50%; background:${bg}; color:${color}; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600;">${isDone ? '✓' : (departments.indexOf(dept) + 1)}</div>
+                    <div style="flex:1;">
+                      <div style="font-weight:${isDone || isCurrent ? '700' : '400'}; font-size:13px; color:${isDone ? '#28a745' : '#333'};">${dept}</div>
+                      ${isDone ? `<div style="font-size:11px; color:#666;">${new Date(scan.scannedAt).toLocaleString()}${scan.notes ? ' — ' + scan.notes : ''}</div>` : ''}
+                    </div>
+                  </div>
+                `;
+              }).join('');
+            }
+          }
+        }).catch(() => {});
+      }
+    }, 5000);
 
     // Factory modal buttons
     document.getElementById('orderFactoryCancelBtn').onclick = () => {
@@ -7016,8 +7135,7 @@
     };
 
     // Order filter
-    document.getElementById('orderFilterStatus').onchange = () => { displayOrders(); };
-    document.getElementById('orderSearchInput').oninput = () => { displayOrders(); };
+    // (orderFilterStatus and other buttons are wired in the order-specific listener block above)
 
     // Customer submenu buttons
     const customerCreateBtn = document.getElementById('customerCreateBtn');
@@ -20111,35 +20229,60 @@
         if (!data.success) throw new Error(data.error);
         allOrdersCache = data.orders || [];
 
-        // Apply filters
-        const statusFilter = document.getElementById('orderFilterStatus').value;
-        const searchFilter = document.getElementById('orderSearchInput').value.toLowerCase().trim();
+        applyOrderFilters();
+      } catch (err) {
+        console.error('Error loading orders:', err);
+        tbody.innerHTML = `<tr><td colspan="14" style="border:1px solid #000; padding:20px; text-align:center; color:#dc3545;">Failed to load orders.</td></tr>`;
+      }
+    }
 
-        let filtered = allOrdersCache;
-        if (statusFilter) {
-          filtered = filtered.filter(o => o.status === statusFilter);
-        }
-        if (searchFilter) {
-          filtered = filtered.filter(o =>
-            (o.orderSeq || '').toLowerCase().includes(searchFilter) ||
-            (o.quotationSeq || '').toLowerCase().includes(searchFilter) ||
-            (o.customerName || '').toLowerCase().includes(searchFilter) ||
-            (o.customerItemName || '').toLowerCase().includes(searchFilter) ||
-            (o.workshopName || '').toLowerCase().includes(searchFilter)
-          );
-        }
+    // Apply all filters (status dropdown + column filters)
+    function applyOrderFilters() {
+      const statusFilter = document.getElementById('orderFilterStatus').value;
+      let filtered = allOrdersCache;
 
-        if (filtered.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="12" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">No orders found.</td></tr>`;
-          return;
-        }
+      if (statusFilter) {
+        filtered = filtered.filter(o => o.status === statusFilter);
+      }
 
-        tbody.innerHTML = filtered.map(order => {
-          const statusColor = { 'pending': '#17a2b8', 'in-production': '#007bff', 'completed': '#28a745' }[order.status] || '#666';
-          return `
-            <tr style="cursor:pointer;" onclick="viewOrder(${order.id})">
+      // Column-level filters
+      const colFilters = document.querySelectorAll('.order-col-filter');
+      colFilters.forEach(input => {
+        const val = input.value.toLowerCase().trim();
+        if (!val) return;
+        const field = input.dataset.field;
+        filtered = filtered.filter(o => {
+          const v = o[field];
+          if (v == null) return false;
+          return String(v).toLowerCase().includes(val);
+        });
+      });
+
+      renderOrderRows(filtered);
+    }
+
+    // Alias for column filter handler
+    function applyOrderColumnFilters() {
+      applyOrderFilters();
+    }
+
+    // Render order rows into the table
+    function renderOrderRows(filtered) {
+      const tbody = document.getElementById('ordersTableBody');
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="14" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">No orders found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(order => {
+        const statusColor = { 'pending': '#17a2b8', 'in-production': '#007bff', 'completed': '#28a745', 'cancelled': '#6c757d' }[order.status] || '#666';
+        const isCancelled = order.status === 'cancelled';
+        const rowStyle = isCancelled ? 'opacity:0.5;' : '';
+        return `
+            <tr style="cursor:pointer; ${rowStyle}" onclick="viewOrder(${order.id})">
               <td style="border:1px solid #000; padding:8px; text-align:center;" onclick="event.stopPropagation();">
-                <input type="checkbox" class="order-checkbox" data-order-id="${order.id}" style="cursor:pointer;" onchange="updateOrderPdfButton()">
+                <input type="checkbox" class="order-checkbox" data-order-id="${order.id}" style="cursor:pointer;" onchange="updateOrderBulkButtons()">
               </td>
               <td style="border:1px solid #000; padding:8px; font-weight:600; color:#007bff;">${order.orderSeq}</td>
               <td style="border:1px solid #000; padding:8px;">${order.quotationSeq || '-'}</td>
@@ -20148,25 +20291,338 @@
               <td style="border:1px solid #000; padding:8px;">${order.productType}</td>
               <td style="border:1px solid #000; padding:8px; text-align:right;">${(order.quantity || 0).toLocaleString()}</td>
               <td style="border:1px solid #000; padding:8px;">${order.workshopName || '<span style="color:#ccc;">Not assigned</span>'}</td>
+              <td style="border:1px solid #000; padding:4px; text-align:center;" onclick="event.stopPropagation();"><img src="/api/quotations/${order.quotationId}/profile-image" style="width:36px;height:36px;object-fit:cover;border-radius:3px;cursor:pointer;" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';" onclick="showImagePreview(this.src)" /><span style="display:none;color:#ccc;font-size:11px;">—</span></td>
+              <td style="border:1px solid #000; padding:4px; text-align:center;" onclick="event.stopPropagation();"><div class="order-qr-thumb" data-seq="${order.orderSeq}" style="width:36px;height:36px;cursor:pointer;display:inline-block;" onclick="showOrderQrModal('${order.orderSeq}')" title="Click to enlarge"></div></td>
               <td style="border:1px solid #000; padding:8px;"><span style="background:${statusColor}; color:#fff; padding:2px 8px; border-radius:3px; font-size:12px;">${order.status}</span></td>
               <td style="border:1px solid #000; padding:8px;">${order.currentDepartment || '-'}</td>
               <td style="border:1px solid #000; padding:8px;">${new Date(order.dateCreated).toLocaleDateString()}</td>
-              <td style="border:1px solid #000; padding:8px; text-align:center;">
+              <td style="border:1px solid #000; padding:8px; text-align:center; white-space:nowrap;">
                 <button class="page-btn" style="padding:4px 8px; font-size:11px;" onclick="event.stopPropagation(); viewOrder(${order.id})">View</button>
+                <button class="page-btn" style="padding:4px 8px; font-size:11px; background:#dc3545; color:#fff;" onclick="event.stopPropagation(); cancelSingleOrder(${order.id}, '${order.orderSeq}')" title="Cancel order">🗑️</button>
               </td>
             </tr>
           `;
-        }).join('');
+      }).join('');
+
+      updateOrderBulkButtons();
+      renderQrThumbnails();
+    }
+
+    // Render QR thumbnails on canvases (client-side, no server dependency)
+    async function renderQrThumbnails() {
+      try { await loadQrcodeLib(); } catch(e) { return; }
+      document.querySelectorAll('.order-qr-thumb').forEach(div => {
+        if (div.dataset.rendered) return;
+        try {
+          new QRCode(div, { text: div.dataset.seq, width: 72, height: 72, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.L });
+          div.dataset.rendered = '1';
+          // Scale down the generated canvas/img to fit the 36px container
+          const img = div.querySelector('img');
+          if (img) { img.style.width = '36px'; img.style.height = '36px'; }
+          const cvs = div.querySelector('canvas');
+          if (cvs) { cvs.style.width = '36px'; cvs.style.height = '36px'; }
+        } catch(e) { console.error('QR render error:', e); }
+      });
+    }
+
+    // Show QR modal for enlarged view
+    async function showOrderQrModal(orderSeq) {
+      try { await loadQrcodeLib(); } catch(e) {}
+
+      let modal = document.getElementById('orderQrModal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'orderQrModal';
+        modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;';
+        modal.innerHTML = `<div style="background:#fff;padding:30px;border-radius:8px;text-align:center;">
+          <h3 id="orderQrModalTitle" style="margin:0 0 15px 0;"></h3>
+          <div id="orderQrModalContent" style="display:flex;justify-content:center;"></div>
+          <button class="page-btn" style="margin-top:15px;" onclick="document.getElementById('orderQrModal').style.display='none'">Close</button>
+        </div>`;
+        document.body.appendChild(modal);
+      }
+      document.getElementById('orderQrModalTitle').textContent = orderSeq;
+      const container = document.getElementById('orderQrModalContent');
+      container.innerHTML = '';
+      try {
+        new QRCode(container, { text: orderSeq, width: 250, height: 250, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+      } catch(e) {
+        container.innerHTML = `<p style="color:#dc3545;">Failed to generate QR</p>`;
+      }
+      modal.style.display = 'flex';
+    }
+
+    // Cancel (soft delete) single order
+    async function cancelSingleOrder(orderId, orderSeq) {
+      if (!confirm(`Cancel order ${orderSeq}?`)) return;
+      try {
+        const res = await fetch('/api/orders/bulk-cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderIds: [orderId] })
+        });
+        const data = await res.json();
+        if (data.success) {
+          displayOrders();
+        } else {
+          alert('Failed: ' + data.error);
+        }
       } catch (err) {
-        console.error('Error loading orders:', err);
-        tbody.innerHTML = `<tr><td colspan="12" style="border:1px solid #000; padding:20px; text-align:center; color:#dc3545;">Failed to load orders.</td></tr>`;
+        alert('Error: ' + err.message);
       }
     }
 
-    // Update PDF button visibility based on selection
-    function updateOrderPdfButton() {
+    // Bulk delete selected orders
+    async function bulkDeleteOrders() {
+      const ids = getSelectedOrderIds();
+      if (ids.length === 0) return alert('No orders selected.');
+      if (!confirm(`Cancel ${ids.length} selected order(s)?`)) return;
+
+      // Collect PO#s from selected rows before cancelling
+      const poNumbers = [];
+      ids.forEach(id => {
+        const cb = document.querySelector(`.order-checkbox[data-order-id="${id}"]`);
+        if (cb) {
+          const row = cb.closest('tr');
+          if (row) poNumbers.push(row.children[1].textContent.trim());
+        }
+      });
+
+      try {
+        const res = await fetch('/api/orders/bulk-cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderIds: ids })
+        });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('orderSelectAll').checked = false;
+          // Show red QR modal for cancelled POs
+          if (poNumbers.length > 0) {
+            showCancelQrModal(poNumbers);
+          }
+          displayOrders();
+        } else {
+          alert('Failed: ' + data.error);
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    // Show red QR modal for cancelled POs
+    async function showCancelQrModal(poNumbers) {
+      const cancelData = JSON.stringify({ type: "cancel", action: "bulk-cancel", poNumbers, count: poNumbers.length });
+
+      let modal = document.getElementById('cancelQrModal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'cancelQrModal';
+        modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;';
+        modal.innerHTML = `<div style="background:#fff;padding:30px;border-radius:8px;text-align:center;max-width:500px;">
+          <h3 style="margin:0 0 10px 0; color:#dc3545;">🔴 CANCEL QR — <span id="cancelQrCount">0</span> PO#s Cancelled</h3>
+          <div id="cancelQrPoList" style="text-align:left; font-size:12px; margin-bottom:15px; max-height:100px; overflow-y:auto;"></div>
+          <div id="cancelQrImage" style="display:flex;justify-content:center;"></div>
+          <p style="font-size:11px; color:#666; margin-top:10px;">Scan this red QR with the Android app to cancel all included PO#s</p>
+          <button class="page-btn" style="margin-top:15px;" onclick="document.getElementById('cancelQrModal').style.display='none'">Close</button>
+        </div>`;
+        document.body.appendChild(modal);
+      }
+
+      document.getElementById('cancelQrCount').textContent = poNumbers.length;
+      document.getElementById('cancelQrPoList').innerHTML = poNumbers.map(p => `<span style="background:#dc3545;color:#fff;padding:2px 6px;border-radius:3px;margin:2px;display:inline-block;font-size:11px;">${p}</span>`).join(' ');
+
+      // Load QRCode library if not loaded yet
+      try { await loadQrcodeLib(); } catch(e) {}
+
+      const qrContainer = document.getElementById('cancelQrImage');
+      qrContainer.innerHTML = '';
+      try {
+        new QRCode(qrContainer, { text: cancelData, width: 250, height: 250, colorDark: '#dc3545', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+      } catch (e) {
+        qrContainer.innerHTML = `<pre style="font-size:9px;text-align:left;background:#f5f5f5;padding:10px;max-height:150px;overflow:auto;">${cancelData}</pre>`;
+      }
+
+      modal.style.display = 'flex';
+    }
+
+    // Bulk QR scan to update status
+    async function bulkScanUpdateStatus() {
+      const ids = getSelectedOrderIds();
+      if (ids.length === 0) return alert('No orders selected.');
+
+      // Show department selection
+      const departments = ['CS Team', 'PMC', 'Material', 'Production', 'Cut and Fold', 'QC', 'Shipment', 'Account'];
+      const dept = prompt(`Select department for ${ids.length} order(s).\n\nDepartments:\n${departments.map((d,i) => `${i+1}. ${d}`).join('\n')}\n\nEnter department name:`);
+      if (!dept || !departments.includes(dept)) {
+        if (dept) alert('Invalid department.');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/orders/bulk-scan-update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderIds: ids, department: dept })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`Updated ${data.updatedCount} order(s).` + (data.errors.length > 0 ? `\n\nErrors:\n${data.errors.map(e => `${e.orderSeq}: ${e.error}`).join('\n')}` : ''));
+          displayOrders();
+        } else {
+          alert('Failed: ' + data.error);
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    // Generate bulk red QR code for selected orders
+    async function generateBulkQr() {
+      const ids = getSelectedOrderIds();
+      if (ids.length === 0) return alert('No orders selected.');
+
+      // Get order sequences for selected orders
+      const poNumbers = [];
+      ids.forEach(id => {
+        const cb = document.querySelector(`.order-checkbox[data-order-id="${id}"]`);
+        if (cb) {
+          const row = cb.closest('tr');
+          if (row) poNumbers.push(row.children[1].textContent.trim());
+        }
+      });
+
+      const bulkData = JSON.stringify({ type: 'bulk', poNumbers, count: poNumbers.length });
+
+      let modal = document.getElementById('bulkQrModal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'bulkQrModal';
+        modal.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;';
+        modal.innerHTML = `<div style="background:#fff;padding:30px;border-radius:8px;text-align:center;max-width:500px;">
+          <h3 style="margin:0 0 10px 0; color:#dc3545;">🔴 BULK QR — <span id="bulkQrCount">0</span> PO#s</h3>
+          <div id="bulkQrPoList" style="text-align:left; font-size:12px; margin-bottom:15px; max-height:100px; overflow-y:auto;"></div>
+          <div id="bulkQrImage" style="display:flex;justify-content:center;"></div>
+          <p style="font-size:11px; color:#666; margin-top:10px;">Scan this red QR code with the Android app to mass-update all included PO#s</p>
+          <button class="page-btn" style="margin-top:15px;" onclick="document.getElementById('bulkQrModal').style.display='none'">Close</button>
+        </div>`;
+        document.body.appendChild(modal);
+      }
+
+      document.getElementById('bulkQrCount').textContent = poNumbers.length;
+      document.getElementById('bulkQrPoList').innerHTML = poNumbers.map(p => `<span style="background:#dc3545;color:#fff;padding:2px 6px;border-radius:3px;margin:2px;display:inline-block;font-size:11px;">${p}</span>`).join(' ');
+
+      // Load QRCode library if not loaded yet
+      try { await loadQrcodeLib(); } catch(e) {}
+
+      // Generate red QR code
+      const qrContainer = document.getElementById('bulkQrImage');
+      qrContainer.innerHTML = '';
+      try {
+        new QRCode(qrContainer, { text: bulkData, width: 250, height: 250, colorDark: '#dc3545', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+      } catch (e) {
+        qrContainer.innerHTML = `<pre style="font-size:9px;text-align:left;background:#f5f5f5;padding:10px;max-height:150px;overflow:auto;">${bulkData}</pre>`;
+      }
+
+      modal.style.display = 'flex';
+    }
+
+    // Export orders to Excel (client-side using ExcelJS)
+    async function exportOrdersExcel() {
+      try {
+        const ExcelJS = await loadExcelJsLib();
+        const workbook = new ExcelJS.Workbook();
+        const ws = workbook.addWorksheet('Orders');
+
+        // Apply same filters as display
+        const statusFilter = document.getElementById('orderFilterStatus').value;
+        let orders = [...allOrdersCache];
+        if (statusFilter) {
+          orders = orders.filter(o => o.status === statusFilter);
+        }
+
+        // Column filters
+        document.querySelectorAll('.order-col-filter').forEach(input => {
+          const val = input.value.toLowerCase().trim();
+          if (!val) return;
+          const field = input.dataset.field;
+          orders = orders.filter(o => {
+            const v = o[field];
+            return v != null && String(v).toLowerCase().includes(val);
+          });
+        });
+
+        const columns = [
+          { header: 'PO#', key: 'orderSeq', width: 14 },
+          { header: 'IP/OS Ref', key: 'quotationSeq', width: 14 },
+          { header: 'Customer', key: 'customerName', width: 18 },
+          { header: 'Item', key: 'customerItemName', width: 18 },
+          { header: 'Product Type', key: 'productType', width: 14 },
+          { header: 'Qty', key: 'quantity', width: 10 },
+          { header: 'Unit Price', key: 'unitPrice', width: 12 },
+          { header: 'Total', key: 'total', width: 12 },
+          { header: 'Factory', key: 'workshopName', width: 20 },
+          { header: 'Status', key: 'status', width: 14 },
+          { header: 'Department', key: 'currentDepartment', width: 14 },
+          { header: 'Created', key: 'dateCreated', width: 14 }
+        ];
+
+        ws.columns = columns;
+
+        // Style header
+        const hdr = ws.getRow(1);
+        hdr.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        hdr.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
+        hdr.alignment = { vertical: 'middle', horizontal: 'center' };
+        hdr.height = 22;
+
+        for (const order of orders) {
+          ws.addRow({
+            orderSeq: order.orderSeq,
+            quotationSeq: order.quotationSeq || '-',
+            customerName: order.customerName || '-',
+            customerItemName: order.customerItemName || '-',
+            productType: order.productType || '-',
+            quantity: order.quantity,
+            unitPrice: order.unitPrice,
+            total: order.total,
+            workshopName: order.workshopName || '-',
+            status: order.status,
+            currentDepartment: order.currentDepartment || '-',
+            dateCreated: order.dateCreated ? new Date(order.dateCreated).toLocaleDateString() : '-'
+          });
+        }
+
+        const buf = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `orders-${new Date().toISOString().slice(0, 10)}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert('Export failed: ' + err.message);
+      }
+    }
+
+    // Helper: get selected order IDs
+    function getSelectedOrderIds() {
+      return Array.from(document.querySelectorAll('.order-checkbox:checked')).map(cb => Number(cb.dataset.orderId));
+    }
+
+    // Update all bulk action buttons visibility
+    function updateOrderBulkButtons() {
       const selected = document.querySelectorAll('.order-checkbox:checked');
-      document.getElementById('orderCreatePdfBtn').style.display = selected.length > 0 ? 'inline-block' : 'none';
+      const count = selected.length;
+      document.getElementById('orderCreatePdfBtn').style.display = count > 0 ? 'inline-block' : 'none';
+      document.getElementById('orderBulkDeleteBtn').style.display = count > 0 ? 'inline-block' : 'none';
+      document.getElementById('orderBulkScanBtn').style.display = count > 0 ? 'inline-block' : 'none';
+      document.getElementById('orderBulkQrBtn').style.display = count > 1 ? 'inline-block' : 'none';
+      const countEl = document.getElementById('orderBulkDeleteCount');
+      if (countEl) countEl.textContent = count;
     }
 
     // Show factory selection modal for bulk PDF
@@ -20225,8 +20681,11 @@
         document.body.removeChild(a);
 
         document.getElementById('orderFactoryModal').style.display = 'none';
-        // Refresh to show updated factory assignments
-        displayOrders();
+
+        // Auto-refresh factory column after PDF generation
+        setTimeout(() => {
+          displayOrders();
+        }, 2000);
       } catch (err) {
         console.error('Error generating PDF:', err);
         alert('Failed to generate PDF');
@@ -20234,6 +20693,9 @@
     }
 
     // View single order details
+    // Track currently viewed order for auto-refresh
+    let currentViewOrderId = null;
+
     window.viewOrder = async function(orderId) {
       try {
         const response = await fetch(`/api/orders/detail/${orderId}`);
@@ -20246,6 +20708,7 @@
         activateTab('order-view');
         document.getElementById('orderCreatedPanel').style.display = 'none';
         document.getElementById('orderViewPanel').style.display = 'block';
+        currentViewOrderId = orderId;
 
         // Render details
         const detailHtml = `
@@ -20344,6 +20807,7 @@
     window.showOrderCreated = function() {
       document.getElementById('orderViewPanel').style.display = 'none';
       document.getElementById('orderCreatedPanel').style.display = 'block';
+      currentViewOrderId = null;
       ensureTab('order-created', 'Order > Created');
       activateTab('order-created');
     };

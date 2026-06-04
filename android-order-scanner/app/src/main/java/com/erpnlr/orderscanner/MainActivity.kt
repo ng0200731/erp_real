@@ -217,7 +217,9 @@ class MainActivity : AppCompatActivity() {
                         setLoading(false)
                         Toast.makeText(this@MainActivity, getString(R.string.success_saved), Toast.LENGTH_SHORT).show()
                         clearForm()
-                        tvOrderSeq.postDelayed({ finish() }, 1500)
+                        // Refresh order details to show updated status, then finish
+                        fetchOrderDetails()
+                        tvOrderSeq.postDelayed({ finish() }, 2000)
                     }
                 } else {
                     val errorBody = if (response.isSuccessful) {

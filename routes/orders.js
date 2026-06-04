@@ -230,6 +230,23 @@ export function createOrderRoutes(deps) {
     }
   });
 
+  // Get QR code PNG by order sequence number
+  router.get('/seq/:orderSeq/qr', async (req, res) => {
+    try {
+      const orderSeq = req.params.orderSeq;
+      const qrBuffer = await QRCode.toBuffer(orderSeq, {
+        width: 300,
+        margin: 2,
+        errorCorrectionLevel: 'H'
+      });
+      res.set('Content-Type', 'image/png');
+      res.send(qrBuffer);
+    } catch (error) {
+      console.error('Error generating QR by seq:', error);
+      res.status(500).json({ success: false, error: 'Failed to generate QR code' });
+    }
+  });
+
   // Get QR code PNG for an order
   router.get('/:id/qr', async (req, res) => {
     try {
@@ -503,6 +520,147 @@ export function createOrderRoutes(deps) {
     } catch (error) {
       console.error('Error generating PDF:', error);
       res.status(500).json({ success: false, error: 'Failed to generate PDF' });
+    }
+  });
+
+  // ===== BULK OPERATIONS =====
+
+  // Soft-delete (cancel) orders — single or bulk
+  router.post('/bulk-cancel', async (req, res) => {
+    try {
+      const { orderIds } = req.body;
+      if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+        return res.status(400).json({ success: false, error: 'orderIds array is required' });
+      }
+
+      const now = new Date().toISOString();
+      let updatedCount = 0;
+      for (const orderId of orderIds) {
+        const existing = await getOrderById(orderId);
+        if (existing && existing.status !== 'cancelled') {
+          await updateOrder(orderId, { status: 'cancelled' });
+          updatedCount++;
+        }
+      }
+
+      res.json({ success: true, updatedCount });
+    } catch (error) {
+      console.error('Error cancelling orders:', error);
+      res.status(500).json({ success: false, error: 'Failed to cancel orders' });
+    }
+  });
+
+  // Bulk scan update — update department/status for multiple orders
+  router.post('/bulk-scan-update', async (req, res) => {
+    try {
+      const { orderIds, department, status } = req.body;
+      if (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0) {
+        return res.status(400).json({ success: false, error: 'orderIds array is required' });
+      }
+      if (!department) {
+        return res.status(400).json({ success: false, error: 'department is required' });
+      }
+
+      const results = [];
+      const errors = [];
+
+      for (const orderId of orderIds) {
+        const order = await getOrderById(orderId);
+        if (!order) {
+          errors.push({ orderId, error: 'Order not found' });
+          continue;
+        }
+
+        const scanResult = await recordOrderDepartmentScan(order.orderSeq, department, `Bulk scan update`);
+        if (scanResult.error) {
+          errors.push({ orderId, orderSeq: order.orderSeq, error: scanResult.error });
+        } else {
+          results.push({ orderId, orderSeq: order.orderSeq, department, status: scanResult.status || status });
+        }
+      }
+
+      res.json({ success: true, updatedCount: results.length, results, errors });
+    } catch (error) {
+      console.error('Error bulk scan update:', error);
+      res.status(500).json({ success: false, error: 'Failed to bulk update orders' });
+    }
+  });
+
+  // Export orders to Excel
+  router.get('/export-excel', async (req, res) => {
+    try {
+      const ExcelJS = (await import('exceljs')).default;
+      const statusFilter = req.query.status || '';
+      const searchFilter = (req.query.search || '').toLowerCase().trim();
+
+      let orders = await getAllOrders();
+
+      if (statusFilter) {
+        orders = orders.filter(o => o.status === statusFilter);
+      }
+      if (searchFilter) {
+        orders = orders.filter(o =>
+          (o.orderSeq || '').toLowerCase().includes(searchFilter) ||
+          (o.quotationSeq || '').toLowerCase().includes(searchFilter) ||
+          (o.customerName || '').toLowerCase().includes(searchFilter) ||
+          (o.customerItemName || '').toLowerCase().includes(searchFilter) ||
+          (o.workshopName || '').toLowerCase().includes(searchFilter)
+        );
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      const ws = workbook.addWorksheet('Orders');
+
+      const columns = [
+        { header: 'PO#', key: 'orderSeq', width: 14 },
+        { header: 'IP/OS Ref', key: 'quotationSeq', width: 14 },
+        { header: 'Customer', key: 'customerName', width: 18 },
+        { header: 'Item', key: 'customerItemName', width: 18 },
+        { header: 'Product Type', key: 'productType', width: 14 },
+        { header: 'Qty', key: 'quantity', width: 10 },
+        { header: 'Unit Price', key: 'unitPrice', width: 12 },
+        { header: 'Total', key: 'total', width: 12 },
+        { header: 'Factory', key: 'workshopName', width: 20 },
+        { header: 'Status', key: 'status', width: 14 },
+        { header: 'Department', key: 'currentDepartment', width: 14 },
+        { header: 'Created', key: 'dateCreated', width: 14 }
+      ];
+
+      ws.columns = columns;
+
+      // Style header
+      const hdr = ws.getRow(1);
+      hdr.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      hdr.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
+      hdr.alignment = { vertical: 'middle', horizontal: 'center' };
+      hdr.height = 22;
+
+      for (const order of orders) {
+        ws.addRow({
+          orderSeq: order.orderSeq,
+          quotationSeq: order.quotationSeq || '-',
+          customerName: order.customerName || '-',
+          customerItemName: order.customerItemName || '-',
+          productType: order.productType || '-',
+          quantity: order.quantity,
+          unitPrice: order.unitPrice,
+          total: order.total,
+          workshopName: order.workshopName || '-',
+          status: order.status,
+          currentDepartment: order.currentDepartment || '-',
+          dateCreated: order.dateCreated ? new Date(order.dateCreated).toLocaleDateString() : '-'
+        });
+      }
+
+      const filename = `orders-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (error) {
+      console.error('Error exporting orders to Excel:', error);
+      res.status(500).json({ success: false, error: 'Failed to export orders' });
     }
   });
 

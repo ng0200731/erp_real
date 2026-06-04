@@ -10,6 +10,7 @@ class HomeActivity : AppCompatActivity() {
 
     private lateinit var btnScan: MaterialButton
     private lateinit var btnSearch: MaterialButton
+    private lateinit var btnOrders: MaterialButton
     private lateinit var btnSettings: MaterialButton
     private lateinit var tvVersion: TextView
 
@@ -19,6 +20,7 @@ class HomeActivity : AppCompatActivity() {
 
         btnScan = findViewById(R.id.btnScan)
         btnSearch = findViewById(R.id.btnSearch)
+        btnOrders = findViewById(R.id.btnOrders)
         btnSettings = findViewById(R.id.btnSettings)
         tvVersion = findViewById(R.id.tvVersion)
 
@@ -31,6 +33,10 @@ class HomeActivity : AppCompatActivity() {
 
         btnSearch.setOnClickListener {
             startActivity(Intent(this, SearchActivity::class.java))
+        }
+
+        btnOrders.setOnClickListener {
+            startActivity(Intent(this, OrdersListActivity::class.java))
         }
 
         btnSettings.setOnClickListener {
