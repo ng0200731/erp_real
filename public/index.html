@@ -3051,8 +3051,9 @@
 
         <!-- Quotation Sub-board -->
         <div id="quotationSubBoard" style="display:none; margin-top:20px; padding:20px; border:1px solid #000; overflow:auto;">
-          <div id="quotationSubBoardHeader" style="margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid #000;">
+          <div id="quotationSubBoardHeader" style="margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid #000; display:flex; align-items:center; justify-content:space-between;">
             <h3 id="quotationSubBoardTitle" style="margin:0;"></h3>
+            <div id="quotationSubBoardActions" style="display:flex; gap:8px;"></div>
           </div>
           <div id="quotationSubBoardContent">
             <!-- Content will be dynamically loaded here -->
@@ -3317,8 +3318,9 @@
         <div id="emailQuotationModal" class="email-modal-overlay" style="display:none; z-index:10002;">
           <div class="email-modal" style="width:min(1400px, 95vw); height:min(900px, 90vh);">
             <div style="display:flex; flex-direction:column; width:100%; height:100%;">
-              <div class="email-modal-header" style="background:#ffeb3b; border-bottom:2px solid #000;">
+              <div class="email-modal-header" style="background:#ffeb3b; border-bottom:2px solid #000; display:flex; align-items:center; justify-content:space-between;">
                 <h2 class="email-modal-title" style="margin:0;">📧 Email Quotation</h2>
+                <div id="emailQuotationActions" style="display:flex; gap:8px;"></div>
                 <button id="emailQuotationModalClose" class="email-modal-close">×</button>
               </div>
               <div id="emailQuotationContent" style="flex:1; overflow:auto; padding:20px;">
@@ -8976,6 +8978,15 @@
       // Update modal title
       const titleElement = modal.querySelector('.email-modal-title');
       titleElement.innerHTML = `📧 Email Quotation - ${quotationName}`;
+
+      // Inject action buttons into email modal header
+      const emailActionsEl = document.getElementById('emailQuotationActions');
+      emailActionsEl.innerHTML =
+        '<button type="button" class="page-btn" onclick="fillDummyQuotationData(true)">Dummy 2</button>' +
+        '<button type="button" class="page-btn" onclick="fillDummyQuotationForm()">Dummy Fill</button>' +
+        '<button type="button" class="page-btn" onclick="clearQuotationForm()">Clear</button>' +
+        '<button type="button" class="page-btn" onclick="saveQuotationWithConfirmation(\'' + quotationType + '\', \'email\')">SAVE</button>' +
+        '<button type="button" class="page-btn primary" onclick="generateQuotation(\'' + quotationType + '\')">Generate PDF</button>';
 
       // Load quotation form content (pass isDummy2Mode flag)
       content.innerHTML = generateQuotationContent(quotationType, quotationName, 'email', window.isDummy2Mode || false);
@@ -14888,6 +14899,15 @@
       // Update title
       subBoardTitle.textContent = `${tagName} Quotation`;
 
+      // Inject action buttons into header row
+      const actionsEl = document.getElementById('quotationSubBoardActions');
+      actionsEl.innerHTML =
+        '<button type="button" class="page-btn" onclick="fillDummyQuotationData(true)">Dummy 2</button>' +
+        '<button type="button" class="page-btn" onclick="fillDummyQuotationForm()">Dummy Fill</button>' +
+        '<button type="button" class="page-btn" onclick="clearQuotationForm()">Clear</button>' +
+        '<button type="button" class="page-btn" onclick="saveQuotationWithConfirmation(\'' + tagType + '\', \'non email\')">SAVE</button>' +
+        '<button type="button" class="page-btn primary" onclick="generateQuotation(\'' + tagType + '\')">Generate PDF</button>';
+
       // Refresh brands cache then generate content
       loadBrandsCache().then(() => {
         const content = generateQuotationContent(tagType, tagName, 'non email');
@@ -15903,14 +15923,6 @@
             '<div style="margin-bottom:20px;">' +
               '<h4>Additional Notes</h4>' +
               '<textarea id="quotationNotes" style="width:100%; min-height:80px; padding:8px; border:1px solid #000;" placeholder="Special requirements, delivery instructions, etc."></textarea>' +
-            '</div>' +
-
-            '<div style="display:flex; gap:10px; justify-content:flex-end;">' +
-              '<button type="button" class="page-btn" onclick="fillDummyQuotationData(true)">Dummy 2</button>' +
-              '<button type="button" class="page-btn" onclick="fillDummyQuotationForm()">Dummy Fill</button>' +
-              '<button type="button" class="page-btn" onclick="clearQuotationForm()">Clear</button>' +
-              '<button type="button" class="page-btn" onclick="saveQuotationWithConfirmation(\'' + tagType + '\', \'' + source + '\')">SAVE</button>' +
-              '<button type="button" class="page-btn primary" onclick="generateQuotation(\'' + tagType + '\')">Generate PDF</button>' +
             '</div>' +
           '</form>' +
         '</div>' +
