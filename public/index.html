@@ -687,6 +687,33 @@
       text-align:center;
     }
     .row{ display:flex; gap:10px; flex-wrap:wrap; }
+
+    /* Condensed form styles */
+    .cf-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; }
+    .cf-grid .cf-full{ grid-column:1/-1; }
+    .cf-grid label{ display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:#555; margin-bottom:2px; }
+    .cf-grid input[type="text"],
+    .cf-grid input[type="tel"],
+    .cf-grid input[type="url"],
+    .cf-grid input[type="email"],
+    .cf-grid select,
+    .cf-grid textarea{ width:100%; padding:6px 8px; border:1px solid #000; font-size:13px; background:#fff; box-sizing:border-box; }
+    .cf-grid textarea{ min-height:48px; resize:vertical; }
+    .cf-grid select{ padding:5px 6px; }
+    /* Multi-select dropdown */
+    .ms-wrap{ position:relative; width:100%; box-sizing:border-box; }
+    .ms-btn{ display:flex; align-items:center; justify-content:space-between; width:100%; padding:6px 28px 6px 8px; border:1px solid #000; background:#fff; font-size:13px; cursor:pointer; min-height:30px; box-sizing:border-box; position:relative; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .ms-btn:hover{ background:#f5f5f5; }
+    .ms-btn::after{ content:'▾'; position:absolute; right:8px; top:50%; transform:translateY(-50%); font-size:11px; color:#555; pointer-events:none; }
+    .ms-dd{ display:none; position:absolute; top:calc(100% + 2px); left:0; right:0; background:#fff; border:1px solid #000; z-index:500; box-shadow:0 4px 8px rgba(0,0,0,0.15); }
+    .ms-dd.open{ display:block; }
+    .ms-dd label{ display:flex; align-items:center; gap:8px; padding:6px 10px; font-size:13px; font-weight:400; text-transform:none; color:#000; cursor:pointer; margin:0; white-space:nowrap; }
+    .ms-dd label:hover{ background:#f0f0f0; }
+    .ms-dd input[type="checkbox"]{ margin:0; flex-shrink:0; width:14px; height:14px; accent-color:#000; cursor:pointer; }
+    .cf-upload{ border:1px dashed #999; padding:10px; text-align:center; background:#fafafa; font-size:12px; color:#666; }
+    .cf-upload p{ margin:0 0 6px 0; }
+    .cf-upload input[type="file"]{ font-size:11px; }
+    .cf-actions{ display:flex; gap:8px; margin-top:10px; padding-top:8px; border-top:1px solid #ddd; }
     .notice{
       padding:12px;
       border-bottom:1px solid #000;
@@ -1672,7 +1699,7 @@
       </div>
 
       <!-- Customer board -->
-      <div id="customerPanel" style="border:1px solid #000; padding:20px; margin-bottom:20px; display:none;">
+      <div id="customerPanel" style="border:1px solid #000; padding:20px; margin-bottom:20px; display:none; flex:1; min-height:0; overflow-y:auto;">
         <!-- Customer Tabs -->
         <div class="tabs-bar" style="margin-bottom:20px;">
           <div class="tab tab-active" data-tab="customer-info">Customer</div>
@@ -1682,67 +1709,42 @@
         <!-- Customer Info Tab -->
         <div id="customerInfoTab" style="display:block;">
           <form id="customerForm">
-            <div class="row" style="margin-bottom:15px;">
-              <div style="flex:1;">
+            <div class="cf-grid">
+              <div>
                 <label for="companyName">Company Name *</label>
-                <input id="companyName" type="text" required style="width:100%;">
+                <input id="companyName" type="text" required>
               </div>
-            </div>
-
-            <div class="row" style="margin-bottom:15px;">
-              <div style="flex:1;">
+              <div>
                 <label for="emailDomain">Email Domain *</label>
-                <input id="emailDomain" type="text" placeholder="example.com" required style="width:100%;">
+                <input id="emailDomain" type="text" placeholder="example.com" required>
               </div>
-            </div>
-
-            <div class="row" style="margin-bottom:15px;">
-              <div style="flex:1;">
+              <div class="cf-full">
                 <label for="companyAddress">Address</label>
-                <textarea id="companyAddress" style="width:100%; min-height:60px;"></textarea>
+                <textarea id="companyAddress"></textarea>
               </div>
-            </div>
-
-            <div class="row" style="margin-bottom:15px;">
-              <div style="flex:1;">
+              <div>
                 <label for="companyTel">Telephone</label>
-                <input id="companyTel" type="tel" style="width:100%;">
+                <input id="companyTel" type="tel">
               </div>
-            </div>
-
-            <div class="row" style="margin-bottom:15px;">
-              <div style="flex:1;">
+              <div>
                 <label for="companyType">Type *</label>
-                <select id="companyType" required style="width:100%; padding:8px; border:1px solid #000; background:#fff;">
+                <select id="companyType" required>
                   <option value="">Select Type</option>
                   <option value="buyer">Buyer</option>
                   <option value="agent">Agent</option>
                 </select>
               </div>
-            </div>
-
-            <div class="row" style="margin-bottom:15px;">
-              <div style="flex:1;">
+              <div>
                 <label for="companyWebsite">Website</label>
-                <input id="companyWebsite" type="url" placeholder="https://www.example.com" style="width:100%;">
+                <input id="companyWebsite" type="url" placeholder="https://www.example.com">
               </div>
-            </div>
-
-            <div class="row" style="margin-bottom:15px;">
-              <div style="flex:1;">
+              <div>
                 <label for="companyDocs">Documents</label>
-                <div style="border:2px dashed #ccc; padding:20px; text-align:center; background:#f9f9f9;">
-                  <p>Drag & drop files here, or click to browse</p>
-                  <input id="companyDocs" type="file" multiple style="margin-top:10px;">
-                  <p style="font-size:0.8em; color:#666; margin-top:10px;">
-                    Support: Browse, Copy & Paste, Drag & Drop
-                  </p>
-                </div>
+                <input id="companyDocs" type="file" multiple style="font-size:12px;">
               </div>
             </div>
-
-            <div class="row">
-              <button type="button" id="dummyInputBtn" class="page-btn" style="margin-right:10px;">Dummy Input</button>
+            <div class="cf-actions">
+              <button type="button" id="dummyInputBtn" class="page-btn">Dummy Input</button>
               <button type="button" id="saveCustomerBtn" class="page-btn">Save & Continue to Members</button>
             </div>
           </form>
@@ -1828,70 +1830,49 @@
         <!-- Supplier Info Tab -->
         <div id="supplierInfoTab" style="display:block;">
           <form id="supplierForm">
-            <div class="row" style="margin-bottom:15px;">
-              <div style="flex:1;">
+            <div class="cf-grid">
+              <div>
                 <label for="supplierCompanyName">Company Name *</label>
-                <input id="supplierCompanyName" type="text" required style="width:100%;">
+                <input id="supplierCompanyName" type="text" required>
               </div>
-            </div>
-
-            <div class="row" style="margin-bottom:15px;">
-              <div style="flex:1;">
+              <div>
                 <label for="supplierEmailDomain">Email Domain *</label>
-                <input id="supplierEmailDomain" type="text" placeholder="example.com" required style="width:100%;">
+                <input id="supplierEmailDomain" type="text" placeholder="example.com" required>
               </div>
-            </div>
-
-            <div class="row" style="margin-bottom:15px;">
-              <div style="flex:1;">
+              <div class="cf-full">
                 <label for="supplierCompanyAddress">Address</label>
-                <textarea id="supplierCompanyAddress" style="width:100%; min-height:60px;"></textarea>
+                <textarea id="supplierCompanyAddress"></textarea>
               </div>
-            </div>
-
-            <div class="row" style="margin-bottom:15px;">
-              <div style="flex:1;">
+              <div>
                 <label for="supplierCompanyTel">Telephone</label>
-                <input id="supplierCompanyTel" type="tel" style="width:100%;">
+                <input id="supplierCompanyTel" type="tel">
               </div>
-            </div>
-
-            <div class="row" style="margin-bottom:15px;">
-              <div style="flex:1;">
-                <label for="supplierCompanyType">Type *</label>
-                <select id="supplierCompanyType" required style="width:100%; padding:8px; border:1px solid #000; background:#fff;">
-                  <option value="">Select Type</option>
-                  <option value="hang_tag">Hang Tag</option>
-                  <option value="woven_label">Woven Label</option>
-                  <option value="care_label">Care Label</option>
-                  <option value="transfer">Transfer</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="row" style="margin-bottom:15px;">
-              <div style="flex:1;">
-                <label for="supplierCompanyWebsite">Website</label>
-                <input id="supplierCompanyWebsite" type="url" placeholder="https://www.example.com" style="width:100%;">
-              </div>
-            </div>
-
-            <div class="row" style="margin-bottom:15px;">
-              <div style="flex:1;">
-                <label for="supplierCompanyDocs">Documents</label>
-                <div style="border:2px dashed #ccc; padding:20px; text-align:center; background:#f9f9f9;">
-                  <p>Drag & drop files here, or click to browse</p>
-                  <input id="supplierCompanyDocs" type="file" multiple style="margin-top:10px;">
-                  <p style="font-size:0.8em; color:#666; margin-top:10px;">
-                    Support: Browse, Copy & Paste, Drag & Drop
-                  </p>
+              <div>
+                <label>Type *</label>
+                <div class="ms-wrap" id="supplierTypeMs">
+                  <div class="ms-btn" onclick="this.nextElementSibling.classList.toggle('open')">
+                    <span class="ms-text">Select types...</span>
+                  </div>
+                  <div class="ms-dd">
+                    <label><input type="checkbox" value="hang_tag"> Hang Tag</label>
+                    <label><input type="checkbox" value="woven_label"> Woven Label</label>
+                    <label><input type="checkbox" value="care_label"> Care Label</label>
+                    <label><input type="checkbox" value="transfer"> Transfer</label>
+                    <label><input type="checkbox" value="other"> Other</label>
+                  </div>
                 </div>
               </div>
+              <div>
+                <label for="supplierCompanyWebsite">Website</label>
+                <input id="supplierCompanyWebsite" type="url" placeholder="https://www.example.com">
+              </div>
+              <div>
+                <label for="supplierCompanyDocs">Documents</label>
+                <input id="supplierCompanyDocs" type="file" multiple style="font-size:12px;">
+              </div>
             </div>
-
-            <div class="row">
-              <button type="button" id="supplierDummyInputBtn" class="page-btn" style="margin-right:10px;">Dummy Input</button>
+            <div class="cf-actions">
+              <button type="button" id="supplierDummyInputBtn" class="page-btn">Dummy Input</button>
               <button type="button" id="saveSupplierBtn" class="page-btn">Save & Continue to Members</button>
             </div>
           </form>
@@ -10732,6 +10713,37 @@
       return '📄';
     }
 
+    // Multi-select dropdown helpers
+    function msGetSelected(wrap) {
+      return Array.from(wrap.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+    }
+    function msSetSelected(wrap, values) {
+      const arr = (values || '').split(',').map(v => v.trim()).filter(Boolean);
+      wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = arr.includes(cb.value); });
+      msUpdateText(wrap);
+    }
+    function msUpdateText(wrap) {
+      const textEl = wrap.querySelector('.ms-text');
+      const typeNames = { hang_tag:'Hang Tag', woven_label:'Woven Label', care_label:'Care Label', transfer:'Transfer', other:'Other' };
+      const sel = msGetSelected(wrap);
+      textEl.textContent = sel.length ? sel.map(v => typeNames[v] || v).join(', ') : 'Select types...';
+    }
+    function msClear(wrap) {
+      wrap.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+      wrap.querySelector('.ms-text').textContent = 'Select types...';
+    }
+    // Close dropdowns on outside click & update text on change
+    document.addEventListener('click', function(e) {
+      document.querySelectorAll('.ms-wrap').forEach(wrap => {
+        if (!wrap.contains(e.target)) wrap.querySelector('.ms-dd').classList.remove('open');
+      });
+    });
+    document.addEventListener('change', function(e) {
+      if (e.target.type === 'checkbox' && e.target.closest('.ms-wrap')) {
+        msUpdateText(e.target.closest('.ms-wrap'));
+      }
+    });
+
     // Supplier Panel Functions
     function initializeSupplierPanel() {
       // Reset supplier data and disable member tab
@@ -10803,7 +10815,7 @@
       document.getElementById('supplierEmailDomain').value = 'abcmfg.com';
       document.getElementById('supplierCompanyAddress').value = '123 Industrial Park, Shenzhen, China';
       document.getElementById('supplierCompanyTel').value = '+86-755-12345678';
-      document.getElementById('supplierCompanyType').value = 'hang_tag';
+      msSetSelected(document.getElementById('supplierTypeMs'), 'hang_tag,woven_label');
       document.getElementById('supplierCompanyWebsite').value = 'https://www.abcmfg.com';
     }
 
@@ -11072,7 +11084,7 @@
       const emailDomain = document.getElementById('supplierEmailDomain').value.trim();
       const companyAddress = document.getElementById('supplierCompanyAddress').value.trim();
       const companyTel = document.getElementById('supplierCompanyTel').value.trim();
-      const companyType = document.getElementById('supplierCompanyType').value;
+      const companyType = msGetSelected(document.getElementById('supplierTypeMs')).join(',');
       const companyWebsite = document.getElementById('supplierCompanyWebsite').value.trim();
 
       // Validation
@@ -11298,7 +11310,7 @@
       document.getElementById('supplierEmailDomain').value = '';
       document.getElementById('supplierCompanyAddress').value = '';
       document.getElementById('supplierCompanyTel').value = '';
-      document.getElementById('supplierCompanyType').selectedIndex = 0;
+      msClear(document.getElementById('supplierTypeMs'));
       document.getElementById('supplierCompanyWebsite').value = '';
 
       // Clear file input
@@ -11341,29 +11353,7 @@
 
     function initializeSupplierFileUpload() {
       const fileInput = document.getElementById('supplierCompanyDocs');
-      const dropZone = fileInput.parentElement;
-
-      // Drag and drop functionality
-      dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.style.background = '#e8f4f8';
-      });
-
-      dropZone.addEventListener('dragleave', () => {
-        dropZone.style.background = '#f9f9f9';
-      });
-
-      dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.style.background = '#f9f9f9';
-        const files = Array.from(e.dataTransfer.files);
-        handleSupplierFiles(files);
-      });
-
-      // Click to browse
-      dropZone.addEventListener('click', () => {
-        fileInput.click();
-      });
+      if (!fileInput) return;
 
       fileInput.addEventListener('change', (e) => {
         const files = Array.from(e.target.files);
@@ -11544,7 +11534,8 @@
         'transfer': 'Transfer',
         'other': 'Other'
       };
-      return typeMap[type] || type || 'N/A';
+      if (!type) return 'N/A';
+      return type.split(',').map(t => typeMap[t.trim()] || t.trim()).join(', ');
     }
 
     async function displaySuppliers() {
@@ -11691,7 +11682,7 @@
 
       return suppliers.filter(supplier => {
         if (filters.name && !supplier.companyName.toLowerCase().includes(filters.name)) return false;
-        if (filters.type && supplier.companyType !== filters.type) return false;
+        if (filters.type && !supplier.companyType.split(',').includes(filters.type)) return false;
         if (filters.domain && !supplier.emailDomain.toLowerCase().includes(filters.domain)) return false;
         if (filters.phone && !(supplier.companyTel || '').toLowerCase().includes(filters.phone)) return false;
         if (filters.website && !(supplier.companyWebsite || '').toLowerCase().includes(filters.website)) return false;
@@ -11748,13 +11739,18 @@
             <label style="font-weight:700;">Company Name</label>
             <input id="editSupplierCompanyName" type="text" value="${escapeHtml(supplier.companyName || '')}" style="width:100%; padding:8px; border:1px solid #000;">
             <label style="font-weight:700;">Company Type</label>
-            <select id="editSupplierCompanyType" style="width:100%; padding:8px; border:1px solid #000;">
-              <option value="hang_tag" ${supplier.companyType === 'hang_tag' ? 'selected' : ''}>Hang Tag</option>
-              <option value="woven_label" ${supplier.companyType === 'woven_label' ? 'selected' : ''}>Woven Label</option>
-              <option value="care_label" ${supplier.companyType === 'care_label' ? 'selected' : ''}>Care Label</option>
-              <option value="transfer" ${supplier.companyType === 'transfer' ? 'selected' : ''}>Transfer</option>
-              <option value="other" ${supplier.companyType === 'other' ? 'selected' : ''}>Other</option>
-            </select>
+            <div class="ms-wrap" id="editSupplierTypeMs">
+              <div class="ms-btn" onclick="this.nextElementSibling.classList.toggle('open')">
+                <span class="ms-text">Select types...</span>
+              </div>
+              <div class="ms-dd">
+                <label><input type="checkbox" value="hang_tag"> Hang Tag</label>
+                <label><input type="checkbox" value="woven_label"> Woven Label</label>
+                <label><input type="checkbox" value="care_label"> Care Label</label>
+                <label><input type="checkbox" value="transfer"> Transfer</label>
+                <label><input type="checkbox" value="other"> Other</label>
+              </div>
+            </div>
             <label style="font-weight:700;">Email Domain</label>
             <input id="editSupplierEmailDomain" type="text" value="${escapeHtml(supplier.emailDomain || '')}" style="width:100%; padding:8px; border:1px solid #000;">
             <label style="font-weight:700;">Telephone</label>
@@ -11775,18 +11771,35 @@
 
         cancelBtn.onclick = () => { try { document.body.removeChild(overlay); } catch {} resolve(false); };
         okBtn.onclick = async () => {
-          supplier.companyName = document.getElementById('editSupplierCompanyName').value.trim();
-          supplier.companyType = document.getElementById('editSupplierCompanyType').value;
-          supplier.emailDomain = document.getElementById('editSupplierEmailDomain').value.trim();
-          supplier.companyTel = document.getElementById('editSupplierCompanyTel').value.trim();
-          supplier.companyWebsite = document.getElementById('editSupplierCompanyWebsite').value.trim();
+          const newName = document.getElementById('editSupplierCompanyName').value.trim();
+          const newType = msGetSelected(document.getElementById('editSupplierTypeMs')).join(',');
+          const newDomain = document.getElementById('editSupplierEmailDomain').value.trim();
+          const newTel = document.getElementById('editSupplierCompanyTel').value.trim();
+          const newWebsite = document.getElementById('editSupplierCompanyWebsite').value.trim();
+
+          if (!newName) { showModal({ title: 'Validation Error', body: 'Company Name is required.' }); return; }
+          if (!newType) { showModal({ title: 'Validation Error', body: 'At least one Type is required.' }); return; }
+          if (!newDomain) { showModal({ title: 'Validation Error', body: 'Email Domain is required.' }); return; }
+
+          supplier.companyName = newName;
+          supplier.companyType = newType;
+          supplier.emailDomain = newDomain;
+          supplier.companyTel = newTel;
+          supplier.companyWebsite = newWebsite;
+
           try {
-            await fetch(`/api/suppliers/${supplier.id}`, {
+            const resp = await fetch(`/api/suppliers/${supplier.id}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(supplier)
             });
+            const result = await resp.json();
+            if (!result.success) {
+              showModal({ title: 'Error', body: 'Failed to update supplier: ' + (result.error || 'Unknown error') });
+              return;
+            }
             try { document.body.removeChild(overlay); } catch {}
+            showModal({ title: 'Success', body: 'Supplier updated successfully.' });
             resolve(true);
           } catch (err) {
             showModal({ title: 'Error', body: 'Failed to save supplier: ' + (err.message || err) });
@@ -11800,6 +11813,9 @@
         modal.appendChild(actions);
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
+
+        // Pre-fill multi-select AFTER appending to DOM so getElementById works
+        msSetSelected(document.getElementById('editSupplierTypeMs'), supplier.companyType);
       });
     }
 
