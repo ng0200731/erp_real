@@ -3074,6 +3074,18 @@
           </div>
           <div class="settings-section-body">
             <form id="settingsForm">
+              <h4>Customer Information</h4>
+              <div class="row" style="margin-bottom:10px;">
+                <div style="flex:1;">
+                  <label for="cfgCustomerName">Customer Name</label>
+                  <input id="cfgCustomerName" type="text" placeholder="Enter customer name">
+                </div>
+                <div style="flex:1;">
+                  <label for="cfgContactPerson">Contact Person</label>
+                  <input id="cfgContactPerson" type="text" placeholder="Enter contact person">
+                </div>
+              </div>
+
               <div class="row" style="margin-bottom:10px;">
                 <div style="flex:1;">
                   <label for="cfgMailUser">MAIL_USER</label>
@@ -3599,6 +3611,8 @@
     }
 
     // -------- SETTINGS (board) --------
+    const cfgCustomerName = document.getElementById('cfgCustomerName');
+    const cfgContactPerson = document.getElementById('cfgContactPerson');
     const cfgMailUser = document.getElementById('cfgMailUser');
     const cfgMailPass = document.getElementById('cfgMailPass');
     const cfgImapHost = document.getElementById('cfgImapHost');
@@ -3760,72 +3774,10 @@
 
     saveConfigBtn.onclick = async () => {
       try {
-        // 1) Validate settings form completeness FIRST (before any profile-name prompt)
-        const inputs = Array.from(settingsPanel.querySelectorAll('input'));
-        const missingLabels = [];
-
-        for (const input of inputs) {
-          // Skip inputs that are not actionable/visible
-          if (input.disabled) continue;
-          if (input.type === 'button' || input.type === 'submit' || input.type === 'reset') continue;
-
-          // Skip hidden inputs or anything inside a hidden container
-          // (offsetParent is null when display:none or not in layout)
-          if (input.type === 'hidden' || input.offsetParent === null) continue;
-
-          const value = (input.value ?? '').toString().trim();
-          if (value) continue;
-
-          // Derive label from <label for="..."> when possible, fallback to id/name
-          const labelEl = settingsPanel.querySelector(`label[for="${CSS.escape(input.id)}"]`);
-          const label = (labelEl?.textContent || input.name || input.id || 'Unnamed field').trim();
-          missingLabels.push(label);
-        }
-
-        if (missingLabels.length) {
-          await showModal({
-            title: 'Incomplete fields',
-            body: `Please fill in:\n${missingLabels.join('\n')}`
-          });
-          return;
-        }
-
-        // 2) Load existing profiles (for duplicate name check)
-        const listRes = await fetch('/api/profiles', { cache: 'no-cache' });
-        const listData = await listRes.json();
-        const profiles = listData?.profiles || [];
-
-        // 3) Prompt for profile name (required + unique)
-        let profileName = currentEditingProfileId ? (profiles.find(p => p.id === currentEditingProfileId)?.name || '') : '';
-        while (true) {
-          const result = await showTextInputModal({
-            title: 'Profile name',
-            label: 'Profile name (required):',
-            initialValue: profileName,
-            okText: 'OK',
-            cancelText: 'Cancel'
-          });
-
-          if (!result.ok) {
-            return; // user cancelled
-          }
-
-          profileName = (result.value || '').trim();
-          if (!profileName) {
-            await showModal({ title: 'Profile name required', body: 'Please enter a profile name.' });
-            continue;
-          }
-          const exists = profiles.some(p => String(p.name || '').toLowerCase() === profileName.toLowerCase() && p.id !== currentEditingProfileId);
-          if (exists) {
-            await showModal({ title: 'Name already exists', body: `Profile name "${profileName}" already exists. Please use a different name.` });
-            continue;
-          }
-          break;
-        }
-
+        // Build payload from form
         const payload = {
-          name: profileName,
-          remark: profileName,
+          customerName: cfgCustomerName.value.trim(),
+          contactPerson: cfgContactPerson.value.trim(),
           mailUser: cfgMailUser.value.trim(),
           mailPass: cfgMailPass.value,
           imapHost: cfgImapHost.value.trim(),
@@ -3835,21 +3787,49 @@
           smtpPort: cfgSmtpPort.value.trim(),
           smtpSecure: cfgSmtpSecure.value.trim(),
           port: cfgPort.value.trim(),
-          isActive: 0,
         };
 
-        const url = currentEditingProfileId ? `/api/profiles/${currentEditingProfileId}` : '/api/profiles';
-        const method = currentEditingProfileId ? 'PUT' : 'POST';
-
-        const res = await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (!data.success) {
-          await showCopyableError('Save Profile Error', JSON.stringify(data, null, 2));
+        if (!payload.mailUser) {
+          await showModal({ title: 'Validation', body: 'MAIL_USER is required.' });
           return;
+        }
+
+        if (currentEditingProfileId) {
+          // EDIT: save directly, keep existing name and active state
+          const res = await fetch(`/api/profiles/${currentEditingProfileId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if (!data.success) {
+            await showCopyableError('Save Error', JSON.stringify(data, null, 2));
+            return;
+          }
+        } else {
+          // CREATE: prompt for profile name
+          const result = await showTextInputModal({
+            title: 'Profile name',
+            label: 'Profile name (required):',
+            initialValue: '',
+            okText: 'OK',
+            cancelText: 'Cancel'
+          });
+          if (!result.ok || !(result.value || '').trim()) return;
+          payload.name = result.value.trim();
+          payload.remark = result.value.trim();
+          payload.isActive = 0;
+
+          const res = await fetch('/api/profiles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if (!data.success) {
+            await showCopyableError('Save Error', JSON.stringify(data, null, 2));
+            return;
+          }
         }
 
         settingsHasUnsavedChanges = false;
@@ -6761,7 +6741,7 @@
           item.style.cssText = 'padding:12px; border-bottom:1px solid #000; cursor:pointer;';
           item.innerHTML = `
             <div style="font-weight:700;">${p.name || 'Unnamed'}</div>
-            <div class="meta">${p.remark || ''}</div>
+            <div class="meta">${p.customerName ? p.customerName + (p.contactPerson ? ' / ' + p.contactPerson : '') : (p.remark || '')}</div>
             <div class="meta" style="font-size:0.85em;">${p.mailUser || ''} | Active: ${p.isActive ? 'Yes' : 'No'}</div>
           `;
           item.innerHTML += `<div style="margin-top:6px; display:flex; gap:6px;">
@@ -6792,6 +6772,8 @@
               // Edit profile
               currentEditingProfileId = p.id;
             settingsPanel.style.display = 'block';
+            cfgCustomerName.value = p.customerName || '';
+            cfgContactPerson.value = p.contactPerson || '';
             cfgMailUser.value = p.mailUser || '';
             cfgMailPass.value = p.mailPass || '';
             cfgImapHost.value = p.imapHost || '';
@@ -6854,6 +6836,8 @@
                 // Clicking a different profile or expanding - show it
               currentEditingProfileId = p.id;
               settingsPanel.style.display = 'block';
+              cfgCustomerName.value = p.customerName || '';
+              cfgContactPerson.value = p.contactPerson || '';
               cfgMailUser.value = p.mailUser || '';
               cfgMailPass.value = p.mailPass || '';
               cfgImapHost.value = p.imapHost || '';
@@ -7365,6 +7349,8 @@
       // Show blank form for new profile input
       settingsPanel.style.display = 'block';
       currentEditingProfileId = null; // create mode
+      cfgCustomerName.value = '';
+      cfgContactPerson.value = '';
       cfgMailUser.value = '';
       cfgMailPass.value = '';
       cfgImapHost.value = '';
