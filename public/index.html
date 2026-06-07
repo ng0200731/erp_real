@@ -15042,6 +15042,48 @@
             }
           });
         }
+        // Pre-populate customer info from active email profile
+        (async function prePopulateFromActiveProfile() {
+          try {
+            const res = await fetch('/api/profiles', { cache: 'no-cache' });
+            const data = await res.json();
+            if (!data.success) return;
+            const activeProfile = (data.profiles || []).find(p => p.isActive === 1);
+            if (!activeProfile) return;
+
+            const customerNameField = document.getElementById('quotationCustomerName');
+            const contactPersonField = document.getElementById('quotationContactPerson');
+            const emailField = document.getElementById('quotationEmail');
+
+            if (customerNameField && activeProfile.customerName) {
+              customerNameField.value = activeProfile.customerName;
+              customerNameField.disabled = true;
+              customerNameField.style.backgroundColor = '#f5f5f5';
+              customerNameField.style.color = '#666';
+              customerNameField.style.cursor = 'not-allowed';
+            }
+            if (contactPersonField && activeProfile.contactPerson) {
+              const option = document.createElement('option');
+              option.value = activeProfile.contactPerson;
+              option.textContent = activeProfile.contactPerson;
+              contactPersonField.appendChild(option);
+              contactPersonField.value = activeProfile.contactPerson;
+              contactPersonField.disabled = true;
+              contactPersonField.style.backgroundColor = '#f5f5f5';
+              contactPersonField.style.color = '#666';
+              contactPersonField.style.cursor = 'not-allowed';
+            }
+            if (emailField && activeProfile.mailUser) {
+              emailField.value = activeProfile.mailUser;
+              emailField.disabled = true;
+              emailField.style.backgroundColor = '#f5f5f5';
+              emailField.style.color = '#666';
+              emailField.style.cursor = 'not-allowed';
+            }
+          } catch (err) {
+            console.error('Failed to pre-populate from active profile:', err);
+          }
+        })();
       }, 100);
 
       // Set up event listeners for total calculation
@@ -18354,6 +18396,25 @@
           showPreview(file);
         }
       };
+
+      // Ctrl+V paste support for logo
+      document.addEventListener('paste', (e) => {
+        // Only handle if the drop zone is visible (brand form is open)
+        if (!dropZone || dropZone.offsetParent === null) return;
+        const items = e.clipboardData && e.clipboardData.items;
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.startsWith('image/')) {
+            e.preventDefault();
+            const file = items[i].getAsFile();
+            if (file) {
+              droppedFile = file;
+              showPreview(file);
+            }
+            break;
+          }
+        }
+      });
 
       // Expose getter for the save function
       window._getBrandLogoFile = () => droppedFile;
