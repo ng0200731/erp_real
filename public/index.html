@@ -1856,7 +1856,7 @@
                   <div class="ms-dd">
                     <label><input type="checkbox" value="hang_tag"> Hang Tag</label>
                     <label><input type="checkbox" value="woven_label"> Woven Label</label>
-                    <label><input type="checkbox" value="care_label"> Care Label</label>
+                    <label><input type="checkbox" value="printed_label"> Printed Label</label>
                     <label><input type="checkbox" value="transfer"> Transfer</label>
                     <label><input type="checkbox" value="other"> Other</label>
                   </div>
@@ -1913,7 +1913,7 @@
                     <option value="">All Types</option>
                     <option value="hang_tag">Hang Tag</option>
                     <option value="woven_label">Woven Label</option>
-                    <option value="care_label">Care Label</option>
+                    <option value="printed_label">Printed Label</option>
                     <option value="transfer">Transfer</option>
                     <option value="other">Other</option>
                   </select>
@@ -2032,8 +2032,8 @@
                     <option value="">All Types</option>
                     <option value="hang-tag">Hang Tag</option>
                     <option value="woven-label">Woven Label</option>
-                    <option value="care-label">Care Label</option>
                     <option value="heat-transfer">Heat Transfer</option>
+                    <option value="printed-label">Printed Label</option>
                     <option value="others">Others</option>
                   </select>
                 </th>
@@ -3061,6 +3061,24 @@
         </div>
       </div>
 
+      <!-- Outsourcing Create board -->
+      <div id="outsourcingCreatePanel" style="border:1px solid #000; padding:20px; margin-bottom:20px; display:none;">
+        <div id="outsourcingTagButtons" class="row" style="gap:10px; flex-wrap:wrap; margin-bottom:20px;">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Outsourcing Sub-board -->
+        <div id="outsourcingSubBoard" style="display:none; margin-top:20px; padding:20px; border:1px solid #000; overflow:auto;">
+          <div id="outsourcingSubBoardHeader" style="margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid #000; display:flex; align-items:center; justify-content:space-between;">
+            <h3 id="outsourcingSubBoardTitle" style="margin:0;"></h3>
+            <div id="outsourcingSubBoardActions" style="display:flex; gap:8px;"></div>
+          </div>
+          <div id="outsourcingSubBoardContent">
+            <!-- Content will be dynamically loaded here -->
+          </div>
+        </div>
+      </div>
+
       <!-- Settings board (IMAP/SMTP profile edit form) -->
       <div id="settingsPanel" style="border:0; padding:0; margin-bottom:20px; display:none;">
 
@@ -3301,8 +3319,8 @@
               <div class="sub-options" id="quotationSubOptions">
                 <button class="sub-option-btn" data-type="hang-tag" data-testid="quotation-hang-tag-btn">Hang Tag</button>
                 <button class="sub-option-btn" data-type="woven-label" data-testid="quotation-woven-label-btn">Woven Label</button>
-                <button class="sub-option-btn" data-type="care-label" data-testid="quotation-care-label-btn">Care Label</button>
-                <button class="sub-option-btn" data-type="transfer" data-testid="quotation-transfer-btn">Transfer</button>
+                <button class="sub-option-btn" data-type="transfer" data-testid="quotation-transfer-btn">Heat Transfer</button>
+                <button class="sub-option-btn" data-type="printed-label" data-testid="quotation-printed-label-btn">Printed Label</button>
                 <button class="sub-option-btn" data-type="outsource" data-testid="quotation-outsource-btn">Outsource</button>
               </div>
               <button class="action-btn" id="imageLibBtn">Image Lib</button>
@@ -3958,7 +3976,7 @@
     });
 
     // ========== PRODUCT TYPE MANAGEMENT ==========
-    const PRESET_PRODUCT_TYPES = ['Hang Tag', 'Woven Label', 'Care Label', 'Heat Transfer', 'Outsource', 'Silicon Patch', 'Embroidery Patch'];
+    const PRESET_PRODUCT_TYPES = ['Hang Tag', 'Woven Label', 'Heat Transfer', 'Printed Label', 'Outsource', 'Silicon Patch', 'Embroidery Patch'];
     let customProductTypes = [];
 
     function getAllProductTypes() {
@@ -4044,18 +4062,19 @@
           customProductTypes.length = 0;
           const savedTypes = data.defaults.productTypes || [];
           savedTypes.forEach(t => {
-            const isPreset = ['Hang Tag','Woven Label','Care Label','Heat Transfer','Outsource'].includes(t);
+            const isPreset = ['Hang Tag','Woven Label','Heat Transfer','Printed Label','Outsource'].includes(t);
             if (isPreset) PRESET_PRODUCT_TYPES.push(t);
             else customProductTypes.push(t);
           });
           // If no saved types, restore defaults
           if (PRESET_PRODUCT_TYPES.length === 0 && customProductTypes.length === 0) {
-            PRESET_PRODUCT_TYPES.push('Hang Tag','Woven Label','Care Label','Heat Transfer','Outsource');
+            PRESET_PRODUCT_TYPES.push('Hang Tag','Woven Label','Heat Transfer','Printed Label','Outsource');
           }
           renderBrandChips();
           renderProductTypeChips();
           populateQuotationSubOptions();
           populateQuotationTagButtons();
+          populateOutsourcingTagButtons();
         }
       } catch (err) {
         // First load may fail if no defaults saved yet - that's fine
@@ -4068,6 +4087,7 @@
     renderBrandChips();
     populateQuotationSubOptions();
     populateQuotationTagButtons();
+    populateOutsourcingTagButtons();
     loadQuotationDefaults();
 
     // Populate quotation sub-options buttons in email modal
@@ -4090,11 +4110,11 @@
       });
     }
 
-    // Populate quotation tag buttons in quotation create panel
+    // Populate quotation tag buttons in quotation create panel (excludes Outsource)
     function populateQuotationTagButtons() {
       const container = document.getElementById('quotationTagButtons');
       if (!container) return;
-      const types = getAllProductTypes();
+      const types = getAllProductTypes().filter(t => t !== 'Outsource');
       container.innerHTML = types.map(t => {
         const key = t.toLowerCase().replace(/ /g, '-');
         return '<button class="quotation-tag-btn page-btn" data-tag="' + key + '">' + escapeHtml(t) + '</button>';
@@ -4112,6 +4132,32 @@
           selectedQuotationTag = tagType;
           // Show sub-board with content
           showQuotationSubBoard(tagType, tagName);
+        });
+      });
+    }
+
+    // Populate outsourcing tag buttons in outsourcing create panel
+    function populateOutsourcingTagButtons() {
+      const container = document.getElementById('outsourcingTagButtons');
+      if (!container) return;
+      const types = getAllProductTypes().filter(t => t !== 'Outsource');
+      container.innerHTML = types.map(t => {
+        const key = t.toLowerCase().replace(/ /g, '-');
+        return '<button class="quotation-tag-btn page-btn" data-tag="' + key + '">' + escapeHtml(t) + '</button>';
+      }).join('');
+      // Bind click handlers
+      container.querySelectorAll('.quotation-tag-btn').forEach(button => {
+        button.addEventListener('click', () => {
+          const tagType = button.dataset.tag;
+          const tagName = button.textContent;
+          // Remove selected class from all buttons
+          container.querySelectorAll('.quotation-tag-btn').forEach(btn => btn.classList.remove('selected'));
+          // Add selected class to clicked button
+          button.classList.add('selected');
+          // Update selected tag
+          selectedQuotationTag = tagType;
+          // Show sub-board with content
+          showOutsourcingSubBoard(tagType, tagName);
         });
       });
     }
@@ -4199,7 +4245,8 @@
       document.getElementById('supplierViewPanel').style.display = id === 'supplier-view' ? 'block' : 'none';
       document.getElementById('tasksPanel').style.display = id === 'tasks' ? 'block' : 'none';
       document.getElementById('skillsPanel').style.display = id === 'skills' ? 'block' : 'none';
-      document.getElementById('quotationPanel').style.display = (id === 'quotation' || id === 'outsourcing') ? 'block' : 'none';
+      document.getElementById('quotationPanel').style.display = id === 'quotation' ? 'block' : 'none';
+      document.getElementById('outsourcingCreatePanel').style.display = id === 'outsourcing' ? 'block' : 'none';
       document.getElementById('quotationViewPanel').style.display = id === 'quotation-view' ? 'block' : 'none';
       document.getElementById('outsourcingViewPanel').style.display = id === 'outsourcing-view' ? 'block' : 'none';
       document.getElementById('brandCreatePanel').style.display = id === 'brand-create' ? 'block' : 'none';
@@ -7297,7 +7344,6 @@
       document.getElementById('quotationSubmenu').style.display = 'none';
       ensureTab('quotation', 'Quotation (create)');
       activateTab('quotation');
-      initializeQuotationPanel();
     };
 
     quotationViewBtn.onclick = () => {
@@ -7317,7 +7363,6 @@
       document.getElementById('outsourcingSubmenu').style.display = 'none';
       ensureTab('outsourcing', 'Outsourcing (create)');
       activateTab('outsourcing');
-      initializeOutsourcingPanel();
     };
 
     outsourcingViewBtn.onclick = () => {
@@ -8868,7 +8913,7 @@
     document.getElementById('invoiceRecordBtn').onclick = () => {};
 
     // Fill quotation form with random data (optionally keeping customer info fixed)
-    function fillDummyQuotationData(keepCustomerInfoFixed = false) {
+    window.fillDummyQuotationData = function(keepCustomerInfoFixed = false) {
       // Random dimensions
       const widths = ['0.5 inch', '1 inch', '1.5 inches', '2 inches', '2.5 inches', '3 inches'];
       const lengths = ['1 inch', '1.5 inches', '2 inches', '2.5 inches', '3 inches', '4 inches'];
@@ -10751,7 +10796,7 @@
     }
     function msUpdateText(wrap) {
       const textEl = wrap.querySelector('.ms-text');
-      const typeNames = { hang_tag:'Hang Tag', woven_label:'Woven Label', care_label:'Care Label', transfer:'Transfer', other:'Other' };
+      const typeNames = { hang_tag:'Hang Tag', woven_label:'Woven Label', printed_label:'Printed Label', transfer:'Transfer', other:'Other' };
       const sel = msGetSelected(wrap);
       textEl.textContent = sel.length ? sel.map(v => typeNames[v] || v).join(', ') : 'Select types...';
     }
@@ -11004,7 +11049,7 @@
 
     async function generateQuotationDummyData() {
       const statuses = ['pending', 'send to customer', 'price confirmed', 'sampling', 'sample delivered'];
-      const productTypes = ['hang-tag', 'woven-label', 'care-label', 'heat-transfer'];
+      const productTypes = ['hang-tag', 'woven-label', 'heat-transfer', 'printed-label'];
 
       const customerNames = [
         'Star Fashion Ltd', 'Ocean Apparel Co', 'Bright Textiles Inc',
@@ -11557,7 +11602,7 @@
       const typeMap = {
         'hang_tag': 'Hang Tag',
         'woven_label': 'Woven Label',
-        'care_label': 'Care Label',
+        'printed_label': 'Printed Label',
         'transfer': 'Transfer',
         'other': 'Other'
       };
@@ -11773,7 +11818,7 @@
               <div class="ms-dd">
                 <label><input type="checkbox" value="hang_tag"> Hang Tag</label>
                 <label><input type="checkbox" value="woven_label"> Woven Label</label>
-                <label><input type="checkbox" value="care_label"> Care Label</label>
+                <label><input type="checkbox" value="printed_label"> Printed Label</label>
                 <label><input type="checkbox" value="transfer"> Transfer</label>
                 <label><input type="checkbox" value="other"> Other</label>
               </div>
@@ -13884,7 +13929,7 @@
       const names = {
         'hang-tag': 'Hang Tag',
         'woven-label': 'Woven Label',
-        'care-label': 'Care Label',
+        'printed-label': 'Printed Label',
         'heat-transfer': 'Heat Transfer',
         'others': 'Others',
         'other': 'Other',
@@ -15132,6 +15177,138 @@
       });
     }
 
+    function showOutsourcingSubBoard(tagType, tagName) {
+      const subBoard = document.getElementById('outsourcingSubBoard');
+      const subBoardTitle = document.getElementById('outsourcingSubBoardTitle');
+      const subBoardContent = document.getElementById('outsourcingSubBoardContent');
+
+      // Update title
+      subBoardTitle.textContent = `${tagName} Outsourcing`;
+
+      // Inject action buttons into header row
+      const actionsEl = document.getElementById('outsourcingSubBoardActions');
+      actionsEl.innerHTML =
+        '<button type="button" class="page-btn" onclick="fillDummyQuotationData(true)">Dummy 2</button>' +
+        '<button type="button" class="page-btn" onclick="fillDummyQuotationForm()">Dummy Fill</button>' +
+        '<button type="button" class="page-btn" onclick="clearQuotationForm()">Clear</button>' +
+        '<button type="button" class="page-btn" onclick="saveQuotationWithConfirmation(\'' + tagType + '\', \'non email\')">SAVE</button>' +
+        '<button type="button" class="page-btn primary" onclick="generateQuotation(\'' + tagType + '\')">Generate PDF</button>';
+
+      // Refresh brands cache then generate content
+      loadBrandsCache().then(() => {
+        const content = generateQuotationContent(tagType, tagName, 'non email');
+        subBoardContent.innerHTML = content;
+
+      setTimeout(() => {
+        if (document.getElementById('quotationCustomerName')) {
+          window.customerAutocomplete = new CustomerAutocomplete('quotationCustomerName', 'customerAutocompleteDropdown');
+        }
+        initializeFileUploads(tagType);
+        initSizeRatioPreview('quotationSize', 'sizeRatioPreview');
+
+        // Add event listener for contact person selection
+        const contactPersonField = document.getElementById('quotationContactPerson');
+        if (contactPersonField) {
+          contactPersonField.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const emailField = document.getElementById('quotationEmail');
+            const phoneField = document.getElementById('quotationPhone');
+            if (selectedOption && selectedOption.value && selectedOption.dataset.memberData) {
+              const memberData = JSON.parse(selectedOption.dataset.memberData);
+              if (emailField && memberData.emailPrefix) {
+                emailField.value = `${memberData.emailPrefix}@${window.customerAutocomplete.selectedCustomer.emailDomain}`;
+                emailField.disabled = true;
+                emailField.style.backgroundColor = '#f5f5f5';
+                emailField.style.color = '#666';
+              }
+              if (phoneField && memberData.tel) {
+                phoneField.value = memberData.tel;
+                phoneField.disabled = true;
+                phoneField.style.backgroundColor = '#f5f5f5';
+                phoneField.style.color = '#666';
+              }
+            } else {
+              if (emailField) {
+                emailField.disabled = false;
+                emailField.style.backgroundColor = '#fff';
+                emailField.style.color = '#000';
+              }
+              if (phoneField) {
+                phoneField.disabled = false;
+                phoneField.style.backgroundColor = '#fff';
+                phoneField.style.color = '#000';
+              }
+            }
+          });
+        }
+
+        // Pre-populate customer info from active email profile
+        (async function prePopulateFromActiveProfile() {
+          try {
+            const res = await fetch('/api/profiles', { cache: 'no-cache' });
+            const data = await res.json();
+            if (!data.success) return;
+            const activeProfile = (data.profiles || []).find(p => p.isActive === 1);
+            if (!activeProfile) return;
+
+            const customerNameField = document.getElementById('quotationCustomerName');
+            const contactPersonField = document.getElementById('quotationContactPerson');
+            const emailField = document.getElementById('quotationEmail');
+
+            if (customerNameField && activeProfile.customerName) {
+              customerNameField.value = activeProfile.customerName;
+              customerNameField.disabled = true;
+              customerNameField.style.backgroundColor = '#f5f5f5';
+              customerNameField.style.color = '#666';
+              customerNameField.style.cursor = 'not-allowed';
+            }
+            if (contactPersonField && activeProfile.contactPerson) {
+              const option = document.createElement('option');
+              option.value = activeProfile.contactPerson;
+              option.textContent = activeProfile.contactPerson;
+              contactPersonField.appendChild(option);
+              contactPersonField.value = activeProfile.contactPerson;
+              contactPersonField.disabled = true;
+              contactPersonField.style.backgroundColor = '#f5f5f5';
+              contactPersonField.style.color = '#666';
+              contactPersonField.style.cursor = 'not-allowed';
+            }
+            if (emailField && activeProfile.mailUser) {
+              emailField.value = activeProfile.mailUser;
+              emailField.disabled = true;
+              emailField.style.backgroundColor = '#f5f5f5';
+              emailField.style.color = '#666';
+              emailField.style.cursor = 'not-allowed';
+            }
+          } catch (err) {
+            console.error('Failed to pre-populate from active profile:', err);
+          }
+        })();
+      }, 100);
+
+      // Set up event listeners for total calculation
+      setTimeout(() => {
+        const quantityInput = document.getElementById('quotationQuantity');
+        const unitPriceInput = document.getElementById('quotationUnitPrice');
+        if (quantityInput && unitPriceInput) {
+          const updateTotal = () => {
+            const quantity = parseFloat(quantityInput.value) || 0;
+            const unitPrice = parseFloat(unitPriceInput.value) || 0;
+            const total = quantity * unitPrice;
+            const totalInput = document.getElementById('quotationTotal');
+            if (totalInput) {
+              totalInput.value = total.toFixed(2);
+            }
+          };
+          quantityInput.addEventListener('input', updateTotal);
+          unitPriceInput.addEventListener('input', updateTotal);
+        }
+      }, 100);
+
+      subBoard.style.display = 'block';
+      });
+    }
+
     function initializeFileUploads(tagType) {
       // Profile Image Upload Functionality
       const profileImageDropZone = document.getElementById('profileImageDropZone');
@@ -15670,7 +15847,7 @@
 
     // Helper to generate Product Type dropdown from saved defaults
     function getProductTypeSelectHtml(tagType) {
-      const types = getAllProductTypes();
+      const types = getAllProductTypes().filter(t => t !== 'Outsource');
       const valueMap = {};
       types.forEach(t => {
         const key = t.toLowerCase().replace(/ /g, '-').replace(/_/g, '-');
@@ -15680,7 +15857,7 @@
         const key = t.toLowerCase().replace(/ /g, '-').replace(/_/g, '-');
         return '<option value="' + key + '"' + (key === tagType ? ' selected' : '') + '>' + escapeHtml(t) + '</option>';
       }).join('');
-      return '<select id="quotationProductType" style="width:100%; padding:8px; border:1px solid #000; background:#fff;">' + options + '</select>';
+      return '<select id="quotationProductType" style="width:100%; padding:8px; border:1px solid #000; background:#f5f5f5; color:#666; cursor:not-allowed;" disabled>' + options + '</select>';
     }
 
     function generateQuotationContentForView(tagType, tagName, quotation) {
@@ -15869,14 +16046,6 @@
 
             '<div style="margin-bottom:20px;">' +
               '<h4>Product Specifications</h4>' +
-              '<div style="margin-bottom:15px; padding:10px; background:#f8f8f8; border:1px solid #ddd;">' +
-                '<label style="display:block; margin-bottom:5px; font-weight:600; font-size:12px; color:#555;">Load from Saved Profile</label>' +
-                '<div style="display:flex; gap:8px; align-items:center;">' +
-                  '<select id="quotationProfileSelect" style="flex:1; padding:6px; border:1px solid #000; font-size:13px;"><option value="">-- Select a saved profile --</option></select>' +
-                  '<button type="button" id="loadProfileBtn" style="padding:6px 12px; background:#000; color:#fff; border:1px solid #000; cursor:pointer; font-size:12px;">Load</button>' +
-                  '<button type="button" id="saveAsProfileBtn" style="padding:6px 12px; background:#fff; color:#000; border:1px solid #000; cursor:pointer; font-size:12px;">Save Profile</button>' +
-                '</div>' +
-              '</div>' +
               '<div style="margin-bottom:15px;">' +
                 '<label style="display:block; margin-bottom:5px; font-weight:600;">Product Type *</label>' +
                 getProductTypeSelectHtml(tagType) +
@@ -15972,7 +16141,7 @@
         return { material: el('quotationMaterial'), size: el('quotationSize'), printingMethod: el('quotationPrintingMethod') };
       } else if (tagType === 'woven-label') {
         return { width: el('quotationWidth'), length: el('quotationLength'), colorCount: el('quotationColorCount'), edgeFinish: el('quotationEdgeFinish') };
-      } else if (tagType === 'care-label') {
+      } else if (tagType === 'printed-label') {
         return { materialType: el('quotationMaterialType'), washSymbols: el('quotationWashSymbols') };
       } else if (tagType === 'heat-transfer') {
         return { transferType: el('quotationTransferType'), application: el('quotationApplication') };
@@ -16089,7 +16258,7 @@
             </div>
           </div>
         `,
-        'care-label': `
+        'printed-label': `
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Material Type</label>
@@ -16328,7 +16497,7 @@
             </div>
           </div>
         `,
-        'care-label': `
+        'printed-label': `
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Material Type</label>
@@ -16623,7 +16792,15 @@
 
     // Global functions for quotation form
     window.clearQuotationForm = function() {
-      const form = document.getElementById('quotationForm');
+      // Find the visible form (email modal takes priority if open)
+      const emailModal = document.getElementById('emailQuotationModal');
+      let form;
+      if (emailModal && emailModal.style.display !== 'none') {
+        form = emailModal.querySelector('#quotationForm');
+      }
+      if (!form) {
+        form = document.getElementById('quotationForm');
+      }
       if (form) {
         // Save customer field values if they're disabled (from email view)
         const customerNameField = document.getElementById('quotationCustomerName');
@@ -16684,7 +16861,15 @@
     };
 
     window.fillDummyQuotationForm = async function() {
-      const form = document.getElementById('quotationForm');
+      // Find the visible form (email modal takes priority if open)
+      const emailModal = document.getElementById('emailQuotationModal');
+      let form;
+      if (emailModal && emailModal.style.display !== 'none') {
+        form = emailModal.querySelector('#quotationForm');
+      }
+      if (!form) {
+        form = document.getElementById('quotationForm');
+      }
       if (form) {
         fillDummyForm(form);
 
@@ -17304,7 +17489,7 @@
       const productTypeNames = {
         'hang-tag': 'Hang Tag',
         'woven-label': 'Woven Label',
-        'care-label': 'Care Label',
+        'printed-label': 'Printed Label',
         'transfer': 'Transfer',
         'other': 'Other'
       };
