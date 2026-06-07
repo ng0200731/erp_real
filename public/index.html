@@ -1310,8 +1310,6 @@
           <button id="supplierViewBtn" class="submenu-btn">View</button>
         </div>
       </div>
-      <button id="menuTasks" class="page-btn" data-short="T" data-full="Task List">T</button>
-      <button id="menuSkills" class="page-btn" data-short="K" data-full="Skills">K</button>
       <div class="menu-group">
       <button id="menuQuotation" class="page-btn" data-short="Q" data-full="Quotation" data-testid="menu-quotation">Q</button>
         <div id="quotationSubmenu" class="submenu" style="display:none;">
@@ -3466,8 +3464,6 @@
     const settingsPanel = document.getElementById('settingsPanel');
 
     const menuSettingsBtn = document.getElementById('menuSettings');
-    const menuTasksBtn = document.getElementById('menuTasks');
-    const menuSkillsBtn = document.getElementById('menuSkills');
     const menuQuotationBtn = document.getElementById('menuQuotation');
     const menuOutsourcingBtn = document.getElementById('menuOutsourcing');
     const menuBrandBtn = document.getElementById('menuBrand');
@@ -7260,14 +7256,12 @@
       initializeEmailSendPanel();
     };
 
-    // Hover on entire sidebar to show full text
+    // Hover on sidebar to expand full text, leave to collapse to first letter
     sidebar.onmouseenter = () => {
       menuEmailBtn.textContent = menuEmailBtn.dataset.full || 'Email';
       menuCustomerBtn.textContent = menuCustomerBtn.dataset.full || 'Customer';
       menuSupplierBtn.textContent = menuSupplierBtn.dataset.full || 'Supplier';
       menuSettingsBtn.textContent = menuSettingsBtn.dataset.full || 'Setting';
-      menuTasksBtn.textContent = menuTasksBtn.dataset.full || 'Task List';
-      menuSkillsBtn.textContent = menuSkillsBtn.dataset.full || 'Skills';
       menuQuotationBtn.textContent = menuQuotationBtn.dataset.full || 'Quotation';
       menuOutsourcingBtn.textContent = menuOutsourcingBtn.dataset.full || 'Outsourcing';
       menuBrandBtn.textContent = menuBrandBtn.dataset.full || 'Brand';
@@ -7279,8 +7273,6 @@
       menuCustomerBtn.textContent = menuCustomerBtn.dataset.short || 'C';
       menuSupplierBtn.textContent = menuSupplierBtn.dataset.short || 'S';
       menuSettingsBtn.textContent = menuSettingsBtn.dataset.short || 'S';
-      menuTasksBtn.textContent = menuTasksBtn.dataset.short || 'T';
-      menuSkillsBtn.textContent = menuSkillsBtn.dataset.short || 'K';
       menuQuotationBtn.textContent = menuQuotationBtn.dataset.short || 'Q';
       menuOutsourcingBtn.textContent = menuOutsourcingBtn.dataset.short || 'O';
       menuBrandBtn.textContent = menuBrandBtn.dataset.short || 'B';
@@ -7321,19 +7313,6 @@
       document.getElementById('brandSubmenu').style.display = 'none';
       ensureTab('brand-view', 'Brand (view)');
       activateTab('brand-view');
-    };
-
-    // Menu click: show tasks
-    menuTasksBtn.onclick = () => {
-      ensureTab('tasks', 'Task');
-      activateTab('tasks');
-    };
-
-    // Menu click: show agent skills
-    menuSkillsBtn.onclick = () => {
-      ensureTab('skills', 'Agent Skills');
-      activateTab('skills');
-      loadAgentSkills();
     };
 
     // Quotation submenu button
