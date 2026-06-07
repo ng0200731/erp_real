@@ -12,7 +12,7 @@
     "smtpPort": 465,
     "smtpSecure": "true",
     "port": 3001,
-    "isActive": 1
+    "isActive": 0
   },
   {
     "id": 2,
@@ -28,5 +28,35 @@
     "smtpSecure": "true",
     "port": 3001,
     "isActive": 0
+  },
+  {
+    "id": 3,
+    "name": "gmail",
+    "remark": "eric.brilliant@gmail.com - Gmail TLS",
+    "mailUser": "eric.brilliant@gmail.com",
+    "mailPass": "opqx pfna kagb bznr",
+    "imapHost": "imap.gmail.com",
+    "imapPort": 993,
+    "imapTls": "true",
+    "smtpHost": "smtp.gmail.com",
+    "smtpPort": 587,
+    "smtpSecure": "false",
+    "port": 3001,
+    "isActive": 0
+  },
+  {
+    "id": 4,
+    "name": "163",
+    "remark": "19902475292@163.com - 163.com SSL",
+    "mailUser": "19902475292@163.com",
+    "mailPass": "JDy8MigeNmsESZRa",
+    "imapHost": "imap.163.com",
+    "imapPort": 993,
+    "imapTls": "true",
+    "smtpHost": "smtp.163.com",
+    "smtpPort": 465,
+    "smtpSecure": "true",
+    "port": 3001,
+    "isActive": 1
   }
 ]

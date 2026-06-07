@@ -26,6 +26,24 @@ export function createSupplierRoutes(deps) {
     }
   });
 
+  // Update supplier member (must be before /:id to avoid "members" being captured as id)
+  router.put('/members/:memberId', async (req, res) => {
+    try {
+      const memberId = Number(req.params.memberId);
+      const memberData = req.body;
+
+      if (!memberData.name || !memberData.emailPrefix) {
+        return res.status(400).json({ success: false, error: 'Name and Email Prefix are required' });
+      }
+
+      await deps.updateSupplierMember(memberId, memberData);
+      res.json({ success: true, message: 'Member updated successfully' });
+    } catch (error) {
+      console.error('Error updating supplier member:', error);
+      res.status(500).json({ success: false, error: 'Failed to update supplier member' });
+    }
+  });
+
   // Get supplier by ID
   router.get('/:id', async (req, res) => {
     try {

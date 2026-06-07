@@ -6767,6 +6767,7 @@
           item.innerHTML += `<div style="margin-top:6px; display:flex; gap:6px;">
               <button class="btn ${p.isActive ? 'primary' : ''}" data-action="activate">${p.isActive ? 'Active' : 'Activate'}</button>
               <button class="btn" data-action="edit">Edit</button>
+              <button class="btn" data-action="test-send" style="background:#0d6efd; color:#fff;">Test Send</button>
               <button class="btn" data-action="delete">Delete</button>
             </div>`;
           item.onclick = (e) => {
@@ -6774,16 +6775,14 @@
             if (action === 'activate') {
               e.stopPropagation();
               (async () => {
-                // Toggle active state
-                const newActiveState = p.isActive ? 0 : 1;
-                const res = await fetch(`/api/profiles/${p.id}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ ...p, isActive: newActiveState })
+                if (p.isActive) return; // Already active
+                const res = await fetch(`/api/profiles/${p.id}/activate`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' }
                 });
                 const data = await res.json();
                 if (!data.success) {
-                  await showCopyableError('Update Profile Error', JSON.stringify(data, null, 2));
+                  await showCopyableError('Activate Profile Error', JSON.stringify(data, null, 2));
                   return;
                 }
                 await loadProfilesList(); // Refresh the list
@@ -6802,6 +6801,36 @@
             cfgSmtpPort.value = p.smtpPort || '';
             cfgSmtpSecure.value = p.smtpSecure || 'true';
             cfgPort.value = p.port || '';
+            settingsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else if (action === 'test-send') {
+              e.stopPropagation();
+              (async () => {
+                const btn = e.target;
+                const origText = btn.textContent;
+                // Prompt for recipient email
+                const toEmail = prompt(`Send test email to (from ${p.mailUser}):`, p.mailUser || '');
+                if (!toEmail || !toEmail.trim()) return;
+                btn.textContent = 'Sending...';
+                btn.disabled = true;
+                try {
+                  const res = await fetch(`/api/profiles/${p.id}/test-send`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to: toEmail.trim() })
+                  });
+                  const data = await res.json();
+                  if (data.success) {
+                    await showModal({ title: 'Test Email Sent', body: `Test email sent successfully from ${p.mailUser} to ${toEmail.trim()}.\nMessage ID: ${data.messageId || 'N/A'}` });
+                  } else {
+                    await showCopyableError('Test Send Failed', data.error || 'Unknown error');
+                  }
+                } catch (err) {
+                  await showCopyableError('Test Send Error', err.message);
+                } finally {
+                  btn.textContent = origText;
+                  btn.disabled = false;
+                }
+              })();
             } else if (action === 'delete') {
               e.stopPropagation();
               (async () => {
@@ -6834,6 +6863,7 @@
               cfgSmtpPort.value = p.smtpPort || '';
               cfgSmtpSecure.value = p.smtpSecure || 'true';
               cfgPort.value = p.port || '';
+              settingsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }
             }
           };
@@ -11926,32 +11956,42 @@
 
         cancelBtn.onclick = () => { try { document.body.removeChild(overlay); } catch {} resolve(false); };
         saveBtn.onclick = async () => {
-          // Show loading state
+          const newName = document.getElementById('editSupplierMemberName').value.trim();
+          const newEmail = document.getElementById('editSupplierMemberEmail').value.trim();
+          const newTitle = document.getElementById('editSupplierMemberTitle').value.trim();
+          const newTel = document.getElementById('editSupplierMemberTel').value.trim();
+
+          if (!newName) { showModal({ title: 'Validation Error', body: 'Name is required.' }); return; }
+          if (!newEmail) { showModal({ title: 'Validation Error', body: 'Email Prefix is required.' }); return; }
+
           saveBtn.disabled = true;
-          const originalText = saveBtn.textContent;
           saveBtn.textContent = 'Saving...';
 
-          member.name = document.getElementById('editSupplierMemberName').value.trim();
-          member.emailPrefix = document.getElementById('editSupplierMemberEmail').value.trim();
-          member.title = document.getElementById('editSupplierMemberTitle').value.trim();
-          member.tel = document.getElementById('editSupplierMemberTel').value.trim();
           try {
-            await fetch(`/api/suppliers/${supplier.id}`, {
+            const resp = await fetch(`/api/suppliers/members/${member.id}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(supplier)
+              body: JSON.stringify({ name: newName, emailPrefix: newEmail, title: newTitle, tel: newTel })
             });
+            const result = await resp.json();
+            if (!result.success) {
+              saveBtn.disabled = false;
+              saveBtn.textContent = 'Save';
+              showModal({ title: 'Error', body: 'Failed to update member: ' + (result.error || 'Unknown error') });
+              return;
+            }
+            // Update local data
+            member.name = newName;
+            member.emailPrefix = newEmail;
+            member.title = newTitle;
+            member.tel = newTel;
 
-            // Show success feedback
-            saveBtn.textContent = '✓ Saved';
-            setTimeout(() => {
-              try { document.body.removeChild(overlay); } catch {}
-              resolve(true);
-            }, 500);
+            try { document.body.removeChild(overlay); } catch {}
+            showModal({ title: 'Success', body: 'Member updated successfully.' });
+            resolve(true);
           } catch (err) {
-            // Reset button state on error
             saveBtn.disabled = false;
-            saveBtn.textContent = originalText;
+            saveBtn.textContent = 'Save';
             showModal({ title: 'Error', body: 'Failed to save member: ' + (err.message || err) });
           }
         };

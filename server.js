@@ -13,7 +13,7 @@ import {
   // Customer functions
   getAllCustomers, getCustomerById, createCustomer, updateCustomer, deleteCustomer, createCustomerMember, findCustomerByEmail,
   // Supplier functions
-  getAllSuppliers, getSupplierById, createSupplier, updateSupplier, deleteSupplier, createSupplierMember, findSupplierByEmail,
+  getAllSuppliers, getSupplierById, createSupplier, updateSupplier, deleteSupplier, createSupplierMember, updateSupplierMember, findSupplierByEmail,
   // Quotation functions
   getAllQuotations, getQuotationById, createQuotation, updateQuotation, deleteQuotation,
   // Quotation-Supplier linking functions
@@ -416,7 +416,8 @@ const supplierRoutes = createSupplierRoutes({
   createSupplier,
   updateSupplier,
   deleteSupplier,
-  createSupplierMember
+  createSupplierMember,
+  updateSupplierMember
 });
 app.use('/api/suppliers', supplierRoutes);
 

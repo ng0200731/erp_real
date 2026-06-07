@@ -2,6 +2,7 @@ import express from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import nodemailer from 'nodemailer';
 
 const router = express.Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -57,6 +58,36 @@ export function createProfileRoutes(deps) {
           imapTls: 'true',
           smtpHost: 'smtp.qiye.163.com',
           smtpPort: 994,
+          smtpSecure: 'true',
+          port: 3001,
+          isActive: 0,
+        },
+        {
+          id: 3,
+          name: 'gmail',
+          remark: 'eric.brilliant@gmail.com - Gmail TLS',
+          mailUser: 'eric.brilliant@gmail.com',
+          mailPass: 'opqx pfna kagb bznr',
+          imapHost: 'imap.gmail.com',
+          imapPort: 993,
+          imapTls: 'true',
+          smtpHost: 'smtp.gmail.com',
+          smtpPort: 587,
+          smtpSecure: 'false',
+          port: 3001,
+          isActive: 0,
+        },
+        {
+          id: 4,
+          name: '163',
+          remark: '19902475292@163.com - 163.com SSL',
+          mailUser: '19902475292@163.com',
+          mailPass: 'JDy8MigeNmsESZRa',
+          imapHost: 'imap.163.com',
+          imapPort: 993,
+          imapTls: 'true',
+          smtpHost: 'smtp.163.com',
+          smtpPort: 465,
           smtpSecure: 'true',
           port: 3001,
           isActive: 0,
@@ -164,6 +195,51 @@ export function createProfileRoutes(deps) {
     } catch (err) {
       console.error('Error activating profile:', err);
       res.status(500).json({ success: false, error: 'Failed to activate profile' });
+    }
+  });
+
+  // Test send email from a profile
+  router.post('/:id/test-send', async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const profiles = await loadProfiles();
+      const profile = profiles.find(p => p.id === id);
+      if (!profile) return res.status(404).json({ success: false, error: 'Profile not found' });
+
+      const toEmail = (req.body?.to || '').trim() || profile.mailUser;
+
+      const transport = nodemailer.createTransport({
+        host: profile.smtpHost,
+        port: Number(profile.smtpPort),
+        secure: profile.smtpSecure === 'true',
+        auth: {
+          user: profile.mailUser,
+          pass: profile.mailPass,
+        },
+        tls: { rejectUnauthorized: true },
+        connectionTimeout: 15000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
+      });
+
+      // For port 587 (STARTTLS)
+      if (profile.smtpSecure !== 'true') {
+        transport.options.requireTLS = true;
+      }
+
+      const info = await transport.sendMail({
+        from: `"ERP Test" <${profile.mailUser}>`,
+        to: toEmail,
+        subject: `ERP Test Email from ${profile.name}`,
+        text: `This is a test email from profile "${profile.name}" (${profile.mailUser}).\nSent to: ${toEmail}\nSent at: ${new Date().toISOString()}`,
+        html: `<p>This is a test email from profile <strong>${profile.name}</strong> (${profile.mailUser}).</p><p>Sent to: ${toEmail}</p><p>Sent at: ${new Date().toISOString()}</p>`,
+      });
+
+      transport.close();
+      res.json({ success: true, messageId: info.messageId });
+    } catch (err) {
+      console.error('Error test sending email:', err);
+      res.status(500).json({ success: false, error: `Test send failed: ${err.message}` });
     }
   });
 
