@@ -1250,7 +1250,7 @@
   <!-- Chart.js library for better chart layout and responsiveness -->
   <script src="/chart.umd.js"></script>
   <!-- ExcelJS for Excel export with embedded images -->
-  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="/exceljs.min.js"></script>
 </head>
 <body>
   <div id="layout">
@@ -1818,7 +1818,7 @@
       </div>
 
       <!-- Supplier board -->
-      <div id="supplierPanel" style="border:1px solid #000; padding:20px; margin-bottom:20px; display:none;">
+      <div id="supplierPanel" style="border:1px solid #000; padding:20px; margin-bottom:20px; display:none; flex:1; min-height:0; overflow-y:auto;">
         <!-- Supplier Tabs -->
         <div class="tabs-bar" style="margin-bottom:20px;">
           <div class="tab tab-active" data-tab="supplier-info">Supplier</div>
@@ -18607,7 +18607,7 @@
       if (_excelJsLib) return _excelJsLib;
       return new Promise((resolve, reject) => {
         const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+        script.src = '/exceljs.min.js';
         script.onload = () => { _excelJsLib = window.ExcelJS; resolve(_excelJsLib); };
         script.onerror = () => reject(new Error('Failed to load ExcelJS library'));
         document.head.appendChild(script);
@@ -20559,9 +20559,9 @@
           { header: 'Item', key: 'customerItemName', width: 18 },
           { header: 'Product Type', key: 'productType', width: 14 },
           { header: 'Qty', key: 'quantity', width: 10 },
-          { header: 'Unit Price', key: 'unitPrice', width: 12 },
-          { header: 'Total', key: 'total', width: 12 },
           { header: 'Factory', key: 'workshopName', width: 20 },
+          { header: 'Image', key: 'image', width: 10 },
+          { header: 'QR', key: 'qr', width: 10 },
           { header: 'Status', key: 'status', width: 14 },
           { header: 'Department', key: 'currentDepartment', width: 14 },
           { header: 'Created', key: 'dateCreated', width: 14 }
@@ -20576,21 +20576,81 @@
         hdr.alignment = { vertical: 'middle', horizontal: 'center' };
         hdr.height = 22;
 
-        for (const order of orders) {
-          ws.addRow({
+        const IMAGE_COL = 8; // 1-based column index for Image
+        const QR_COL = 9;    // 1-based column index for QR
+
+        for (let i = 0; i < orders.length; i++) {
+          const order = orders[i];
+          const rowIdx = i + 2;
+          const row = ws.addRow({
             orderSeq: order.orderSeq,
             quotationSeq: order.quotationSeq || '-',
             customerName: order.customerName || '-',
             customerItemName: order.customerItemName || '-',
             productType: order.productType || '-',
             quantity: order.quantity,
-            unitPrice: order.unitPrice,
-            total: order.total,
             workshopName: order.workshopName || '-',
+            image: '',
+            qr: '',
             status: order.status,
             currentDepartment: order.currentDepartment || '-',
             dateCreated: order.dateCreated ? new Date(order.dateCreated).toLocaleDateString() : '-'
           });
+          row.height = 52;
+
+          // Embed product image from quotation
+          if (order.quotationId) {
+            try {
+              const base64Data = await fetchProfileImageBase64(order.quotationId);
+              if (base64Data) {
+                const mimeType = base64Data.match(/data:(image\/\w+);/)?.[1] || 'image/jpeg';
+                const ext = mimeType.split('/')[1] || 'jpeg';
+                const base64 = base64Data.split(',')[1];
+                const imageId = workbook.addImage({ base64, extension: ext });
+                ws.addImage(imageId, {
+                  tl: { col: IMAGE_COL - 1 + 0.1, row: rowIdx - 1 + 0.1 },
+                  ext: { width: 48, height: 48 }
+                });
+              }
+            } catch (imgErr) {
+              console.warn('Could not embed image for order', order.id, imgErr);
+            }
+          }
+
+          // Generate and embed QR code
+          try {
+            await loadQrcodeLib();
+            const qrDiv = document.createElement('div');
+            qrDiv.style.display = 'none';
+            document.body.appendChild(qrDiv);
+            new QRCode(qrDiv, { text: order.orderSeq, width: 120, height: 120, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.L });
+            // Wait for QRCode to render
+            await new Promise(r => setTimeout(r, 100));
+            const qrCanvas = qrDiv.querySelector('canvas');
+            const qrImg = qrDiv.querySelector('img');
+            let qrBase64 = null;
+            if (qrCanvas) {
+              qrBase64 = qrCanvas.toDataURL('image/png').split(',')[1];
+            } else if (qrImg && qrImg.src) {
+              const resp = await fetch(qrImg.src);
+              const blob = await resp.blob();
+              qrBase64 = await new Promise(resolve => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.readAsDataURL(blob);
+              });
+            }
+            document.body.removeChild(qrDiv);
+            if (qrBase64) {
+              const qrImageId = workbook.addImage({ base64: qrBase64, extension: 'png' });
+              ws.addImage(qrImageId, {
+                tl: { col: QR_COL - 1 + 0.1, row: rowIdx - 1 + 0.1 },
+                ext: { width: 48, height: 48 }
+              });
+            }
+          } catch (qrErr) {
+            console.warn('Could not embed QR for order', order.id, qrErr);
+          }
         }
 
         const buf = await workbook.xlsx.writeBuffer();
