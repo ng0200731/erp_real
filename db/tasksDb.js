@@ -532,6 +532,22 @@ async function ensureSchema(db) {
     }
   }
 
+  try {
+    await db.exec(`ALTER TABLE quotations ADD COLUMN height_mm REAL;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding height_mm column:', err);
+    }
+  }
+
+  try {
+    await db.exec(`ALTER TABLE quotations ADD COLUMN width_mm REAL;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding width_mm column:', err);
+    }
+  }
+
   // Backfill quotationSeq for existing regular quotations (non-outsourcing)
   try {
     const existingSeqs = await db.all(`SELECT id FROM quotations WHERE quotationSeq IS NULL AND productType NOT IN ('other', 'others', 'outsource') ORDER BY id ASC`);
@@ -1036,8 +1052,8 @@ export async function createQuotation(quotationData) {
 
   const result = await db.run(
     `
-      INSERT INTO quotations (customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, outsourcingSeq, quotationSeq, brandId, customerItemName)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO quotations (customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, outsourcingSeq, quotationSeq, brandId, customerItemName, height_mm, width_mm)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       quotationData.customerName,
@@ -1061,7 +1077,9 @@ export async function createQuotation(quotationData) {
       outsourcingSeq,
       quotationSeq,
       quotationData.brandId || null,
-      quotationData.customerItemName || null
+      quotationData.customerItemName || null,
+      quotationData.height_mm || null,
+      quotationData.width_mm || null
     ]
   );
 
@@ -1072,7 +1090,7 @@ export async function getQuotationById(id) {
   const db = await getTasksDb();
   // Exclude profileImageBlob from general queries to avoid transferring large BLOB data
   const quotation = await db.get(
-    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations WHERE id = ?`,
+    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, height_mm, width_mm, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations WHERE id = ?`,
     [id]
   );
 
@@ -1088,7 +1106,7 @@ export async function getAllQuotations() {
   const db = await getTasksDb();
   // Exclude profileImageBlob from general queries to avoid transferring large BLOB data
   const quotations = await db.all(
-    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations ORDER BY dateCreated DESC`
+    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, height_mm, width_mm, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations ORDER BY dateCreated DESC`
   );
 
   // Parse JSON fields
@@ -1106,7 +1124,7 @@ export async function updateQuotation(id, quotationData) {
   await db.run(
     `
       UPDATE quotations
-      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?, outsourcingSeq = ?, quotationSeq = ?, selectedSupplierId = ?, selectedSupplierResponseId = ?, sampleReadyDate = ?, brandId = ?, customerItemName = ?, chaseSampleCount = ?, resubmitCount = ?
+      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?, outsourcingSeq = ?, quotationSeq = ?, selectedSupplierId = ?, selectedSupplierResponseId = ?, sampleReadyDate = ?, brandId = ?, customerItemName = ?, chaseSampleCount = ?, resubmitCount = ?, height_mm = ?, width_mm = ?
       WHERE id = ?
     `,
     [
@@ -1137,6 +1155,8 @@ export async function updateQuotation(id, quotationData) {
       quotationData.customerItemName || null,
       quotationData.chaseSampleCount || 0,
       quotationData.resubmitCount || 0,
+      quotationData.height_mm !== undefined ? quotationData.height_mm : null,
+      quotationData.width_mm !== undefined ? quotationData.width_mm : null,
       id
     ]
   );

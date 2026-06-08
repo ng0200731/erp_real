@@ -9160,11 +9160,9 @@
         // Initialize supplier autocomplete
         setupSupplierAutocomplete();
 
-        // Set initial visibility of supplier section based on product type
-        const productTypeSelect = document.getElementById('quotationProductType');
-        if (productTypeSelect) {
-          toggleSupplierSection(productTypeSelect.value);
-        }
+        // Set initial visibility of supplier section using quotationType parameter
+        // (not the dropdown value, since dropdown filters out 'outsource')
+        toggleSupplierSection(quotationType);
       }, 100);
     }
 
@@ -12233,8 +12231,13 @@
       // Load only 'other' type quotations from separate API endpoint
       const quotations = await loadOutsourcingQuotationsFromStorage();
 
-      // Populate Product Type dropdown dynamically from data
-      const productTypeSet = new Set(quotations.map(q => q.productType).filter(Boolean));
+      // Populate Product Type dropdown dynamically from data (use _productTag for outsourcing)
+      const productTypeSet = new Set(quotations.map(q => {
+        if (q.productType === 'outsource' && q.productDetails?._productTag) {
+          return q.productDetails._productTag;
+        }
+        return q.productType;
+      }).filter(Boolean));
       const productTypeSelect = document.getElementById('outsourcingFilterProductType');
       const currentProductType = productTypeSelect?.value || '';
       productTypeSelect.innerHTML = '<option value="">All Types</option>';
@@ -12429,7 +12432,7 @@
               <td style="border:1px solid #000; padding:8px;">${quotation.email || 'N/A'}</td>
               <td style="border:1px solid #000; padding:8px;">${quotation.phone || 'N/A'}</td>
               <td style="border:1px solid #000; padding:8px;">${getBrandCellHtml(quotation.brandId)}</td>
-              <td style="border:1px solid #000; padding:8px;">${getProductTypeDisplayName(quotation.productType)}</td>
+              <td style="border:1px solid #000; padding:8px;">${getEffectiveProductTypeDisplay(quotation)}</td>
               <td style="border:1px solid #000; padding:8px; text-align:right;">${quotation.quantity.toLocaleString()}</td>
               <td style="border:1px solid #000; padding:8px; text-align:right;">${quotation.total.toFixed(2)}</td>
               <td style="border:1px solid #000; padding:8px;">${quotation.type || 'non email'}</td>
@@ -12472,7 +12475,7 @@
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.email || 'N/A'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.phone || 'N/A'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${getBrandCellHtml(quotation.brandId)}</td>
-                  <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${getProductTypeDisplayName(quotation.productType)}</td>
+                  <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${getEffectiveProductTypeDisplay(quotation)}</td>
                   <td style="border:1px solid #000; padding:8px; text-align:right;" rowspan="${suppliers.length}">${quotation.quantity.toLocaleString()}</td>
                   <td style="border:1px solid #000; padding:8px; text-align:right;" rowspan="${suppliers.length}">${quotation.total.toFixed(2)}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.type || 'non email'}</td>
@@ -13701,7 +13704,13 @@
         if (filters.email && !quotation.email?.toLowerCase().includes(filters.email)) return false;
         if (filters.phone && !quotation.phone?.toLowerCase().includes(filters.phone)) return false;
         if (filters.brand && String(quotation.brandId) !== filters.brand) return false;
-        if (filters.productType && quotation.productType !== filters.productType) return false;
+        if (filters.productType) {
+          // For outsourcing quotations, the real product type is in _productTag
+          const effectiveType = (quotation.productType === 'outsource' && quotation.productDetails?._productTag)
+            ? quotation.productDetails._productTag
+            : quotation.productType;
+          if (effectiveType !== filters.productType) return false;
+        }
         if (filters.quantity && !quotation.quantity.toString().includes(filters.quantity)) return false;
         if (filters.total && !quotation.total.toString().includes(filters.total)) return false;
         if (filters.sourceType && (quotation.type || 'non email') !== filters.sourceType) return false;
@@ -13830,7 +13839,7 @@
           <td style="border:1px solid #000; padding:8px;">${quotation.email || 'N/A'}</td>
           <td style="border:1px solid #000; padding:8px;">${quotation.phone || 'N/A'}</td>
           <td style="border:1px solid #000; padding:8px;">${getBrandCellHtml(quotation.brandId)}</td>
-          <td style="border:1px solid #000; padding:8px;">${getProductTypeDisplayName(quotation.productType)}</td>
+          <td style="border:1px solid #000; padding:8px;">${getEffectiveProductTypeDisplay(quotation)}</td>
           <td style="border:1px solid #000; padding:8px; text-align:right;">${quotation.quantity.toLocaleString()}</td>
           <td style="border:1px solid #000; padding:8px; text-align:right;">${quotation.total.toFixed(2)}</td>
           <td style="border:1px solid #000; padding:8px;">${quotation.type || 'non email'}</td>
@@ -13918,6 +13927,14 @@
         'embriodery-patch': 'Embroidery Patch'
       };
       return names[type] || type;
+    }
+
+    // Get effective product type for display (uses _productTag for outsourcing quotations)
+    function getEffectiveProductTypeDisplay(quotation) {
+      if (quotation.productType === 'outsource' && quotation.productDetails?._productTag) {
+        return getProductTypeDisplayName(quotation.productDetails._productTag);
+      }
+      return getProductTypeDisplayName(quotation.productType);
     }
 
     window.updateQuotationStatus = async function(quotationId, newStatus, quotationType, quotationData) {
@@ -14050,8 +14067,15 @@
       }
 
       // Generate the quotation form HTML for this product type (same as create form)
-      const tagName = getProductTypeDisplayName(quotation.productType);
-      const formHtml = generateQuotationContentForView(quotation.productType, tagName, quotation);
+      // For outsourcing quotations, use the _productTag from productDetails to show correct fields
+      const effectiveProductType = (quotation.productType === 'outsource' && quotation.productDetails?._productTag)
+        ? quotation.productDetails._productTag
+        : quotation.productType;
+      const tagName = getProductTypeDisplayName(effectiveProductType);
+
+      console.log('viewQuotationDetails - height_mm:', quotation.height_mm, 'width_mm:', quotation.width_mm, 'productType:', quotation.productType, 'effectiveProductType:', effectiveProductType);
+
+      const formHtml = generateQuotationContentForView(effectiveProductType, tagName, quotation);
 
       const modalContent = `
         <div style="max-width: 1200px; max-height: 85vh; overflow-y: auto;">
@@ -14134,10 +14158,10 @@
       // Prevent body scroll when modal is open
       document.body.classList.add('modal-open');
 
-      // Populate the form with quotation data immediately after DOM insertion
-      requestAnimationFrame(() => {
+      // Populate the form with quotation data after DOM is fully ready
+      setTimeout(() => {
         populateQuotationViewForm(quotation);
-      });
+      }, 100);
 
       // Global function to close the modal
       window.closeQuotationViewModal = function() {
@@ -14169,12 +14193,19 @@
 
     function populateQuotationViewForm(quotation) {
       console.log('Setting up view form (fields already populated):', quotation);
+      console.log('hasProfileImage:', quotation.hasProfileImage, 'profileImagePath:', quotation.profileImagePath);
 
       // Initialize profile image preview with existing image
       const profileImagePreview = document.getElementById('profileImagePreview');
       const profileImagePlaceholder = document.getElementById('profileImagePlaceholder');
       const removeProfileImageBtn = document.getElementById('removeProfileImageBtn');
       const profileImageDropZone = document.getElementById('profileImageDropZone');
+
+      console.log('Profile image elements found:', {
+        preview: !!profileImagePreview,
+        placeholder: !!profileImagePlaceholder,
+        dropZone: !!profileImageDropZone
+      });
 
       if (profileImagePreview && profileImagePlaceholder && profileImageDropZone) {
         let imageUrl = null;
@@ -14184,7 +14215,30 @@
           imageUrl = `/${quotation.profileImagePath}`;
         }
 
+        console.log('Profile image URL:', imageUrl);
+
         if (imageUrl) {
+          // Load image via Image object to detect load success/failure
+          const img = new Image();
+          img.onload = () => {
+            console.log('Profile image loaded successfully');
+            profileImagePreview.style.backgroundImage = `url(${imageUrl})`;
+            profileImagePreview.style.display = 'block';
+            profileImagePlaceholder.style.display = 'none';
+            if (removeProfileImageBtn) removeProfileImageBtn.style.display = 'inline-block';
+            profileImageDropZone.style.borderColor = '#000';
+            profileImageDropZone.style.backgroundColor = '#f9f9f9';
+            profileImageDropZone.style.cursor = 'default';
+          };
+          img.onerror = () => {
+            console.error('Profile image failed to load:', imageUrl);
+            // Show placeholder with error message
+            profileImagePlaceholder.style.display = 'block';
+            profileImagePlaceholder.innerHTML = '<div style="font-size:12px; color:#999;">Image not found</div>';
+          };
+          img.src = imageUrl;
+
+          // Also set directly as fallback (in case image loads from cache)
           profileImagePreview.style.backgroundImage = `url(${imageUrl})`;
           profileImagePreview.style.display = 'block';
           profileImagePlaceholder.style.display = 'none';
@@ -14206,6 +14260,16 @@
         if (!formContainer) {
           console.error('quotationViewFormContainer not found!');
           return;
+        }
+
+        // Explicitly populate height/width values (belt-and-suspenders)
+        const hField = document.getElementById('quotationHeightMm');
+        if (hField && quotation.height_mm != null) {
+          hField.value = quotation.height_mm;
+        }
+        const wField = document.getElementById('quotationWidthMm');
+        if (wField && quotation.width_mm != null) {
+          wField.value = quotation.width_mm;
         }
 
         // Disable and dim all input, textarea, and select elements in the form
@@ -14341,14 +14405,19 @@
 
       // Profile Image: Paste functionality (Ctrl+V)
       const pasteHandler = (e) => {
-        if (document.activeElement && document.activeElement.closest('#profileImageDropZone')) {
-          const items = e.clipboardData.items;
-          for (let i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf('image') !== -1) {
-              const file = items[i].getAsFile();
-              handleViewModeProfileImageFile(file, preview, placeholder, removeBtn, dropZone, quotationId);
-              break;
-            }
+        // Don't intercept paste if user is typing in a text input/textarea
+        const tag = document.activeElement?.tagName?.toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+        if (!document.getElementById('profileImageDropZone')) return;
+
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image') !== -1) {
+            e.preventDefault();
+            const file = items[i].getAsFile();
+            handleViewModeProfileImageFile(file, preview, placeholder, removeBtn, dropZone, quotationId);
+            break;
           }
         }
       };
@@ -14446,6 +14515,8 @@
         const notes = document.getElementById('quotationNotes')?.value.trim();
         const brandId = document.getElementById('quotationBrandId')?.value || null;
         const customerItemName = document.getElementById('quotationCustomerItemName')?.value?.trim() || null;
+        const heightMm = document.getElementById('quotationHeightMm')?.value || null;
+        const widthMm = document.getElementById('quotationWidthMm')?.value || null;
 
         // Validation
         if (!customerName) {
@@ -14458,7 +14529,15 @@
         }
 
         // Get product-specific fields
-        let productDetails = collectProductDetailsFromForm(originalQuotation.productType);
+        // For outsourcing quotations, use _productTag to collect correct product details
+        const editProductType = (originalQuotation.productType === 'outsource' && originalQuotation.productDetails?._productTag)
+          ? originalQuotation.productDetails._productTag
+          : originalQuotation.productType;
+        let productDetails = collectProductDetailsFromForm(editProductType);
+        // Preserve _productTag for outsourcing quotations
+        if (originalQuotation.productType === 'outsource' && originalQuotation.productDetails?._productTag) {
+          productDetails._productTag = originalQuotation.productDetails._productTag;
+        }
 
         // Calculate total
         const total = parseFloat(quantity) * parseFloat(unitPrice || 0);
@@ -14476,7 +14555,9 @@
           total: total,
           notes,
           brandId,
-          customerItemName
+          customerItemName,
+          height_mm: heightMm ? parseFloat(heightMm) : null,
+          width_mm: widthMm ? parseFloat(widthMm) : null
         };
 
         console.log('Updated quotation:', updatedQuotation);
@@ -14593,6 +14674,17 @@
       const notesField = document.getElementById('quotationNotes');
       if (notesField) {
         notesField.value = quotation.notes || '';
+      }
+
+      // Populate height and width
+      const heightField = document.getElementById('quotationHeightMm');
+      if (heightField) {
+        heightField.value = quotation.height_mm || '';
+      }
+
+      const widthField = document.getElementById('quotationWidthMm');
+      if (widthField) {
+        widthField.value = quotation.width_mm || '';
       }
 
       // Populate existing files
@@ -14948,6 +15040,7 @@
 
         // Initialize size ratio preview for product types with a size field
         initSizeRatioPreview('quotationSize', 'sizeRatioPreview');
+
         // For woven-label with separate width/length, use the size preview with width input
         if (tagType === 'woven-label') {
           const wInput = document.getElementById('quotationWidth');
@@ -15157,6 +15250,9 @@
     }
 
     function showOutsourcingSubBoard(tagType, tagName) {
+      // Mark that we're in outsourcing create mode
+      window._outsourcingProductTag = tagType;
+
       const subBoard = document.getElementById('outsourcingSubBoard');
       const subBoardTitle = document.getElementById('outsourcingSubBoardTitle');
       const subBoardContent = document.getElementById('outsourcingSubBoardContent');
@@ -15184,6 +15280,13 @@
         }
         initializeFileUploads(tagType);
         initSizeRatioPreview('quotationSize', 'sizeRatioPreview');
+
+        // Always show supplier section in outsourcing panel
+        const supplierSection = document.getElementById('supplierSelectionSection');
+        if (supplierSection) {
+          supplierSection.style.display = 'block';
+        }
+        setupSupplierAutocomplete();
 
         // Add event listener for contact person selection
         const contactPersonField = document.getElementById('quotationContactPerson');
@@ -15365,14 +15468,19 @@
 
       // Profile Image: Paste functionality (Ctrl+V)
       document.addEventListener('paste', (e) => {
-        if (document.activeElement.closest('#profileImageDropZone')) {
-          const items = e.clipboardData.items;
-          for (let i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf('image') !== -1) {
-              const file = items[i].getAsFile();
-              handleProfileImageFile(file);
-              break;
-            }
+        // Don't intercept paste if user is typing in a text input/textarea
+        const tag = document.activeElement?.tagName?.toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+        if (!document.getElementById('profileImageDropZone')) return;
+
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image') !== -1) {
+            e.preventDefault();
+            const file = items[i].getAsFile();
+            handleProfileImageFile(file);
+            break;
           }
         }
       });
@@ -15889,6 +15997,16 @@
                 '<label style="display:block; margin-bottom:5px; font-weight:600;">Customer Item Name</label>' +
                 '<input type="text" id="quotationCustomerItemName" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., SKU-12345 or Item Name" value="' + (quotation.customerItemName || '') + '">' +
               '</div>' +
+              '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">' +
+                '<div>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Height (mm)</label>' +
+                  '<input type="number" id="quotationHeightMm" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., 50" step="0.1" min="0" value="' + (quotation.height_mm || '') + '">' +
+                '</div>' +
+                '<div>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Width (mm)</label>' +
+                  '<input type="number" id="quotationWidthMm" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., 30" step="0.1" min="0" value="' + (quotation.width_mm || '') + '">' +
+                '</div>' +
+              '</div>' +
               getProductSpecificFieldsForView(tagType, quotation.productDetails || {}) +
             '</div>' +
 
@@ -16033,6 +16151,16 @@
                 '<label style="display:block; margin-bottom:5px; font-weight:600;">Customer Item Name</label>' +
                 '<input type="text" id="quotationCustomerItemName" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., SKU-12345 or Item Name">' +
               '</div>' +
+              '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">' +
+                '<div>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Height (mm)</label>' +
+                  '<input type="number" id="quotationHeightMm" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., 50" step="0.1" min="0">' +
+                '</div>' +
+                '<div>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Width (mm)</label>' +
+                  '<input type="number" id="quotationWidthMm" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., 30" step="0.1" min="0">' +
+                '</div>' +
+              '</div>' +
               getProductSpecificFields(tagType) +
             '</div>' +
 
@@ -16121,7 +16249,7 @@
       } else if (tagType === 'woven-label') {
         return { width: el('quotationWidth'), length: el('quotationLength'), colorCount: el('quotationColorCount'), edgeFinish: el('quotationEdgeFinish') };
       } else if (tagType === 'printed-label') {
-        return { materialType: el('quotationMaterialType'), washSymbols: el('quotationWashSymbols') };
+        return { materialType: el('quotationMaterialType') };
       } else if (tagType === 'heat-transfer') {
         return { transferType: el('quotationTransferType'), application: el('quotationApplication') };
       } else if (tagType === 'silicon-patch') {
@@ -16238,21 +16366,15 @@
           </div>
         `,
         'printed-label': `
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
-            <div>
-              <label style="display:block; margin-bottom:5px; font-weight:600;">Material Type</label>
-              <select id="quotationMaterialType" style="width:100%; padding:8px; border:1px solid #000;">
-                <option value="">Select Material</option>
-                <option value="satin">Satin Tape</option>
-                <option value="cotton">Cotton Tape</option>
-                <option value="woven">Woven Fabric</option>
-                <option value="paper">Paper</option>
-              </select>
-            </div>
-            <div>
-              <label style="display:block; margin-bottom:5px; font-weight:600;">Wash Care Symbols</label>
-              <input type="text" id="quotationWashSymbols" style="width:100%; padding:8px; border:1px solid #000;" placeholder="Machine wash, tumble dry, etc.">
-            </div>
+          <div style="margin-bottom:15px;">
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Material Type</label>
+            <select id="quotationMaterialType" style="width:100%; padding:8px; border:1px solid #000;">
+              <option value="">Select Material</option>
+              <option value="satin">Satin Tape</option>
+              <option value="cotton">Cotton Tape</option>
+              <option value="woven">Woven Fabric</option>
+              <option value="others">Others</option>
+            </select>
           </div>
         `,
         'heat-transfer': `
@@ -16477,21 +16599,15 @@
           </div>
         `,
         'printed-label': `
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
-            <div>
-              <label style="display:block; margin-bottom:5px; font-weight:600;">Material Type</label>
-              <select id="quotationMaterialType" style="width:100%; padding:8px; border:1px solid #000;">
-                <option value="">Select Material</option>
-                <option value="satin" ${productDetails.materialType === 'satin' ? 'selected' : ''}>Satin Tape</option>
-                <option value="cotton" ${productDetails.materialType === 'cotton' ? 'selected' : ''}>Cotton Tape</option>
-                <option value="woven" ${productDetails.materialType === 'woven' ? 'selected' : ''}>Woven Fabric</option>
-                <option value="paper" ${productDetails.materialType === 'paper' ? 'selected' : ''}>Paper</option>
-              </select>
-            </div>
-            <div>
-              <label style="display:block; margin-bottom:5px; font-weight:600;">Wash Care Symbols</label>
-              <input type="text" id="quotationWashSymbols" style="width:100%; padding:8px; border:1px solid #000;" placeholder="Machine wash, tumble dry, etc." value="${productDetails.washSymbols || ''}">
-            </div>
+          <div style="margin-bottom:15px;">
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Material Type</label>
+            <select id="quotationMaterialType" style="width:100%; padding:8px; border:1px solid #000;">
+              <option value="">Select Material</option>
+              <option value="satin" ${productDetails.materialType === 'satin' ? 'selected' : ''}>Satin Tape</option>
+              <option value="cotton" ${productDetails.materialType === 'cotton' ? 'selected' : ''}>Cotton Tape</option>
+              <option value="woven" ${productDetails.materialType === 'woven' ? 'selected' : ''}>Woven Fabric</option>
+              <option value="others" ${productDetails.materialType === 'others' ? 'selected' : ''}>Others</option>
+            </select>
           </div>
         `,
         'heat-transfer': `
@@ -16974,13 +17090,24 @@
         const notes = document.getElementById('quotationNotes').value.trim();
         const brandId = document.getElementById('quotationBrandId')?.value || null;
         const customerItemName = document.getElementById('quotationCustomerItemName')?.value?.trim() || null;
+        const heightMm = document.getElementById('quotationHeightMm')?.value || null;
+        const widthMm = document.getElementById('quotationWidthMm')?.value || null;
 
         console.log('Saving quotation with data:', {
-          customerName, contactPerson, email, phone, quantity, unitPrice, total, notes, tagType, source
+          customerName, contactPerson, email, phone, quantity, unitPrice, total, notes, tagType, source,
+          height_mm: heightMm, width_mm: widthMm
         });
 
         // Get product-specific fields
         let productDetails = collectProductDetailsFromForm(tagType);
+
+        // If saving from outsourcing panel, override productType so it appears in outsourcing view
+        // Store the real product tag in productDetails so the view can render correct fields
+        let saveProductType = tagType;
+        if (window._outsourcingProductTag) {
+          productDetails._productTag = tagType;
+          saveProductType = 'outsource';
+        }
 
         // Validation
         if (!customerName) {
@@ -16999,7 +17126,7 @@
           contactPerson,
           email,
           phone,
-          productType: tagType,
+          productType: saveProductType,
           productDetails,
           quantity: parseInt(quantity),
           unitPrice: parseFloat(unitPrice) || 0,
@@ -17007,6 +17134,8 @@
           notes,
           brandId,
           customerItemName,
+          height_mm: heightMm ? parseFloat(heightMm) : null,
+          width_mm: widthMm ? parseFloat(widthMm) : null,
           type: source,
           sourceEmailUid: (source === 'email' && window.currentQuotationEmailMeta) ? window.currentQuotationEmailMeta.uid : null,
           sourceEmailSubject: (source === 'email' && window.currentQuotationEmailMeta) ? window.currentQuotationEmailMeta.subject : null,
@@ -17143,6 +17272,7 @@
         // Clear temporary files
         delete window.tempProfileImageFile;
         delete window.tempAttachmentFiles;
+        delete window._outsourcingProductTag;
 
         // Reset file upload UI
         resetFileUploadUI();
@@ -18915,8 +19045,8 @@
 
     const EXPORT_COLUMNS = [
       'Seq#', 'Customer Name', 'Item Name', 'Contact Person', 'Email', 'Phone',
-      'Brand', 'Product Type', 'Quantity', 'Total (HKD)', 'Type', 'Status',
-      'Date Created', 'Sample Ready Date'
+      'Brand', 'Product Type', 'Quantity', 'Total (HKD)', 'Height (mm)', 'Width (mm)',
+      'Type', 'Status', 'Date Created', 'Sample Ready Date'
     ];
 
     function getBrandName(brandId) {
@@ -18934,9 +19064,11 @@
         'Email': q.email || '',
         'Phone': q.phone || '',
         'Brand': getBrandName(q.brandId),
-        'Product Type': getProductTypeDisplayName(q.productType),
+        'Product Type': getEffectiveProductTypeDisplay(q),
         'Quantity': q.quantity,
         'Total (HKD)': q.total,
+        'Height (mm)': q.height_mm || '',
+        'Width (mm)': q.width_mm || '',
         'Type': q.type || 'non email',
         'Status': q.status || 'draft',
         'Date Created': new Date(q.dateCreated).toLocaleString(),
@@ -19034,6 +19166,25 @@
       } catch { return null; }
     }
 
+    // Load an image from base64 data URL and return its natural width/height
+    function getImageDimensions(dataUrl) {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+        img.onerror = () => resolve(null);
+        img.src = dataUrl;
+      });
+    }
+
+    // Calculate proportional image dimensions to fit within a max box while maintaining aspect ratio
+    function calcProportionalSize(naturalW, naturalH, maxW, maxH) {
+      const ratio = Math.min(maxW / naturalW, maxH / naturalH);
+      return {
+        width: Math.round(naturalW * ratio),
+        height: Math.round(naturalH * ratio)
+      };
+    }
+
     function downloadBlob(blob, filename) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -19085,9 +19236,11 @@
           q.email || '',
           q.phone || '',
           getBrandName(q.brandId),
-          getProductTypeDisplayName(q.productType),
+          getEffectiveProductTypeDisplay(q),
           q.quantity,
           q.total,
+          q.height_mm || '',
+          q.width_mm || '',
           q.type || 'non email',
           q.status || 'draft',
           new Date(q.dateCreated).toLocaleString(),
@@ -19102,10 +19255,17 @@
             const ext = mimeType.split('/')[1] || 'jpeg';
             const base64 = base64Data.split(',')[1];
             try {
+              // Get natural image dimensions for proportional sizing
+              const dims = await getImageDimensions(base64Data);
+              const maxSize = calcProportionalSize(
+                dims ? dims.width : 48,
+                dims ? dims.height : 48,
+                48, 48 // max box: 48x48 to fit in the row
+              );
               const imageId = workbook.addImage({ base64, extension: ext });
               ws.addImage(imageId, {
                 tl: { col: IMAGE_COL - 1 + 0.1, row: rowIdx - 1 + 0.1 },
-                ext: { width: 48, height: 48 }
+                ext: { width: maxSize.width, height: maxSize.height }
               });
             } catch (imgErr) {
               console.warn('Could not embed image for quotation', q.id, imgErr);
