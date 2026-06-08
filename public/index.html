@@ -15213,62 +15213,16 @@
                 phoneField.style.color = '#666';
               }
             } else {
-              // No contact person selected - enable fields for manual entry
+              // No contact selected - clear fields but keep disabled
               if (emailField) {
-                emailField.disabled = false;
-                emailField.style.backgroundColor = '#fff';
-                emailField.style.color = '#000';
+                emailField.value = '';
               }
               if (phoneField) {
-                phoneField.disabled = false;
-                phoneField.style.backgroundColor = '#fff';
-                phoneField.style.color = '#000';
+                phoneField.value = '';
               }
             }
           });
         }
-        // Pre-populate customer info from active email profile
-        (async function prePopulateFromActiveProfile() {
-          try {
-            const res = await fetch('/api/profiles', { cache: 'no-cache' });
-            const data = await res.json();
-            if (!data.success) return;
-            const activeProfile = (data.profiles || []).find(p => p.isActive === 1);
-            if (!activeProfile) return;
-
-            const customerNameField = document.getElementById('quotationCustomerName');
-            const contactPersonField = document.getElementById('quotationContactPerson');
-            const emailField = document.getElementById('quotationEmail');
-
-            if (customerNameField && activeProfile.customerName) {
-              customerNameField.value = activeProfile.customerName;
-              customerNameField.disabled = true;
-              customerNameField.style.backgroundColor = '#f5f5f5';
-              customerNameField.style.color = '#666';
-              customerNameField.style.cursor = 'not-allowed';
-            }
-            if (contactPersonField && activeProfile.contactPerson) {
-              const option = document.createElement('option');
-              option.value = activeProfile.contactPerson;
-              option.textContent = activeProfile.contactPerson;
-              contactPersonField.appendChild(option);
-              contactPersonField.value = activeProfile.contactPerson;
-              contactPersonField.disabled = true;
-              contactPersonField.style.backgroundColor = '#f5f5f5';
-              contactPersonField.style.color = '#666';
-              contactPersonField.style.cursor = 'not-allowed';
-            }
-            if (emailField && activeProfile.mailUser) {
-              emailField.value = activeProfile.mailUser;
-              emailField.disabled = true;
-              emailField.style.backgroundColor = '#f5f5f5';
-              emailField.style.color = '#666';
-              emailField.style.cursor = 'not-allowed';
-            }
-          } catch (err) {
-            console.error('Failed to pre-populate from active profile:', err);
-          }
-        })();
       }, 100);
 
       // Set up event listeners for total calculation
@@ -15358,62 +15312,17 @@
                 phoneField.style.color = '#666';
               }
             } else {
+              // No contact selected - clear fields but keep disabled
               if (emailField) {
-                emailField.disabled = false;
-                emailField.style.backgroundColor = '#fff';
-                emailField.style.color = '#000';
+                emailField.value = '';
               }
               if (phoneField) {
-                phoneField.disabled = false;
-                phoneField.style.backgroundColor = '#fff';
-                phoneField.style.color = '#000';
+                phoneField.value = '';
               }
             }
           });
         }
 
-        // Pre-populate customer info from active email profile
-        (async function prePopulateFromActiveProfile() {
-          try {
-            const res = await fetch('/api/profiles', { cache: 'no-cache' });
-            const data = await res.json();
-            if (!data.success) return;
-            const activeProfile = (data.profiles || []).find(p => p.isActive === 1);
-            if (!activeProfile) return;
-
-            const customerNameField = document.getElementById('quotationCustomerName');
-            const contactPersonField = document.getElementById('quotationContactPerson');
-            const emailField = document.getElementById('quotationEmail');
-
-            if (customerNameField && activeProfile.customerName) {
-              customerNameField.value = activeProfile.customerName;
-              customerNameField.disabled = true;
-              customerNameField.style.backgroundColor = '#f5f5f5';
-              customerNameField.style.color = '#666';
-              customerNameField.style.cursor = 'not-allowed';
-            }
-            if (contactPersonField && activeProfile.contactPerson) {
-              const option = document.createElement('option');
-              option.value = activeProfile.contactPerson;
-              option.textContent = activeProfile.contactPerson;
-              contactPersonField.appendChild(option);
-              contactPersonField.value = activeProfile.contactPerson;
-              contactPersonField.disabled = true;
-              contactPersonField.style.backgroundColor = '#f5f5f5';
-              contactPersonField.style.color = '#666';
-              contactPersonField.style.cursor = 'not-allowed';
-            }
-            if (emailField && activeProfile.mailUser) {
-              emailField.value = activeProfile.mailUser;
-              emailField.disabled = true;
-              emailField.style.backgroundColor = '#f5f5f5';
-              emailField.style.color = '#666';
-              emailField.style.cursor = 'not-allowed';
-            }
-          } catch (err) {
-            console.error('Failed to pre-populate from active profile:', err);
-          }
-        })();
       }, 100);
 
       // Set up event listeners for total calculation
@@ -16164,7 +16073,7 @@
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Contact Person</label>' +
-                  '<select id="quotationContactPerson" style="width:100%; padding:8px; border:1px solid #000; background:#fff; ' + disabledStyle + '" ' + disabledAttr + '>' +
+                  '<select id="quotationContactPerson" disabled style="width:100%; padding:8px; border:1px solid #000; background:#f5f5f5; color:#999; cursor:not-allowed; ' + disabledStyle + '" ' + disabledAttr + '>' +
                     '<option value="">Select Contact Person</option>' +
                   '</select>' +
                 '</div>' +
@@ -16172,11 +16081,11 @@
               '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Email</label>' +
-                  '<input type="email" id="quotationEmail" style="width:100%; padding:8px; border:1px solid #000; ' + disabledStyle + '" placeholder="customer@email.com" ' + disabledAttr + '>' +
+                  '<input type="email" id="quotationEmail" disabled style="width:100%; padding:8px; border:1px solid #000; background:#f5f5f5; color:#999; cursor:not-allowed; ' + disabledStyle + '" placeholder="customer@email.com" ' + disabledAttr + '>' +
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Phone</label>' +
-                  '<input type="tel" id="quotationPhone" style="width:100%; padding:8px; border:1px solid #000; ' + disabledStyle + '" placeholder="+852 1234 5678" ' + disabledAttr + '>' +
+                  '<input type="tel" id="quotationPhone" disabled style="width:100%; padding:8px; border:1px solid #000; background:#f5f5f5; color:#999; cursor:not-allowed; ' + disabledStyle + '" placeholder="+852 1234 5678" ' + disabledAttr + '>' +
                 '</div>' +
               '</div>' +
             '</div>' +
@@ -17963,6 +17872,9 @@
         this.input.addEventListener('focus', () => {
           if (this.input.value.trim()) {
             this.showSuggestions(this.input.value.trim());
+          } else {
+            // Show all customers when focused with empty field
+            this.showAllCustomers();
           }
         });
       }
@@ -17978,6 +17890,25 @@
       onInput(e) {
         const query = e.target.value.trim();
         this.selectedCustomer = null;
+
+        // Reset contact person, email, phone when user types a new customer
+        const contactField = document.getElementById('quotationContactPerson');
+        const emailField = document.getElementById('quotationEmail');
+        const phoneField = document.getElementById('quotationPhone');
+
+        if (contactField) {
+          contactField.innerHTML = '<option value="">Select Contact Person</option>';
+          contactField.disabled = true;
+          contactField.style.backgroundColor = '#f5f5f5';
+          contactField.style.color = '#999';
+          contactField.style.cursor = 'not-allowed';
+        }
+        if (emailField) {
+          emailField.value = '';
+        }
+        if (phoneField) {
+          phoneField.value = '';
+        }
 
         if (!this.loaded || query.length < 2) {
           this.hideDropdown();
@@ -18018,6 +17949,37 @@
             this.hideDropdown();
             break;
         }
+      }
+
+      showAllCustomers() {
+        if (!this.loaded || this.customers.length === 0) {
+          this.dropdown.innerHTML = '<div class="autocomplete-no-results">No customers available</div>';
+          this.dropdown.style.display = 'block';
+          return;
+        }
+
+        const html = this.customers.map(customer => `
+          <div class="autocomplete-item" data-customer-id="${customer.id}">
+            <div style="font-weight: 600;">${this.highlightMatch(customer.companyName, '')}</div>
+            <div style="font-size: 12px; color: #666;">${customer.emailDomain} • ${customer.companyType}</div>
+          </div>
+        `).join('');
+
+        this.dropdown.innerHTML = html;
+        this.dropdown.style.display = 'block';
+        this.currentIndex = -1;
+
+        // Add click handlers
+        this.dropdown.querySelectorAll('.autocomplete-item').forEach((item, index) => {
+          item.addEventListener('click', () => {
+            const customerId = parseInt(item.dataset.customerId);
+            this.selectCustomer(customerId);
+          });
+          item.addEventListener('mouseenter', () => {
+            this.currentIndex = index;
+            this.highlightItem(index);
+          });
+        });
       }
 
       showSuggestions(query) {
@@ -18095,18 +18057,6 @@
       }
 
       populateRelatedFields(customer) {
-        // Populate email field if empty
-        const emailField = document.getElementById('quotationEmail');
-        if (emailField && !emailField.value.trim()) {
-          emailField.value = `contact@${customer.emailDomain}`;
-        }
-
-        // Populate phone field if empty
-        const phoneField = document.getElementById('quotationPhone');
-        if (phoneField && !phoneField.value.trim() && customer.companyTel) {
-          phoneField.value = customer.companyTel;
-        }
-
         // Populate contact person dropdown with all members
         const contactField = document.getElementById('quotationContactPerson');
         if (contactField) {
@@ -18129,7 +18079,16 @@
             if (contactField.selectedIndex === 0) {
               contactField.selectedIndex = 1; // Select first member
             }
+
+            // Trigger change event so the handler fills email/phone
+            contactField.dispatchEvent(new Event('change'));
           }
+
+          // Enable the contact person dropdown
+          contactField.disabled = false;
+          contactField.style.backgroundColor = '#fff';
+          contactField.style.color = '#000';
+          contactField.style.cursor = 'default';
         }
       }
 
