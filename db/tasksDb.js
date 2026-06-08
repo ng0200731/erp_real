@@ -925,6 +925,37 @@ export async function updateCustomer(id, customerData) {
     ]
   );
 
+  // Sync members if provided
+  if (customerData.members && Array.isArray(customerData.members)) {
+    // Get current members from DB
+    const currentMembers = await db.all(`SELECT id FROM customer_members WHERE customerId = ?`, [id]);
+    const currentIds = currentMembers.map(m => m.id);
+    const sentIds = customerData.members.filter(m => m.id).map(m => Number(m.id));
+
+    // Delete members no longer in the list
+    const toDelete = currentIds.filter(mid => !sentIds.includes(mid));
+    for (const delId of toDelete) {
+      await db.run(`DELETE FROM customer_members WHERE id = ?`, [delId]);
+    }
+
+    // Upsert each member
+    for (const member of customerData.members) {
+      if (member.id) {
+        // Update existing
+        await db.run(
+          `UPDATE customer_members SET name = ?, emailPrefix = ?, title = ?, tel = ?, updatedAt = ? WHERE id = ? AND customerId = ?`,
+          [member.name, member.emailPrefix || null, member.title || null, member.tel || null, now, Number(member.id), id]
+        );
+      } else {
+        // Create new
+        await db.run(
+          `INSERT INTO customer_members (customerId, name, emailPrefix, title, tel, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [id, member.name, member.emailPrefix || null, member.title || null, member.tel || null, now, now]
+        );
+      }
+    }
+  }
+
   return true;
 }
 

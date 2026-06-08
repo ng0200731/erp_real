@@ -9006,8 +9006,7 @@
       // Inject action buttons into email modal header
       const emailActionsEl = document.getElementById('emailQuotationActions');
       emailActionsEl.innerHTML =
-        '<button type="button" class="page-btn" onclick="fillDummyQuotationData(true)">Dummy 2</button>' +
-        '<button type="button" class="page-btn" onclick="fillDummyQuotationForm()">Dummy Fill</button>' +
+        '<button type="button" class="page-btn" onclick="fillDummyInput()">Dummy Input</button>' +
         '<button type="button" class="page-btn" onclick="clearQuotationForm()">Clear</button>' +
         '<button type="button" class="page-btn" onclick="saveQuotationWithConfirmation(\'' + quotationType + '\', \'email\')">SAVE</button>' +
         '<button type="button" class="page-btn primary" onclick="generateQuotation(\'' + quotationType + '\')">Generate PDF</button>';
@@ -10130,6 +10129,11 @@
             body: JSON.stringify(customer)
           });
 
+          if (!response.ok && response.status !== 404) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || `Server error ${response.status}`);
+          }
+
           // If customer not found (404), try to create instead
           if (response.status === 404) {
             console.log('Customer not found, creating new customer instead');
@@ -10659,6 +10663,7 @@
           try {
             await saveCustomerToStorage(customer);
             try { document.body.removeChild(overlay); } catch {}
+            showModal({ title: 'Saved', body: `Member "${escapeHtml(member.name)}" updated successfully.` });
             resolve(true);
           } catch (err) {
             showModal({ title: 'Error', body: 'Failed to save member: ' + (err.message || err) });
@@ -12033,7 +12038,11 @@
       // Refresh button functionality
       const refreshBtn = document.getElementById('refreshQuotationsBtn');
       if (refreshBtn) {
-        refreshBtn.onclick = async () => await displayQuotations();
+        refreshBtn.onclick = async () => {
+          showFilterLoading();
+          await displayQuotations();
+          hideFilterLoading();
+        };
       }
 
       // Select All button functionality
@@ -12088,8 +12097,16 @@
       // Set up filter event listeners
       const filterInputs = document.querySelectorAll('#quotationViewPanel .filter-input');
       filterInputs.forEach(input => {
-        input.addEventListener('input', async () => await displayQuotations());
-        input.addEventListener('change', async () => await displayQuotations());
+        input.addEventListener('input', async () => {
+          showFilterLoading();
+          await displayQuotations();
+          hideFilterLoading();
+        });
+        input.addEventListener('change', async () => {
+          showFilterLoading();
+          await displayQuotations();
+          hideFilterLoading();
+        });
       });
 
       // Load quotations on initialization
@@ -12105,7 +12122,11 @@
       // Refresh button functionality
       const refreshBtn = document.getElementById('refreshOutsourcingBtn');
       if (refreshBtn) {
-        refreshBtn.onclick = async () => await displayOutsourcingQuotations();
+        refreshBtn.onclick = async () => {
+          showFilterLoading();
+          await displayOutsourcingQuotations();
+          hideFilterLoading();
+        };
       }
 
       // Select All button functionality
@@ -12154,8 +12175,16 @@
       // Set up filter event listeners
       const filterInputs = document.querySelectorAll('#outsourcingViewPanel .filter-input');
       filterInputs.forEach(input => {
-        input.addEventListener('input', async () => await displayOutsourcingQuotations());
-        input.addEventListener('change', async () => await displayOutsourcingQuotations());
+        input.addEventListener('input', async () => {
+          showFilterLoading();
+          await displayOutsourcingQuotations();
+          hideFilterLoading();
+        });
+        input.addEventListener('change', async () => {
+          showFilterLoading();
+          await displayOutsourcingQuotations();
+          hideFilterLoading();
+        });
       });
 
       // Load outsourcing quotations on initialization
@@ -13729,6 +13758,23 @@
       });
     }
 
+    // Filter loading overlay helpers
+    function showFilterLoading() {
+      let overlay = document.getElementById('filterLoadingOverlay');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'filterLoadingOverlay';
+        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; z-index:99999;';
+        overlay.innerHTML = '<div style="background:#fff; padding:20px 40px; border:2px solid #000; font-size:18px; font-weight:600; letter-spacing:1px;">Loading...</div>';
+        document.body.appendChild(overlay);
+      }
+    }
+
+    function hideFilterLoading() {
+      const overlay = document.getElementById('filterLoadingOverlay');
+      if (overlay) overlay.remove();
+    }
+
     // Display all quotations
     async function displayQuotations() {
       console.log('displayQuotations called');
@@ -14007,6 +14053,7 @@
 
         // Refresh the quotations list to show updated status
         await displayQuotations();
+        await displayOutsourcingQuotations();
 
       } catch (error) {
         console.error('Error updating quotation status:', error);
@@ -14612,6 +14659,7 @@
         // Close modal and refresh quotations list
         closeQuotationViewModal();
         await displayQuotations();
+        await displayOutsourcingQuotations();
 
       } catch (error) {
         console.error('Error saving quotation:', error);
@@ -15018,8 +15066,8 @@
       // Inject action buttons into header row
       const actionsEl = document.getElementById('quotationSubBoardActions');
       actionsEl.innerHTML =
-        '<button type="button" class="page-btn" onclick="fillDummyQuotationData(true)">Dummy 2</button>' +
-        '<button type="button" class="page-btn" onclick="fillDummyQuotationForm()">Dummy Fill</button>' +
+        '<button type="button" class="page-btn" onclick="fillDummyInput()">Dummy Input</button>' +
+        '<button type="button" class="page-btn" onclick="clearQuotationForm()">Clear</button>' +
         '<button type="button" class="page-btn" onclick="clearQuotationForm()">Clear</button>' +
         '<button type="button" class="page-btn" onclick="saveQuotationWithConfirmation(\'' + tagType + '\', \'non email\')">SAVE</button>' +
         '<button type="button" class="page-btn primary" onclick="generateQuotation(\'' + tagType + '\')">Generate PDF</button>';
@@ -15263,8 +15311,8 @@
       // Inject action buttons into header row
       const actionsEl = document.getElementById('outsourcingSubBoardActions');
       actionsEl.innerHTML =
-        '<button type="button" class="page-btn" onclick="fillDummyQuotationData(true)">Dummy 2</button>' +
-        '<button type="button" class="page-btn" onclick="fillDummyQuotationForm()">Dummy Fill</button>' +
+        '<button type="button" class="page-btn" onclick="fillDummyInput()">Dummy Input</button>' +
+        '<button type="button" class="page-btn" onclick="clearQuotationForm()">Clear</button>' +
         '<button type="button" class="page-btn" onclick="clearQuotationForm()">Clear</button>' +
         '<button type="button" class="page-btn" onclick="saveQuotationWithConfirmation(\'' + tagType + '\', \'non email\')">SAVE</button>' +
         '<button type="button" class="page-btn primary" onclick="generateQuotation(\'' + tagType + '\')">Generate PDF</button>';
@@ -15934,7 +15982,7 @@
 
     // Helper to generate Product Type dropdown from saved defaults
     function getProductTypeSelectHtml(tagType) {
-      const types = getAllProductTypes().filter(t => t !== 'Outsource');
+      const types = getAllProductTypes();
       const valueMap = {};
       types.forEach(t => {
         const key = t.toLowerCase().replace(/ /g, '-').replace(/_/g, '-');
@@ -16007,7 +16055,7 @@
                   '<input type="number" id="quotationWidthMm" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., 30" step="0.1" min="0" value="' + (quotation.width_mm || '') + '">' +
                 '</div>' +
               '</div>' +
-              getProductSpecificFieldsForView(tagType, quotation.productDetails || {}) +
+              '<div id="productSpecificFields">' + getProductSpecificFieldsForView(tagType, quotation.productDetails || {}) + '</div>' +
             '</div>' +
 
             '<div style="margin-bottom:20px;">' +
@@ -16161,7 +16209,7 @@
                   '<input type="number" id="quotationWidthMm" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., 30" step="0.1" min="0">' +
                 '</div>' +
               '</div>' +
-              getProductSpecificFields(tagType) +
+              '<div id="productSpecificFields">' + getProductSpecificFields(tagType) + '</div>' +
             '</div>' +
 
             '<div id="supplierSelectionSection" style="margin-bottom:20px; display:none;">' +
@@ -16247,9 +16295,9 @@
       if (tagType === 'hang-tag') {
         return { material: el('quotationMaterial'), size: el('quotationSize'), printingMethod: el('quotationPrintingMethod') };
       } else if (tagType === 'woven-label') {
-        return { width: el('quotationWidth'), length: el('quotationLength'), colorCount: el('quotationColorCount'), edgeFinish: el('quotationEdgeFinish') };
+        return { colorCount: el('quotationColorCount'), edgeFinish: el('quotationEdgeFinish') };
       } else if (tagType === 'printed-label') {
-        return { materialType: el('quotationMaterialType') };
+        return { materialType: el('quotationMaterialType'), frontColor: el('quotationFrontColor'), backColor: el('quotationBackColor') };
       } else if (tagType === 'heat-transfer') {
         return { transferType: el('quotationTransferType'), application: el('quotationApplication') };
       } else if (tagType === 'silicon-patch') {
@@ -16334,19 +16382,6 @@
         'woven-label': `
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
-              <label style="display:block; margin-bottom:5px; font-weight:600;">Width</label>
-              <input type="text" id="quotationWidth" style="width:100%; padding:8px; border:1px solid #000;" placeholder="1 inch">
-            </div>
-            <div>
-              <label style="display:block; margin-bottom:5px; font-weight:600;">Length</label>
-              <div style="display:flex; gap:8px; align-items:center;">
-                <input type="text" id="quotationLength" style="flex:1; padding:8px; border:1px solid #000;" placeholder="2 inches">
-                <div id="sizeRatioPreview" style="width:44px; height:44px; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; background:#fafafa;"></div>
-              </div>
-            </div>
-          </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
-            <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Color Count</label>
               <select id="quotationColorCount" style="width:100%; padding:8px; border:1px solid #000;">
                 <option value="1">1 Color</option>
@@ -16361,6 +16396,9 @@
                 <option value="cut">Cut Edge</option>
                 <option value="hemmed">Hemmed Edge</option>
                 <option value="overlocked">Overlocked</option>
+                <option value="end-fold">End Fold</option>
+                <option value="loop-fold">Loop Fold</option>
+                <option value="4-side-heat-cut">4 Side Heat Cut</option>
               </select>
             </div>
           </div>
@@ -16375,6 +16413,16 @@
               <option value="woven">Woven Fabric</option>
               <option value="others">Others</option>
             </select>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Front Color</label>
+              <input type="number" id="quotationFrontColor" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., 4" min="0">
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Back Color</label>
+              <input type="number" id="quotationBackColor" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., 2" min="0">
+            </div>
           </div>
         `,
         'heat-transfer': `
@@ -16421,25 +16469,16 @@
           </div>
         `,
         'silicon-patch': `
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
-            <div>
-              <label style="display:block; margin-bottom:5px; font-weight:600;">Size</label>
-              <div style="display:flex; gap:8px; align-items:center;">
-                <input type="text" id="quotationSize" style="flex:1; padding:8px; border:1px solid #000;" placeholder="2x3 inches">
-                <div id="sizeRatioPreview" style="width:44px; height:44px; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; background:#fafafa;"></div>
-              </div>
-            </div>
-            <div>
-              <label style="display:block; margin-bottom:5px; font-weight:600;">Thickness</label>
-              <select id="quotationThickness" style="width:100%; padding:8px; border:1px solid #000;">
-                <option value="">Select Thickness</option>
-                <option value="0.5mm">0.5mm</option>
-                <option value="1mm">1mm</option>
-                <option value="1.5mm">1.5mm</option>
-                <option value="2mm">2mm</option>
-                <option value="3mm">3mm</option>
-              </select>
-            </div>
+          <div style="margin-bottom:15px;">
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Thickness</label>
+            <select id="quotationThickness" style="width:100%; padding:8px; border:1px solid #000;">
+              <option value="">Select Thickness</option>
+              <option value="0.5mm">0.5mm</option>
+              <option value="1mm">1mm</option>
+              <option value="1.5mm">1.5mm</option>
+              <option value="2mm">2mm</option>
+              <option value="3mm">3mm</option>
+            </select>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
@@ -16567,19 +16606,6 @@
         'woven-label': `
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
-              <label style="display:block; margin-bottom:5px; font-weight:600;">Width</label>
-              <input type="text" id="quotationWidth" style="width:100%; padding:8px; border:1px solid #000;" placeholder="1 inch" value="${productDetails.width || ''}">
-            </div>
-            <div>
-              <label style="display:block; margin-bottom:5px; font-weight:600;">Length</label>
-              <div style="display:flex; gap:8px; align-items:center;">
-                <input type="text" id="quotationLength" style="flex:1; padding:8px; border:1px solid #000;" placeholder="2 inches" value="${productDetails.length || ''}">
-                <div id="sizeRatioPreview" style="width:44px; height:44px; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; background:#fafafa;"></div>
-              </div>
-            </div>
-          </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
-            <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Color Count</label>
               <select id="quotationColorCount" style="width:100%; padding:8px; border:1px solid #000;">
                 <option value="1" ${productDetails.colorCount === '1' ? 'selected' : ''}>1 Color</option>
@@ -16594,6 +16620,9 @@
                 <option value="cut" ${productDetails.edgeFinish === 'cut' ? 'selected' : ''}>Cut Edge</option>
                 <option value="hemmed" ${productDetails.edgeFinish === 'hemmed' ? 'selected' : ''}>Hemmed Edge</option>
                 <option value="overlocked" ${productDetails.edgeFinish === 'overlocked' ? 'selected' : ''}>Overlocked</option>
+                <option value="end-fold" ${productDetails.edgeFinish === 'end-fold' ? 'selected' : ''}>End Fold</option>
+                <option value="loop-fold" ${productDetails.edgeFinish === 'loop-fold' ? 'selected' : ''}>Loop Fold</option>
+                <option value="4-side-heat-cut" ${productDetails.edgeFinish === '4-side-heat-cut' ? 'selected' : ''}>4 Side Heat Cut</option>
               </select>
             </div>
           </div>
@@ -16608,6 +16637,16 @@
               <option value="woven" ${productDetails.materialType === 'woven' ? 'selected' : ''}>Woven Fabric</option>
               <option value="others" ${productDetails.materialType === 'others' ? 'selected' : ''}>Others</option>
             </select>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Front Color</label>
+              <input type="number" id="quotationFrontColor" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., 4" min="0" value="${productDetails.frontColor || ''}">
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Back Color</label>
+              <input type="number" id="quotationBackColor" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., 2" min="0" value="${productDetails.backColor || ''}">
+            </div>
           </div>
         `,
         'heat-transfer': `
@@ -16654,14 +16693,7 @@
           </div>
         `,
         'silicon-patch': `
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
-            <div>
-              <label style="display:block; margin-bottom:5px; font-weight:600;">Size</label>
-              <div style="display:flex; gap:8px; align-items:center;">
-                <input type="text" id="quotationSize" style="flex:1; padding:8px; border:1px solid #000;" placeholder="2x3 inches" value="${productDetails.size || ''}">
-                <div id="sizeRatioPreview" style="width:44px; height:44px; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; background:#fafafa;"></div>
-              </div>
-            </div>
+          <div style="display:grid; grid-template-columns:1fr; gap:15px; margin-bottom:15px;">
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Thickness</label>
               <select id="quotationThickness" style="width:100%; padding:8px; border:1px solid #000;">
@@ -16902,6 +16934,7 @@
         const contactField = document.getElementById('quotationContactPerson');
         const emailField = document.getElementById('quotationEmail');
         const phoneField = document.getElementById('quotationPhone');
+        const productTypeField = document.getElementById('quotationProductType');
 
         const customerFieldsDisabled = customerNameField?.disabled || false;
         const savedCustomerName = customerNameField?.value || '';
@@ -16909,10 +16942,16 @@
         const savedContactPersonHTML = contactField?.innerHTML || '';
         const savedEmail = emailField?.value || '';
         const savedPhone = phoneField?.value || '';
+        const savedProductType = productTypeField?.value || '';
 
         // Reset the form (clears all fields)
         form.reset();
         document.getElementById('quotationTotal').value = '';
+
+        // Restore product type (disabled dropdown gets reset to first option by form.reset)
+        if (productTypeField && savedProductType) {
+          productTypeField.value = savedProductType;
+        }
 
         // If customer fields were disabled (from email view), restore their values and keep them disabled
         if (customerFieldsDisabled) {
@@ -17012,6 +17051,145 @@
           }
         }
       }
+    };
+
+    // Merged "Dummy Input" — fills all fields below customer info
+    window.fillDummyInput = async function() {
+      // === Product Type — randomly select from available options ===
+      const productTypeField = document.getElementById('quotationProductType');
+      if (productTypeField && productTypeField.options.length > 0) {
+        const randomIdx = Math.floor(Math.random() * productTypeField.options.length);
+        const newType = productTypeField.options[randomIdx].value;
+        productTypeField.value = newType;
+
+        // Regenerate product-specific fields for the new product type
+        const specificFieldsContainer = document.getElementById('productSpecificFields');
+        if (specificFieldsContainer && typeof getProductSpecificFields === 'function') {
+          specificFieldsContainer.innerHTML = getProductSpecificFields(newType);
+        }
+
+        // Show/hide supplier section based on new type
+        if (typeof toggleSupplierSection === 'function') {
+          toggleSupplierSection(newType);
+        }
+      }
+
+      // === Brand Detail ===
+      const brandIdField = document.getElementById('quotationBrandId');
+      if (brandIdField && cachedBrands.length > 0) {
+        const randomBrand = cachedBrands[Math.floor(Math.random() * cachedBrands.length)];
+        brandIdField.value = randomBrand.id;
+      }
+
+      // === Customer Item Name ===
+      const customerItemNameField = document.getElementById('quotationCustomerItemName');
+      if (customerItemNameField) {
+        const sampleNames = [
+          'ITEM-' + String(Math.floor(Math.random() * 999) + 1).padStart(3, '0'),
+          'SAMPLE-' + String.fromCharCode(65 + Math.floor(Math.random() * 26)),
+          'PROD-2024-' + String(Math.floor(Math.random() * 999) + 1).padStart(3, '0'),
+          'REF-' + Math.random().toString(36).substring(2, 8).toUpperCase()
+        ];
+        customerItemNameField.value = sampleNames[Math.floor(Math.random() * sampleNames.length)];
+      }
+
+      // === Height (mm) & Width (mm) ===
+      const heightField = document.getElementById('quotationHeightMm');
+      if (heightField) {
+        heightField.value = Math.floor(Math.random() * 200) + 10;
+      }
+      const widthField = document.getElementById('quotationWidthMm');
+      if (widthField) {
+        widthField.value = Math.floor(Math.random() * 200) + 10;
+      }
+
+      // === Product-specific fields (woven-label, hang-tag, etc.) ===
+      const widths = ['0.5 inch', '1 inch', '1.5 inches', '2 inches', '2.5 inches', '3 inches'];
+      const lengths = ['1 inch', '1.5 inches', '2 inches', '2.5 inches', '3 inches', '4 inches'];
+      const colorCounts = ['1 Color', '2 Colors', '3 Colors', '4 Colors', '5 Colors', '6+ Colors'];
+      const edgeFinishes = ['Cut Edge', 'Folded Edge', 'Heat Cut', 'Ultrasonic Cut', 'Laser Cut'];
+
+      const wField = document.getElementById('quotationWidth');
+      if (wField) wField.value = widths[Math.floor(Math.random() * widths.length)];
+      const lField = document.getElementById('quotationLength');
+      if (lField) lField.value = lengths[Math.floor(Math.random() * lengths.length)];
+
+      const ccField = document.getElementById('quotationColorCount');
+      if (ccField) {
+        const randomCC = colorCounts[Math.floor(Math.random() * colorCounts.length)];
+        for (let i = 0; i < ccField.options.length; i++) {
+          if (ccField.options[i].text === randomCC) { ccField.selectedIndex = i; break; }
+        }
+      }
+
+      const efField = document.getElementById('quotationEdgeFinish');
+      if (efField) {
+        const randomEF = edgeFinishes[Math.floor(Math.random() * edgeFinishes.length)];
+        for (let i = 0; i < efField.options.length; i++) {
+          if (efField.options[i].text === randomEF) { efField.selectedIndex = i; break; }
+        }
+      }
+
+      // Fill generic product fields (for other/outsource types)
+      const pdField = document.getElementById('quotationProductDescription');
+      if (pdField) pdField.value = 'Dummy text ' + Math.floor(Math.random() * 9999);
+      const catField = document.getElementById('quotationCategory');
+      if (catField) catField.value = 'Dummy ' + Math.floor(Math.random() * 9999);
+
+      // === Supplier Selection (if visible) ===
+      const supplierSection = document.getElementById('supplierSelectionSection');
+      if (supplierSection && supplierSection.style.display !== 'none') {
+        const container = document.getElementById('selectedSuppliersList');
+        if (container) {
+          container.innerHTML = '<div style="color:#999; font-size:14px;">No suppliers selected</div>';
+        }
+        try {
+          const suppliers = await loadSuppliersFromStorage();
+          if (suppliers && suppliers.length > 0) {
+            const numToSelect = Math.floor(Math.random() * 3) + 1;
+            const available = [...suppliers];
+            for (let i = 0; i < Math.min(numToSelect, available.length); i++) {
+              const idx = Math.floor(Math.random() * available.length);
+              addSupplierTag(available[idx]);
+              available.splice(idx, 1);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load suppliers for dummy data:', error);
+        }
+      }
+
+      // === Quantity & Pricing ===
+      const quantities = [500, 1000, 2000, 3000, 5000, 10000];
+      const unitPrices = [0.25, 0.35, 0.50, 0.75, 1.00, 1.25, 1.50];
+
+      const quantityField = document.getElementById('quotationQuantity');
+      if (quantityField) quantityField.value = quantities[Math.floor(Math.random() * quantities.length)];
+
+      const unitPriceField = document.getElementById('quotationUnitPrice');
+      if (unitPriceField) unitPriceField.value = unitPrices[Math.floor(Math.random() * unitPrices.length)].toFixed(2);
+
+      // Calculate total
+      if (quantityField && unitPriceField) {
+        const totalField = document.getElementById('quotationTotal');
+        if (totalField) {
+          totalField.value = (parseFloat(quantityField.value) * parseFloat(unitPriceField.value)).toFixed(2);
+        }
+      }
+
+      // === Additional Notes ===
+      const notes = [
+        'Rush order - need within 2 weeks',
+        'Standard production timeline acceptable',
+        'Please provide sample before full production',
+        'Repeat order - same specifications as last time',
+        'New design - please confirm artwork before production',
+        'Urgent - customer deadline approaching'
+      ];
+      const notesField = document.getElementById('quotationNotes');
+      if (notesField) notesField.value = notes[Math.floor(Math.random() * notes.length)];
+
+      console.log('Dummy Input: all fields filled');
     };
 
     window.saveQuotationWithConfirmation = async function(tagType, source = 'non email') {
@@ -17279,11 +17457,7 @@
 
         // Refresh the quotations list to show the newly saved quotation
         await displayQuotations();
-
-        // Also refresh outsourcing view if this is an outsourcing quotation
-        if (tagType === 'outsource' || tagType === 'other' || tagType === 'others') {
-          await displayOutsourcingQuotations();
-        }
+        await displayOutsourcingQuotations();
 
         // Return the final quotation for use by saveQuotationWithConfirmation
         return finalQuotation;
@@ -19185,6 +19359,42 @@
       };
     }
 
+    // Synchronous image dimension extraction from base64 data URL
+    // Caches results to avoid re-parsing the same image
+    const _imageDimCache = new Map();
+    function getImageDimensionsSync(dataUrl) {
+      if (_imageDimCache.has(dataUrl)) return _imageDimCache.get(dataUrl);
+      // Can't do async in didDrawCell, so parse PNG/JPEG dimensions from binary header
+      try {
+        const base64 = dataUrl.split(',')[1];
+        const binary = atob(base64);
+        const bytes = new Uint8Array(Array.from(binary).map(c => c.charCodeAt(0)));
+
+        // PNG: width at bytes 16-19, height at bytes 20-23 (big-endian)
+        if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) {
+          const w = (bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19];
+          const h = (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23];
+          const dims = { width: w, height: h };
+          _imageDimCache.set(dataUrl, dims);
+          return dims;
+        }
+
+        // JPEG: find SOF0 marker (0xFFC0) and read dimensions
+        if (bytes[0] === 0xFF && bytes[1] === 0xD8) {
+          for (let i = 2; i < bytes.length - 1; i++) {
+            if (bytes[i] === 0xFF && (bytes[i + 1] === 0xC0 || bytes[i + 1] === 0xC2)) {
+              const h = (bytes[i + 5] << 8) | bytes[i + 6];
+              const w = (bytes[i + 7] << 8) | bytes[i + 8];
+              const dims = { width: w, height: h };
+              _imageDimCache.set(dataUrl, dims);
+              return dims;
+            }
+          }
+        }
+      } catch (e) { /* ignore parsing errors */ }
+      return null;
+    }
+
     function downloadBlob(blob, filename) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -19328,26 +19538,74 @@
       downloadBlob(blob, filename);
     }
 
-    // PDF export with pie chart image embedded
+    // PDF export with images and pie chart
     async function exportToPdf(quotations, filename, sheetTitle) {
       await loadJsPdfLib();
       const rows = buildExportRows(quotations);
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ orientation: 'landscape' });
 
-      // Page 1: Data table
-      const headers = EXPORT_COLUMNS;
-      const body = rows.map(r => headers.map(h => String(r[h] || '')));
+      // Fetch all profile images upfront and pre-cache dimensions
+      const imageDataMap = {};
+      for (const q of quotations) {
+        if (q.hasProfileImage) {
+          const base64 = await fetchProfileImageBase64(q.id);
+          if (base64) {
+            const mimeType = base64.match(/data:(image\/\w+);/)?.[1] || 'image/jpeg';
+            const ext = mimeType.split('/')[1] || 'jpeg';
+            // Pre-cache dimensions for synchronous use in didDrawCell
+            getImageDimensionsSync(base64);
+            imageDataMap[q.id] = { base64: base64.split(',')[1], ext, dataUrl: base64 };
+          }
+        }
+      }
+
+      // Page 1: Data table with images
+      const headers = ['', ...EXPORT_COLUMNS]; // Add image column
+      const body = rows.map((r, i) => {
+        const q = quotations[i];
+        const imgData = imageDataMap[q.id];
+        return ['', ...EXPORT_COLUMNS.map(h => String(r[h] || ''))];
+      });
+
       doc.autoTable({
         head: [headers],
         body: body,
         styles: { fontSize: 7, cellPadding: 2 },
         headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255], fontStyle: 'bold' },
+        columnStyles: { 0: { cellWidth: 14, minCellHeight: 12 } },
         margin: { top: 14 },
         didDrawPage: function(data) {
           doc.setFontSize(10);
           doc.setFont(undefined, 'bold');
           doc.text(sheetTitle || filename.replace('.pdf', ''), data.settings.margin.left, 10);
+        },
+        didDrawCell: function(data) {
+          // Draw profile image in the first column of body rows
+          if (data.section === 'body' && data.column.index === 0) {
+            const q = quotations[data.row.index];
+            const imgData = imageDataMap[q.id];
+            if (imgData) {
+              try {
+                // Get natural dimensions for proportional sizing
+                const dims = getImageDimensionsSync(imgData.dataUrl);
+                const maxW = 10;
+                const maxH = 10;
+                let imgW = maxW;
+                let imgH = maxH;
+                if (dims) {
+                  const size = calcProportionalSize(dims.width, dims.height, maxW, maxH);
+                  imgW = size.width;
+                  imgH = size.height;
+                }
+                const cellX = data.cell.x + (data.cell.width - imgW) / 2;
+                const cellY = data.cell.y + (data.cell.height - imgH) / 2;
+                doc.addImage(imgData.base64, imgData.ext.toUpperCase(), cellX, cellY, imgW, imgH);
+              } catch (e) {
+                console.warn('Could not add image to PDF for quotation', q.id, e);
+              }
+            }
+          }
         }
       });
 
