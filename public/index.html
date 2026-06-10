@@ -13075,6 +13075,11 @@
 
         alert(`Status updated to "${finalStatus}" successfully!`);
 
+        // Show sample submission card when submitting for approval
+        if (newStatus === 'await approval') {
+          await showSampleSubmissionCard(quotationId);
+        }
+
         // Refresh the outsourcing list
         await displayOutsourcingQuotations();
         if (loadingOverlay) document.body.removeChild(loadingOverlay);
@@ -14217,6 +14222,11 @@
             title: 'Success',
             body: `Status updated to "${newStatus}" successfully!`
           });
+        }
+
+        // Show sample submission card when submitting for approval
+        if (newStatus === 'await approval') {
+          await showSampleSubmissionCard(quotationId);
         }
 
         // Refresh the quotations list to show updated status
@@ -16120,12 +16130,179 @@
       return '<select id="quotationProductType" style="width:100%; padding:8px; border:1px solid #000; background:#f5f5f5; color:#666; cursor:not-allowed;" disabled>' + options + '</select>';
     }
 
+    // Generate a sample submission card in A4 format
+    async function showSampleSubmissionCard(quotationId) {
+      // Fetch quotation data
+      let quotation = null;
+      try {
+        const resp = await fetch(`/api/quotations/${quotationId}`);
+        const result = await resp.json();
+        if (result.success) quotation = result.quotation;
+      } catch (e) { console.error('Failed to fetch quotation for sample card:', e); }
+      if (!quotation) { alert('Quotation not found.'); return; }
+
+      // Determine product type
+      const effectiveProductType = (quotation.productType === 'outsource' && quotation.productDetails?._productTag)
+        ? quotation.productDetails._productTag : quotation.productType;
+      const displayType = getProductTypeDisplayName(effectiveProductType || 'other');
+
+      // Get current submit count: resubmitCount + 1 (first submit = 1, 1st resubmit = 2, etc.)
+      const submitCount = (quotation.resubmitCount || 0) + 1;
+
+      // Internal Code
+      const internalCode = quotation.outsourcingSeq || quotation.quotationSeq || '';
+
+      // Internal PIC — from active email profile
+      let internalPic = '';
+      try {
+        const profilesRes = await fetch('/api/profiles');
+        const profilesData = await profilesRes.json();
+        const activeProfile = (profilesData.profiles || profilesData || []).find(p => p.isActive === 1 || p.isActive === true);
+        if (activeProfile) internalPic = activeProfile.contactPerson || '';
+      } catch (e) { console.warn('Failed to fetch profile for sample card:', e); }
+
+      // Date
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+      // Dimension
+      const dimension = (quotation.height_mm && quotation.width_mm)
+        ? `${quotation.height_mm} x ${quotation.width_mm} mm`
+        : '';
+
+      // Build A4 HTML
+      const cardHtml = `
+        <div id="sampleCardPrintArea" style="width:210mm; min-height:297mm; padding:15mm; font-family:Arial,Helvetica,sans-serif; font-size:11pt; color:#000; box-sizing:border-box; background:#fff; position:relative;">
+          <style>
+            @media print {
+              body * { visibility: hidden !important; }
+              #sampleCardPrintArea, #sampleCardPrintArea * { visibility: visible !important; }
+              #sampleCardPrintArea { position: absolute; top: 0; left: 0; width: 210mm; }
+            }
+            #sampleCardTable { width: 100%; border-collapse: collapse; }
+            #sampleCardTable td, #sampleCardTable th { border: 1px solid #000; padding: 6px 10px; vertical-align: top; }
+            #sampleCardTable .label { font-weight: bold; white-space: nowrap; width: 140px; }
+            #sampleCardTable .sep { text-align: center; width: 12px; }
+            #sampleCardTable .value { min-width: 100px; }
+            .card-title { text-align: center; font-size: 14pt; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 8px; }
+            .section-title { font-weight: bold; font-size: 11pt; margin: 12px 0 6px 0; }
+            .inspection-box { display: inline-block; margin-right: 15px; }
+          </style>
+
+          <div class="card-title">Sample Submission Card</div>
+
+          <table id="sampleCardTable">
+            <colgroup>
+              <col style="width:140px;"><col style="width:12px;"><col style="width:auto;"><col style="width:140px;"><col style="width:12px;"><col style="width:140px;"><col style="width:auto;">
+            </colgroup>
+            <tr>
+              <td class="label">Type</td><td class="sep">:</td><td class="value">${displayType}</td>
+              <td class="label"># Submit</td><td class="sep">:</td><td colspan="1" class="value">${submitCount}</td>
+            </tr>
+            <tr>
+              <td class="label">Date</td><td class="sep">:</td><td class="value">${dateStr}</td>
+              <td class="label">&nbsp;</td><td class="sep">&nbsp;</td><td colspan="1">&nbsp;</td>
+            </tr>
+            <tr>
+              <td class="label">Customer Name</td><td class="sep">:</td><td class="value">${quotation.customerName || ''}</td>
+              <td class="label">PIC</td><td class="sep">:</td><td colspan="1" class="value">${quotation.contactPerson || ''}</td>
+            </tr>
+            <tr>
+              <td class="label">Description</td><td class="sep">:</td><td class="value">${quotation.customerItemName || ''}</td>
+              <td class="label">Dimension</td><td class="sep">:</td><td colspan="1" class="value">${dimension}</td>
+            </tr>
+            <tr>
+              <td class="label">Internal Code</td><td class="sep">:</td><td class="value">${internalCode}</td>
+              <td class="label">Internal PIC</td><td class="sep">:</td><td colspan="1" class="value">${internalPic}</td>
+            </tr>
+          </table>
+
+          <div style="position:absolute; bottom:15mm; left:15mm; right:15mm;">
+            <div class="section-title">Internal Inspection :</div>
+            <table id="sampleCardTable">
+              <tr>
+                <td class="label">Dimension</td><td class="sep">:</td>
+                <td class="value">OK &#9744; &nbsp;&nbsp; NG &#9744;</td>
+                <td class="label" style="text-align:center;">|</td>
+                <td class="label">Color</td><td class="sep">:</td>
+                <td class="value">OK &#9744; &nbsp;&nbsp; NG &#9744;</td>
+                <td class="label" style="text-align:center;">|</td>
+                <td class="label">Material</td><td class="sep">:</td>
+                <td class="value">OK &#9744; &nbsp;&nbsp; NG &#9744;</td>
+              </tr>
+              <tr>
+                <td class="label">Others</td><td class="sep">:</td>
+                <td colspan="9" class="value">&nbsp;</td>
+              </tr>
+            </table>
+
+            <div class="section-title">Customer Comments :</div>
+            <table id="sampleCardTable">
+              <tr>
+                <td class="label">Comments</td><td class="sep">:</td>
+                <td class="value" style="min-height:40px;">&nbsp;</td>
+              </tr>
+              <tr>
+                <td class="label">PIC</td><td class="sep">:</td>
+                <td class="value">&nbsp;</td>
+                <td class="label">Date</td><td class="sep">:</td>
+                <td class="value">&nbsp;</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      `;
+
+      // Show in modal with Print button
+      const modalEl = document.createElement('div');
+      modalEl.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:10000;';
+      modalEl.innerHTML = `
+        <div style="background:#fff; width:90vw; max-width:900px; max-height:90vh; display:flex; flex-direction:column;">
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 20px; border-bottom:1px solid #ccc; flex-shrink:0;">
+            <strong>Sample Submission Card — #${submitCount} (${submitCount === 1 ? 'Submit for Approval' : submitCount === 2 ? '1st Resubmit' : submitCount === 3 ? '2nd Resubmit' : (submitCount - 1) + 'th Resubmit'})</strong>
+            <div>
+              <button onclick="document.getElementById('sampleCardPrintArea').style.padding='10mm'; window.print(); document.getElementById('sampleCardPrintArea').style.padding='15mm';" style="padding:6px 16px; background:#000; color:#fff; border:1px solid #000; cursor:pointer; margin-right:8px;">Print</button>
+              <button onclick="this.closest('div[style*=fixed]').remove();" style="padding:6px 16px; background:#fff; border:1px solid #000; cursor:pointer;">Close</button>
+            </div>
+          </div>
+          <div style="overflow-y:auto; flex:1; background:#e0e0e0; display:flex; justify-content:center; padding:20px;">
+            <div style="box-shadow:0 2px 10px rgba(0,0,0,0.3);">
+              ${cardHtml}
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modalEl);
+    }
+
     function generateQuotationContentForView(tagType, tagName, quotation) {
+      // Determine the effective product type for display
+      const effectiveProductType = (quotation.productType === 'outsource' && quotation.productDetails?._productTag)
+        ? quotation.productDetails._productTag
+        : quotation.productType;
+      const displayProductType = getProductTypeDisplayName(effectiveProductType || tagType);
+      // Get submission count: resubmitCount + 1 (first submit = 1)
+      const submitCount = (quotation.resubmitCount || 0) + 1;
+
       // Same split layout as create form but for view mode (form left, files right)
       return '<div style="display:flex; height:650px;">' +
         // Left side: Form (70% width) - same as create form
         '<div style="flex:0 0 70%; overflow-y:auto; padding-right:10px;">' +
           '<form id="quotationForm">' +
+            '<div style="margin-bottom:20px;">' +
+              '<h4>Product Information</h4>' +
+              '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">' +
+                '<div>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Product Type *</label>' +
+                  '<input type="text" style="width:100%; padding:8px; border:1px solid #000; background:#f5f5f5;" value="' + displayProductType + '" readonly>' +
+                '</div>' +
+                '<div>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;"># Submit</label>' +
+                  '<input type="text" style="width:100%; padding:8px; border:1px solid #000; background:#f5f5f5;" value="' + submitCount + '" readonly>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+
             '<div style="margin-bottom:20px;">' +
               '<h4>Customer Information</h4>' +
               '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">' +
@@ -17227,9 +17404,14 @@
         supplierSection.style.display = isOutsourcing ? 'block' : 'none';
       }
 
-      // === Customer Name ===
+      // === Customer Name — pick a real customer from DB via autocomplete ===
       const customerNameField = getField('quotationCustomerName');
-      if (customerNameField && !customerNameField.disabled) {
+      if (customerNameField && !customerNameField.disabled && window.customerAutocomplete && window.customerAutocomplete.customers.length > 0) {
+        const customers = window.customerAutocomplete.customers;
+        const randomCustomer = customers[Math.floor(Math.random() * customers.length)];
+        window.customerAutocomplete.selectCustomer(randomCustomer.id);
+      } else if (customerNameField && !customerNameField.disabled) {
+        // Fallback: no autocomplete / no customers loaded — just fill a name
         const customerNames = ['Global Tech Solutions', 'Prime Industries', 'Metro Enterprises',
           'Apex Corporation', 'Summit Holdings', 'Elite Manufacturing',
           'Diamond Group', 'Phoenix Trading', 'Crown Textiles', 'Royal Garments'];
