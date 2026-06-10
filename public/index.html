@@ -16179,12 +16179,11 @@
             <col style="width:140px;"><col style="width:12px;"><col style="width:auto;"><col style="width:140px;"><col style="width:12px;"><col style="width:140px;"><col style="width:auto;">
           </colgroup>
           <tr>
-            <td class="label">Type</td><td class="sep">:</td><td class="value">${displayType}</td>
-            <td class="label"># Submit</td><td class="sep">:</td><td class="value">${submitCount}</td>
+            <td colspan="6" style="text-align:right; font-weight:bold;">Date : ${dateStr}</td>
           </tr>
           <tr>
-            <td class="label">Date</td><td class="sep">:</td><td class="value">${dateStr}</td>
-            <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+            <td class="label">Type</td><td class="sep">:</td><td class="value">${displayType}</td>
+            <td class="label"># Submit</td><td class="sep">:</td><td class="value">${submitCount}</td>
           </tr>
           <tr>
             <td class="label">Customer Name</td><td class="sep">:</td><td class="value">${quotation.customerName || ''}</td>
@@ -16219,6 +16218,8 @@
             </tr>
           </table>
 
+          <div style="border-top:2px solid #000; margin:8px 0;"></div>
+
           <div class="section-title">Customer Comments :</div>
           <table class="sctable">
             <tr>
@@ -16237,13 +16238,14 @@
 
       // CSS shared between modal and print window
       const cardCSS = `
-        .card-title { text-align: center; font-size: 14pt; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 8px; }
-        .section-title { font-weight: bold; font-size: 11pt; margin: 12px 0 6px 0; }
+        * { font-size: 7.15pt; }
+        .card-title { text-align: center; font-size: 11.83pt; font-weight: bold; margin-bottom: 8px; border-bottom: 2px solid #000; padding-bottom: 4px; }
+        .section-title { font-weight: bold; font-size: 7.15pt; margin: 6px 0 3px 0; }
         .sctable { width: 100%; border-collapse: collapse; }
-        .sctable td { border: 1px solid #000; padding: 6px 10px; vertical-align: top; }
-        .sctable .label { font-weight: bold; white-space: nowrap; width: 140px; }
-        .sctable .sep { text-align: center; width: 12px; }
-        .sctable .value { min-width: 100px; }
+        .sctable td { padding: 3px 5px; vertical-align: top; }
+        .sctable .label { font-weight: bold; white-space: nowrap; }
+        .sctable .sep { text-align: center; width: 8px; }
+        .sctable .value { }
         .footer-area { position: absolute; bottom: 15mm; left: 15mm; right: 15mm; }
       `;
 
@@ -16257,7 +16259,7 @@
             ${cardCSS}
           </style>
         </head><body>
-          <div style="width:210mm; height:297mm; padding:15mm; font-family:Arial,Helvetica,sans-serif; font-size:11pt; color:#000; box-sizing:border-box; background:#fff; position:relative; overflow:hidden;">
+          <div style="width:210mm; height:297mm; padding:15mm; font-family:Arial,Helvetica,sans-serif; font-size:7.15pt; color:#000; box-sizing:border-box; background:#fff; position:relative; overflow:hidden;">
             ${cardBody}
           </div>
         </body></html>`);
@@ -16280,7 +16282,7 @@
             </div>
           </div>
           <div style="overflow-y:auto; flex:1; background:#e0e0e0; display:flex; justify-content:center; padding:20px;">
-            <div style="box-shadow:0 2px 10px rgba(0,0,0,0.3); flex-shrink:0; width:210mm; height:297mm; padding:15mm; font-family:Arial,Helvetica,sans-serif; font-size:11pt; color:#000; box-sizing:border-box; background:#fff; position:relative; overflow:hidden;">
+            <div style="box-shadow:0 2px 10px rgba(0,0,0,0.3); flex-shrink:0; width:210mm; height:297mm; padding:15mm; font-family:Arial,Helvetica,sans-serif; font-size:7.15pt; color:#000; box-sizing:border-box; background:#fff; position:relative; overflow:hidden;">
               <style>${cardCSS}</style>
               ${cardBody}
             </div>
