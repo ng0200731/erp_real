@@ -16170,104 +16170,119 @@
         ? `${quotation.height_mm} x ${quotation.width_mm} mm`
         : '';
 
-      // Build A4 HTML
-      const cardHtml = `
-        <div id="sampleCardPrintArea" style="width:210mm; min-height:297mm; padding:15mm; font-family:Arial,Helvetica,sans-serif; font-size:11pt; color:#000; box-sizing:border-box; background:#fff; position:relative;">
-          <style>
-            @media print {
-              body * { visibility: hidden !important; }
-              #sampleCardPrintArea, #sampleCardPrintArea * { visibility: visible !important; }
-              #sampleCardPrintArea { position: absolute; top: 0; left: 0; width: 210mm; }
-            }
-            #sampleCardTable { width: 100%; border-collapse: collapse; }
-            #sampleCardTable td, #sampleCardTable th { border: 1px solid #000; padding: 6px 10px; vertical-align: top; }
-            #sampleCardTable .label { font-weight: bold; white-space: nowrap; width: 140px; }
-            #sampleCardTable .sep { text-align: center; width: 12px; }
-            #sampleCardTable .value { min-width: 100px; }
-            .card-title { text-align: center; font-size: 14pt; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 8px; }
-            .section-title { font-weight: bold; font-size: 11pt; margin: 12px 0 6px 0; }
-            .inspection-box { display: inline-block; margin-right: 15px; }
-          </style>
+      // Build the card table HTML (shared between modal and print)
+      const cardBody = `
+        <div class="card-title">Sample Submission Card</div>
 
-          <div class="card-title">Sample Submission Card</div>
+        <table class="sctable">
+          <colgroup>
+            <col style="width:140px;"><col style="width:12px;"><col style="width:auto;"><col style="width:140px;"><col style="width:12px;"><col style="width:140px;"><col style="width:auto;">
+          </colgroup>
+          <tr>
+            <td class="label">Type</td><td class="sep">:</td><td class="value">${displayType}</td>
+            <td class="label"># Submit</td><td class="sep">:</td><td class="value">${submitCount}</td>
+          </tr>
+          <tr>
+            <td class="label">Date</td><td class="sep">:</td><td class="value">${dateStr}</td>
+            <td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td>
+          </tr>
+          <tr>
+            <td class="label">Customer Name</td><td class="sep">:</td><td class="value">${quotation.customerName || ''}</td>
+            <td class="label">PIC</td><td class="sep">:</td><td class="value">${quotation.contactPerson || ''}</td>
+          </tr>
+          <tr>
+            <td class="label">Description</td><td class="sep">:</td><td class="value">${quotation.customerItemName || ''}</td>
+            <td class="label">Dimension</td><td class="sep">:</td><td class="value">${dimension}</td>
+          </tr>
+          <tr>
+            <td class="label">Internal Code</td><td class="sep">:</td><td class="value">${internalCode}</td>
+            <td class="label">Internal PIC</td><td class="sep">:</td><td class="value">${internalPic}</td>
+          </tr>
+        </table>
 
-          <table id="sampleCardTable">
-            <colgroup>
-              <col style="width:140px;"><col style="width:12px;"><col style="width:auto;"><col style="width:140px;"><col style="width:12px;"><col style="width:140px;"><col style="width:auto;">
-            </colgroup>
+        <div class="footer-area">
+          <div class="section-title">Internal Inspection :</div>
+          <table class="sctable">
             <tr>
-              <td class="label">Type</td><td class="sep">:</td><td class="value">${displayType}</td>
-              <td class="label"># Submit</td><td class="sep">:</td><td colspan="1" class="value">${submitCount}</td>
+              <td class="label">Dimension</td><td class="sep">:</td>
+              <td class="value">OK &#9744; &nbsp;&nbsp; NG &#9744;</td>
+              <td style="text-align:center; font-weight:bold;">|</td>
+              <td class="label">Color</td><td class="sep">:</td>
+              <td class="value">OK &#9744; &nbsp;&nbsp; NG &#9744;</td>
+              <td style="text-align:center; font-weight:bold;">|</td>
+              <td class="label">Material</td><td class="sep">:</td>
+              <td class="value">OK &#9744; &nbsp;&nbsp; NG &#9744;</td>
             </tr>
             <tr>
-              <td class="label">Date</td><td class="sep">:</td><td class="value">${dateStr}</td>
-              <td class="label">&nbsp;</td><td class="sep">&nbsp;</td><td colspan="1">&nbsp;</td>
-            </tr>
-            <tr>
-              <td class="label">Customer Name</td><td class="sep">:</td><td class="value">${quotation.customerName || ''}</td>
-              <td class="label">PIC</td><td class="sep">:</td><td colspan="1" class="value">${quotation.contactPerson || ''}</td>
-            </tr>
-            <tr>
-              <td class="label">Description</td><td class="sep">:</td><td class="value">${quotation.customerItemName || ''}</td>
-              <td class="label">Dimension</td><td class="sep">:</td><td colspan="1" class="value">${dimension}</td>
-            </tr>
-            <tr>
-              <td class="label">Internal Code</td><td class="sep">:</td><td class="value">${internalCode}</td>
-              <td class="label">Internal PIC</td><td class="sep">:</td><td colspan="1" class="value">${internalPic}</td>
+              <td class="label">Others</td><td class="sep">:</td>
+              <td colspan="9" class="value">&nbsp;</td>
             </tr>
           </table>
 
-          <div style="position:absolute; bottom:15mm; left:15mm; right:15mm;">
-            <div class="section-title">Internal Inspection :</div>
-            <table id="sampleCardTable">
-              <tr>
-                <td class="label">Dimension</td><td class="sep">:</td>
-                <td class="value">OK &#9744; &nbsp;&nbsp; NG &#9744;</td>
-                <td class="label" style="text-align:center;">|</td>
-                <td class="label">Color</td><td class="sep">:</td>
-                <td class="value">OK &#9744; &nbsp;&nbsp; NG &#9744;</td>
-                <td class="label" style="text-align:center;">|</td>
-                <td class="label">Material</td><td class="sep">:</td>
-                <td class="value">OK &#9744; &nbsp;&nbsp; NG &#9744;</td>
-              </tr>
-              <tr>
-                <td class="label">Others</td><td class="sep">:</td>
-                <td colspan="9" class="value">&nbsp;</td>
-              </tr>
-            </table>
-
-            <div class="section-title">Customer Comments :</div>
-            <table id="sampleCardTable">
-              <tr>
-                <td class="label">Comments</td><td class="sep">:</td>
-                <td class="value" style="min-height:40px;">&nbsp;</td>
-              </tr>
-              <tr>
-                <td class="label">PIC</td><td class="sep">:</td>
-                <td class="value">&nbsp;</td>
-                <td class="label">Date</td><td class="sep">:</td>
-                <td class="value">&nbsp;</td>
-              </tr>
-            </table>
-          </div>
+          <div class="section-title">Customer Comments :</div>
+          <table class="sctable">
+            <tr>
+              <td class="label">Comments</td><td class="sep">:</td>
+              <td class="value" style="min-height:40px;">&nbsp;</td>
+            </tr>
+            <tr>
+              <td class="label">PIC</td><td class="sep">:</td>
+              <td class="value">&nbsp;</td>
+              <td class="label">Date</td><td class="sep">:</td>
+              <td class="value">&nbsp;</td>
+            </tr>
+          </table>
         </div>
       `;
 
-      // Show in modal with Print button
+      // CSS shared between modal and print window
+      const cardCSS = `
+        .card-title { text-align: center; font-size: 14pt; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 8px; }
+        .section-title { font-weight: bold; font-size: 11pt; margin: 12px 0 6px 0; }
+        .sctable { width: 100%; border-collapse: collapse; }
+        .sctable td { border: 1px solid #000; padding: 6px 10px; vertical-align: top; }
+        .sctable .label { font-weight: bold; white-space: nowrap; width: 140px; }
+        .sctable .sep { text-align: center; width: 12px; }
+        .sctable .value { min-width: 100px; }
+        .footer-area { position: absolute; bottom: 15mm; left: 15mm; right: 15mm; }
+      `;
+
+      // Print function — opens a new window sized to A4, prints it
+      window.printSampleCard = function() {
+        const w = window.open('', '_blank', 'width=800,height=1000');
+        w.document.write(`<!DOCTYPE html><html><head><title>Sample Submission Card</title>
+          <style>
+            @page { size: A4; margin: 0; }
+            html, body { margin:0; padding:0; }
+            ${cardCSS}
+          </style>
+        </head><body>
+          <div style="width:210mm; height:297mm; padding:15mm; font-family:Arial,Helvetica,sans-serif; font-size:11pt; color:#000; box-sizing:border-box; background:#fff; position:relative; overflow:hidden;">
+            ${cardBody}
+          </div>
+        </body></html>`);
+        w.document.close();
+        w.focus();
+        setTimeout(() => { w.print(); w.close(); }, 300);
+      };
+
+      // Show in modal for preview
       const modalEl = document.createElement('div');
+      modalEl.id = 'sampleCardModal';
       modalEl.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:10000;';
       modalEl.innerHTML = `
         <div style="background:#fff; width:90vw; max-width:900px; max-height:90vh; display:flex; flex-direction:column;">
           <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 20px; border-bottom:1px solid #ccc; flex-shrink:0;">
             <strong>Sample Submission Card — #${submitCount} (${submitCount === 1 ? 'Submit for Approval' : submitCount === 2 ? '1st Resubmit' : submitCount === 3 ? '2nd Resubmit' : (submitCount - 1) + 'th Resubmit'})</strong>
             <div>
-              <button onclick="document.getElementById('sampleCardPrintArea').style.padding='10mm'; window.print(); document.getElementById('sampleCardPrintArea').style.padding='15mm';" style="padding:6px 16px; background:#000; color:#fff; border:1px solid #000; cursor:pointer; margin-right:8px;">Print</button>
-              <button onclick="this.closest('div[style*=fixed]').remove();" style="padding:6px 16px; background:#fff; border:1px solid #000; cursor:pointer;">Close</button>
+              <button onclick="printSampleCard();" style="padding:6px 16px; background:#000; color:#fff; border:1px solid #000; cursor:pointer; margin-right:8px;">Print</button>
+              <button onclick="document.getElementById('sampleCardModal').remove();" style="padding:6px 16px; background:#fff; border:1px solid #000; cursor:pointer;">Close</button>
             </div>
           </div>
           <div style="overflow-y:auto; flex:1; background:#e0e0e0; display:flex; justify-content:center; padding:20px;">
-            <div style="box-shadow:0 2px 10px rgba(0,0,0,0.3);">
-              ${cardHtml}
+            <div style="box-shadow:0 2px 10px rgba(0,0,0,0.3); flex-shrink:0; width:210mm; height:297mm; padding:15mm; font-family:Arial,Helvetica,sans-serif; font-size:11pt; color:#000; box-sizing:border-box; background:#fff; position:relative; overflow:hidden;">
+              <style>${cardCSS}</style>
+              ${cardBody}
             </div>
           </div>
         </div>
