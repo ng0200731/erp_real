@@ -107,8 +107,13 @@
       </div>
       <div class="info-section">
         <h2>Quotation Details</h2>
+        <div id="profileImageSection" style="margin-bottom:16px; display:none;">
+          <img id="profileImage" style="max-width:100%; max-height:200px; object-fit:contain; border:1px solid #000;">
+        </div>
+        <div class="info-row" id="customerItemNameRow" style="display:none;"><span class="info-label">Customer Item</span><span class="info-value" id="customerItemName"></span></div>
         <div class="info-row"><span class="info-label">Customer</span><span class="info-value" id="customerName"></span></div>
         <div class="info-row"><span class="info-label">Product Type</span><span class="info-value" id="productType"></span></div>
+        <div id="productDetailsHtml"></div>
         <div class="info-row"><span class="info-label">Quantity</span><span class="info-value" id="quantity"></span></div>
         <div class="info-row"><span class="info-label">OS Ref</span><span class="info-value" id="osRef"></span></div>
       </div>
@@ -131,6 +136,50 @@
   </div>
 
   <script>
+    // Format product type to readable name
+    function formatProductType(type) {
+      const names = {
+        'hang-tag': 'Hang Tag', 'woven-label': 'Woven Label', 'printed-label': 'Printed Label',
+        'heat-transfer': 'Heat Transfer', 'silicon-patch': 'Silicon Patch',
+        'embroidery-patch': 'Embroidery Patch', 'outsource': 'Outsource', 'other': 'Other', 'others': 'Other'
+      };
+      return names[type] || type || '-';
+    }
+
+    // Friendly labels for product detail keys
+    const detailLabels = {
+      material: 'Material', size: 'Size', printingMethod: 'Printing Method',
+      colorCount: 'Color Count', edgeFinish: 'Edge Finish',
+      materialType: 'Material Type', frontColor: 'Front Color', backColor: 'Back Color',
+      transferType: 'Transfer Type', application: 'Application Method',
+      thickness: 'Thickness', colorMode: 'Color Mode', backingType: 'Backing Type',
+      designComplexity: 'Design Complexity',
+      stitchType: 'Stitch Type', borderType: 'Border Type', threadColorCount: 'Thread Color Count',
+      productDescription: 'Description', category: 'Category', complexity: 'Complexity',
+      _productTag: null // hidden internal field
+    };
+
+    // Render product details object as HTML info-rows
+    function renderProductDetails(details, productType) {
+      const container = document.getElementById('productDetailsHtml');
+      if (!details || typeof details !== 'object') {
+        container.innerHTML = '';
+        return;
+      }
+      let html = '';
+      // Show the actual product type if it's an outsource with _productTag
+      if (productType === 'outsource' && details._productTag) {
+        document.getElementById('productType').textContent = formatProductType(details._productTag);
+      }
+      for (const [key, value] of Object.entries(details)) {
+        if (key.startsWith('_')) continue;
+        if (value === null || value === undefined || value === '') continue;
+        const label = detailLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+        html += '<div class="info-row"><span class="info-label">' + label + '</span><span class="info-value">' + value + '</span></div>';
+      }
+      container.innerHTML = html;
+    }
+
     const token = window.location.pathname.split('/supplier-sampling/')[1]?.split('/')[0];
 
     if (!token) {
@@ -157,9 +206,24 @@
         document.getElementById('supplierName').textContent = data.supplier.memberName;
         document.getElementById('companyName').textContent = data.supplier.companyName;
         document.getElementById('customerName').textContent = data.quotation.customerName || '-';
-        document.getElementById('productType').textContent = data.quotation.productType || '-';
+        document.getElementById('productType').textContent = formatProductType(data.quotation.productType) || '-';
         document.getElementById('quantity').textContent = data.quotation.quantity || '-';
         document.getElementById('osRef').textContent = data.quotation.outsourcingSeq || '-';
+
+        // Show customer item name if available
+        if (data.quotation.customerItemName) {
+          document.getElementById('customerItemNameRow').style.display = 'flex';
+          document.getElementById('customerItemName').textContent = data.quotation.customerItemName;
+        }
+
+        // Render product details as HTML
+        renderProductDetails(data.quotation.productDetails, data.quotation.productType);
+
+        // Show profile image if available
+        if (data.quotation.hasProfileImage) {
+          document.getElementById('profileImageSection').style.display = 'block';
+          document.getElementById('profileImage').src = `/api/quotations/${data.quotation.id}/profile-image`;
+        }
 
         if (data.alreadySubmitted) {
           document.getElementById('alreadySubmitted').style.display = 'block';

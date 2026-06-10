@@ -289,14 +289,25 @@ router.get('/sampling/:token', async (req, res) => {
       return res.status(403).json({ success: false, error: 'Token expired' });
     }
 
-    const quotation = await db.get(`SELECT * FROM quotations WHERE id = ?`, [tokenData.quotationId]);
+    const quotation = await db.get(
+      `SELECT *, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations WHERE id = ?`,
+      [tokenData.quotationId]
+    );
     const supplier = await db.get(`SELECT * FROM suppliers WHERE id = ?`, [tokenData.supplierId]);
     const member = await db.get(`SELECT * FROM supplier_members WHERE id = ?`, [tokenData.supplierMemberId]);
+
+    // Parse productDetails
+    let samplingProductDetails = quotation.productDetails;
+    if (typeof samplingProductDetails === 'string') {
+      try { samplingProductDetails = JSON.parse(samplingProductDetails); } catch (e) { /* keep as-is */ }
+    }
 
     res.json({
       success: true,
       quotation: {
-        id: quotation.id, customerName: quotation.customerName, productType: quotation.productType,
+        id: quotation.id, customerName: quotation.customerName, customerItemName: quotation.customerItemName,
+        productType: quotation.productType, productDetails: samplingProductDetails,
+        hasProfileImage: quotation.hasProfileImage,
         quantity: quotation.quantity, outsourcingSeq: quotation.outsourcingSeq, sampleReadyDate: quotation.sampleReadyDate
       },
       supplier: { companyName: supplier.companyName, memberName: member.name },
@@ -434,14 +445,20 @@ router.get('/:token', async (req, res) => {
       return res.status(403).json({ success: false, error: 'Token expired' });
     }
 
-    // Get quotation details
+    // Get quotation details with hasProfileImage flag
     const quotation = await db.get(
-      `SELECT * FROM quotations WHERE id = ?`,
+      `SELECT *, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations WHERE id = ?`,
       [tokenData.quotationId]
     );
 
     if (!quotation) {
       return res.status(404).json({ success: false, error: 'Quotation not found' });
+    }
+
+    // Parse productDetails JSON if it's a string
+    let parsedProductDetails = quotation.productDetails;
+    if (typeof parsedProductDetails === 'string') {
+      try { parsedProductDetails = JSON.parse(parsedProductDetails); } catch (e) { /* keep as-is */ }
     }
 
     // Get supplier info
@@ -466,8 +483,10 @@ router.get('/:token', async (req, res) => {
       quotation: {
         id: quotation.id,
         customerName: quotation.customerName,
+        customerItemName: quotation.customerItemName,
         productType: quotation.productType,
-        productDetails: quotation.productDetails,
+        productDetails: parsedProductDetails,
+        hasProfileImage: quotation.hasProfileImage,
         quantity: quotation.quantity,
         notes: quotation.notes
       },

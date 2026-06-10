@@ -628,13 +628,19 @@ process.on('unhandledRejection', (reason, promise) => {
   // Don't exit - keep server running, but log the error
 });
 
-// Catch-all route for supplier portal token URLs
+// Catch-all route for supplier portal token URLs (no cache for dynamic pages)
 app.get('/supplier-portal/:token', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.sendFile(path.join(__dirname, 'public', 'supplier-portal.html'));
 });
 
-// Catch-all route for supplier sampling token URLs
+// Catch-all route for supplier sampling token URLs (no cache for dynamic pages)
 app.get('/supplier-sampling/:token', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.sendFile(path.join(__dirname, 'public', 'supplier-sampling.html'));
 });
 
