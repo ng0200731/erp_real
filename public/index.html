@@ -14207,7 +14207,8 @@
 
       // Populate the form with quotation data after DOM is fully ready
       setTimeout(() => {
-        populateQuotationViewForm(quotation);
+        const viewContainer = document.getElementById('quotationViewFormContainer');
+        populateQuotationViewForm(quotation, viewContainer);
       }, 100);
 
       // Global function to close the modal
@@ -14238,15 +14239,18 @@
       };
     }
 
-    function populateQuotationViewForm(quotation) {
+    function populateQuotationViewForm(quotation, scopeContainer) {
       console.log('Setting up view form (fields already populated):', quotation);
       console.log('hasProfileImage:', quotation.hasProfileImage, 'profileImagePath:', quotation.profileImagePath);
 
+      // Scope all element queries to the view modal container to avoid duplicate ID conflicts
+      const getField = (id) => scopeContainer ? scopeContainer.querySelector('#' + id) : document.getElementById(id);
+
       // Initialize profile image preview with existing image
-      const profileImagePreview = document.getElementById('profileImagePreview');
-      const profileImagePlaceholder = document.getElementById('profileImagePlaceholder');
-      const removeProfileImageBtn = document.getElementById('removeProfileImageBtn');
-      const profileImageDropZone = document.getElementById('profileImageDropZone');
+      const profileImagePreview = getField('profileImagePreview');
+      const profileImagePlaceholder = getField('profileImagePlaceholder');
+      const removeProfileImageBtn = getField('removeProfileImageBtn');
+      const profileImageDropZone = getField('profileImageDropZone');
 
       console.log('Profile image elements found:', {
         preview: !!profileImagePreview,
@@ -14310,17 +14314,17 @@
         }
 
         // Explicitly populate height/width values (belt-and-suspenders)
-        const hField = document.getElementById('quotationHeightMm');
+        const hField = getField('quotationHeightMm');
         if (hField && quotation.height_mm != null) {
           hField.value = quotation.height_mm;
         }
-        const wField = document.getElementById('quotationWidthMm');
+        const wField = getField('quotationWidthMm');
         if (wField && quotation.width_mm != null) {
           wField.value = quotation.width_mm;
         }
 
         // Disable and dim all input, textarea, and select elements in the form
-        const allFormElements = document.querySelectorAll('#quotationViewFormContainer input, #quotationViewFormContainer textarea, #quotationViewFormContainer select');
+        const allFormElements = scopeContainer.querySelectorAll('input, textarea, select');
         allFormElements.forEach(element => {
           element.disabled = true;
           element.readOnly = true;
@@ -14349,7 +14353,7 @@
       });
 
       // Initialize drag-and-drop for profile image in edit mode
-      initializeViewModeProfileImageDrop(quotationId);
+      initializeViewModeProfileImageDrop(quotationId, formContainer);
 
       // Update modal actions to show Save and Cancel buttons
       const actionsDiv = document.querySelector('.modal-actions');
@@ -14379,12 +14383,15 @@
     }
 
     // Initialize profile image drag-and-drop for the view/edit modal
-    function initializeViewModeProfileImageDrop(quotationId) {
-      const profileImageDropZone = document.getElementById('profileImageDropZone');
-      const profileImageInput = document.getElementById('profileImageInput');
-      const profileImagePreview = document.getElementById('profileImagePreview');
-      const profileImagePlaceholder = document.getElementById('profileImagePlaceholder');
-      const removeProfileImageBtn = document.getElementById('removeProfileImageBtn');
+    function initializeViewModeProfileImageDrop(quotationId, scopeContainer) {
+      // Scope all element queries to the view modal container to avoid duplicate ID conflicts
+      const getField = (id) => scopeContainer ? scopeContainer.querySelector('#' + id) : document.getElementById(id);
+
+      const profileImageDropZone = getField('profileImageDropZone');
+      const profileImageInput = getField('profileImageInput');
+      const profileImagePreview = getField('profileImagePreview');
+      const profileImagePlaceholder = getField('profileImagePlaceholder');
+      const removeProfileImageBtn = getField('removeProfileImageBtn');
 
       if (!profileImageDropZone || !profileImageInput || !profileImagePreview || !profileImagePlaceholder) {
         console.warn('Profile image elements not found, skipping drag-drop init');
@@ -14398,12 +14405,12 @@
       const newDropZone = profileImageDropZone.cloneNode(true);
       profileImageDropZone.parentNode.replaceChild(newDropZone, profileImageDropZone);
 
-      // Re-query after clone
-      const dropZone = document.getElementById('profileImageDropZone');
-      const input = document.getElementById('profileImageInput');
-      const preview = document.getElementById('profileImagePreview');
-      const placeholder = document.getElementById('profileImagePlaceholder');
-      const removeBtn = document.getElementById('removeProfileImageBtn');
+      // Re-query after clone (scoped to container)
+      const dropZone = getField('profileImageDropZone');
+      const input = getField('profileImageInput');
+      const preview = getField('profileImagePreview');
+      const placeholder = getField('profileImagePlaceholder');
+      const removeBtn = getField('removeProfileImageBtn');
 
       // Profile Image: Click to browse
       dropZone.addEventListener('click', () => {
@@ -14455,7 +14462,7 @@
         // Don't intercept paste if user is typing in a text input/textarea
         const tag = document.activeElement?.tagName?.toLowerCase();
         if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
-        if (!document.getElementById('profileImageDropZone')) return;
+        if (!getField('profileImageDropZone')) return;
 
         const items = e.clipboardData?.items;
         if (!items) return;
@@ -14552,18 +14559,21 @@
           throw new Error('Original quotation not found');
         }
 
-        // Collect updated data from form fields
-        const customerName = document.getElementById('quotationCustomerName')?.value.trim();
-        const contactPerson = document.getElementById('quotationContactPerson')?.value;
-        const email = document.getElementById('quotationEmail')?.value.trim();
-        const phone = document.getElementById('quotationPhone')?.value.trim();
-        const quantity = document.getElementById('quotationQuantity')?.value;
-        const unitPrice = document.getElementById('quotationUnitPrice')?.value;
-        const notes = document.getElementById('quotationNotes')?.value.trim();
-        const brandId = document.getElementById('quotationBrandId')?.value || null;
-        const customerItemName = document.getElementById('quotationCustomerItemName')?.value?.trim() || null;
-        const heightMm = document.getElementById('quotationHeightMm')?.value || null;
-        const widthMm = document.getElementById('quotationWidthMm')?.value || null;
+        // Collect updated data from form fields (scoped to view modal)
+        const viewContainer = document.getElementById('quotationViewFormContainer');
+        const getField = (id) => viewContainer ? viewContainer.querySelector('#' + id) : document.getElementById(id);
+
+        const customerName = getField('quotationCustomerName')?.value.trim();
+        const contactPerson = getField('quotationContactPerson')?.value;
+        const email = getField('quotationEmail')?.value.trim();
+        const phone = getField('quotationPhone')?.value.trim();
+        const quantity = getField('quotationQuantity')?.value;
+        const unitPrice = getField('quotationUnitPrice')?.value;
+        const notes = getField('quotationNotes')?.value.trim();
+        const brandId = getField('quotationBrandId')?.value || null;
+        const customerItemName = getField('quotationCustomerItemName')?.value?.trim() || null;
+        const heightMm = getField('quotationHeightMm')?.value || null;
+        const widthMm = getField('quotationWidthMm')?.value || null;
 
         // Validation
         if (!customerName) {
@@ -15032,6 +15042,39 @@
     // -------- QUOTATION TAG SELECTION --------
     let selectedQuotationTag = null;
 
+    // Helper function to get the active quotation form container
+    // This ensures element queries are scoped to the correct panel (quotation vs outsourcing)
+    function getActiveQuotationContainer() {
+      // Check which panel is visible - outsourcing create or quotation create
+      const outsourcingPanel = document.getElementById('outsourcingCreatePanel');
+      const quotationPanel = document.getElementById('quotationPanel');
+
+      // If outsourcing panel is visible and its sub-board is shown
+      if (outsourcingPanel && outsourcingPanel.style.display !== 'none') {
+        const outsourcingSubBoard = document.getElementById('outsourcingSubBoard');
+        if (outsourcingSubBoard && outsourcingSubBoard.style.display !== 'none') {
+          return document.getElementById('outsourcingSubBoardContent');
+        }
+      }
+
+      // If quotation panel is visible and its sub-board is shown
+      if (quotationPanel && quotationPanel.style.display !== 'none') {
+        const quotationSubBoard = document.getElementById('quotationSubBoard');
+        if (quotationSubBoard && quotationSubBoard.style.display !== 'none') {
+          return document.getElementById('quotationSubBoardContent');
+        }
+      }
+
+      // Fallback: check email modal
+      const emailModal = document.getElementById('emailQuotationModal');
+      if (emailModal && emailModal.style.display !== 'none') {
+        return emailModal.querySelector('.modal-quotation-form') || emailModal;
+      }
+
+      // Default fallback to quotation sub-board content
+      return document.getElementById('quotationSubBoardContent');
+    }
+
     function initializeQuotationPanel() {
       const quotationButtons = document.querySelectorAll('.quotation-tag-btn');
 
@@ -15056,6 +15099,9 @@
     }
 
     function showQuotationSubBoard(tagType, tagName) {
+      // Clear outsourcing flag — quotation and outsourcing are separate
+      window._outsourcingProductTag = null;
+
       const subBoard = document.getElementById('quotationSubBoard');
       const subBoardTitle = document.getElementById('quotationSubBoardTitle');
       const subBoardContent = document.getElementById('quotationSubBoardContent');
@@ -16200,7 +16246,8 @@
 
     // Helper: collect product-specific field values from the DOM
     function collectProductDetailsFromForm(tagType) {
-      const el = (id) => document.getElementById(id)?.value || '';
+      const container = getActiveQuotationContainer();
+      const el = (id) => (container ? container.querySelector('#' + id) : document.getElementById(id))?.value || '';
       if (tagType === 'hang-tag') {
         return { material: el('quotationMaterial'), size: el('quotationSize'), printingMethod: el('quotationPrintingMethod') };
       } else if (tagType === 'woven-label') {
@@ -16818,6 +16865,7 @@
     function toggleSupplierSection(productType) {
       const supplierSection = document.getElementById('supplierSelectionSection');
       if (supplierSection) {
+        // Only show supplier section for outsourcing types
         if (productType === 'outsource' || productType === 'other' || productType === 'others') {
           supplierSection.style.display = 'block';
         } else {
@@ -16828,6 +16876,10 @@
 
     // Global functions for quotation form
     window.clearQuotationForm = function() {
+      // Get the active container to scope element queries
+      const container = getActiveQuotationContainer();
+      const getField = (id) => container ? container.querySelector('#' + id) : document.getElementById(id);
+
       // Find the visible form (email modal takes priority if open)
       const emailModal = document.getElementById('emailQuotationModal');
       let form;
@@ -16835,15 +16887,15 @@
         form = emailModal.querySelector('#quotationForm');
       }
       if (!form) {
-        form = document.getElementById('quotationForm');
+        form = getField('quotationForm');
       }
       if (form) {
         // Save customer field values if they're disabled (from email view)
-        const customerNameField = document.getElementById('quotationCustomerName');
-        const contactField = document.getElementById('quotationContactPerson');
-        const emailField = document.getElementById('quotationEmail');
-        const phoneField = document.getElementById('quotationPhone');
-        const productTypeField = document.getElementById('quotationProductType');
+        const customerNameField = getField('quotationCustomerName');
+        const contactField = getField('quotationContactPerson');
+        const emailField = getField('quotationEmail');
+        const phoneField = getField('quotationPhone');
+        const productTypeField = getField('quotationProductType');
 
         const customerFieldsDisabled = customerNameField?.disabled || false;
         const savedCustomerName = customerNameField?.value || '';
@@ -16855,7 +16907,8 @@
 
         // Reset the form (clears all fields)
         form.reset();
-        document.getElementById('quotationTotal').value = '';
+        const totalField = getField('quotationTotal');
+        if (totalField) totalField.value = '';
 
         // Restore product type (disabled dropdown gets reset to first option by form.reset)
         if (productTypeField && savedProductType) {
@@ -16964,34 +17017,64 @@
 
     // Merged "Dummy Input" — fills all fields below customer info
     window.fillDummyInput = async function() {
-      // === Product Type — randomly select from available options ===
-      const productTypeField = document.getElementById('quotationProductType');
-      if (productTypeField && productTypeField.options.length > 0) {
-        const randomIdx = Math.floor(Math.random() * productTypeField.options.length);
-        const newType = productTypeField.options[randomIdx].value;
-        productTypeField.value = newType;
+      // Get the active container (quotation vs outsourcing) to scope element queries
+      const container = getActiveQuotationContainer();
 
-        // Regenerate product-specific fields for the new product type
-        const specificFieldsContainer = document.getElementById('productSpecificFields');
-        if (specificFieldsContainer && typeof getProductSpecificFields === 'function') {
-          specificFieldsContainer.innerHTML = getProductSpecificFields(newType);
-        }
+      // Helper to get element within the active container
+      const getField = (id) => container ? container.querySelector('#' + id) : document.getElementById(id);
 
-        // Show/hide supplier section based on new type
-        if (typeof toggleSupplierSection === 'function') {
-          toggleSupplierSection(newType);
+      // Helper to set a select field by option value
+      const setSelectByValue = (field, value) => {
+        if (!field) return;
+        for (let i = 0; i < field.options.length; i++) {
+          if (field.options[i].value === value) { field.selectedIndex = i; break; }
         }
+      };
+
+      // Helper to set a select field by random choice (skipping placeholder options)
+      const setSelectRandom = (field) => {
+        if (!field || field.options.length <= 1) return;
+        // Skip the first option if it's a placeholder (empty value)
+        const startIdx = (field.options[0].value === '') ? 1 : 0;
+        const idx = startIdx + Math.floor(Math.random() * (field.options.length - startIdx));
+        field.selectedIndex = idx;
+      };
+
+      // === Product Type — KEEP the pre-selected type (don't randomize) ===
+      const productTypeField = getField('quotationProductType');
+      const currentType = productTypeField?.value || window.selectedQuotationTag || 'hang-tag';
+
+      // Regenerate product-specific fields for the current product type (in case they're empty)
+      const specificFieldsContainer = getField('productSpecificFields');
+      if (specificFieldsContainer && typeof getProductSpecificFields === 'function') {
+        specificFieldsContainer.innerHTML = getProductSpecificFields(currentType);
+      }
+
+      // Show/hide supplier section: keep visible for outsourcing, hide for regular quotation
+      const isOutsourcing = !!window._outsourcingProductTag;
+      const supplierSection = getField('supplierSelectionSection');
+      if (supplierSection) {
+        supplierSection.style.display = isOutsourcing ? 'block' : 'none';
+      }
+
+      // === Customer Name ===
+      const customerNameField = getField('quotationCustomerName');
+      if (customerNameField && !customerNameField.disabled) {
+        const customerNames = ['Global Tech Solutions', 'Prime Industries', 'Metro Enterprises',
+          'Apex Corporation', 'Summit Holdings', 'Elite Manufacturing',
+          'Diamond Group', 'Phoenix Trading', 'Crown Textiles', 'Royal Garments'];
+        customerNameField.value = customerNames[Math.floor(Math.random() * customerNames.length)];
       }
 
       // === Brand Detail ===
-      const brandIdField = document.getElementById('quotationBrandId');
+      const brandIdField = getField('quotationBrandId');
       if (brandIdField && cachedBrands.length > 0) {
         const randomBrand = cachedBrands[Math.floor(Math.random() * cachedBrands.length)];
         brandIdField.value = randomBrand.id;
       }
 
       // === Customer Item Name ===
-      const customerItemNameField = document.getElementById('quotationCustomerItemName');
+      const customerItemNameField = getField('quotationCustomerItemName');
       if (customerItemNameField) {
         const sampleNames = [
           'ITEM-' + String(Math.floor(Math.random() * 999) + 1).padStart(3, '0'),
@@ -17003,54 +17086,63 @@
       }
 
       // === Height (mm) & Width (mm) ===
-      const heightField = document.getElementById('quotationHeightMm');
-      if (heightField) {
-        heightField.value = Math.floor(Math.random() * 200) + 10;
+      const heightField = getField('quotationHeightMm');
+      if (heightField) heightField.value = Math.floor(Math.random() * 200) + 10;
+      const widthField = getField('quotationWidthMm');
+      if (widthField) widthField.value = Math.floor(Math.random() * 200) + 10;
+
+      // === Product-specific fields (based on current type) ===
+      if (currentType === 'hang-tag') {
+        setSelectRandom(getField('quotationMaterial'));
+        const sizeField = getField('quotationSize');
+        if (sizeField) sizeField.value = (Math.floor(Math.random() * 5) + 1) + 'x' + (Math.floor(Math.random() * 5) + 1) + ' inches';
+        setSelectRandom(getField('quotationPrintingMethod'));
+      } else if (currentType === 'woven-label') {
+        const widths = ['0.5 inch', '1 inch', '1.5 inches', '2 inches', '2.5 inches', '3 inches'];
+        const lengths = ['1 inch', '1.5 inches', '2 inches', '2.5 inches', '3 inches', '4 inches'];
+        const wField = getField('quotationWidth');
+        if (wField) wField.value = widths[Math.floor(Math.random() * widths.length)];
+        const lField = getField('quotationLength');
+        if (lField) lField.value = lengths[Math.floor(Math.random() * lengths.length)];
+        setSelectRandom(getField('quotationColorCount'));
+        setSelectRandom(getField('quotationEdgeFinish'));
+      } else if (currentType === 'printed-label') {
+        setSelectRandom(getField('quotationMaterialType'));
+        const frontColorField = getField('quotationFrontColor');
+        if (frontColorField) frontColorField.value = Math.floor(Math.random() * 8) + 1;
+        const backColorField = getField('quotationBackColor');
+        if (backColorField) backColorField.value = Math.floor(Math.random() * 4) + 1;
+      } else if (currentType === 'heat-transfer') {
+        setSelectRandom(getField('quotationTransferType'));
+        setSelectRandom(getField('quotationApplication'));
+      } else if (currentType === 'silicon-patch') {
+        const sizeField = getField('quotationSize');
+        if (sizeField) sizeField.value = (Math.floor(Math.random() * 5) + 1) + 'x' + (Math.floor(Math.random() * 5) + 1) + ' inches';
+        setSelectRandom(getField('quotationThickness'));
+        setSelectRandom(getField('quotationColorMode'));
+        setSelectRandom(getField('quotationBackingType'));
+        setSelectRandom(getField('quotationDesignComplexity'));
+      } else if (currentType === 'embroidery-patch' || currentType === 'embriodery-patch') {
+        const sizeField = getField('quotationSize');
+        if (sizeField) sizeField.value = (Math.floor(Math.random() * 5) + 1) + 'x' + (Math.floor(Math.random() * 5) + 1) + ' inches';
+        setSelectRandom(getField('quotationStitchType'));
+        setSelectRandom(getField('quotationBorderType'));
+        setSelectRandom(getField('quotationBackingType'));
+        setSelectRandom(getField('quotationThreadColorCount'));
+      } else {
+        // 'others' type
+        const pdField = getField('quotationProductDescription');
+        if (pdField) pdField.value = 'Dummy text ' + Math.floor(Math.random() * 9999);
+        const catField = getField('quotationCategory');
+        if (catField) catField.value = 'Dummy ' + Math.floor(Math.random() * 9999);
+        setSelectRandom(getField('quotationComplexity'));
       }
-      const widthField = document.getElementById('quotationWidthMm');
-      if (widthField) {
-        widthField.value = Math.floor(Math.random() * 200) + 10;
-      }
-
-      // === Product-specific fields (woven-label, hang-tag, etc.) ===
-      const widths = ['0.5 inch', '1 inch', '1.5 inches', '2 inches', '2.5 inches', '3 inches'];
-      const lengths = ['1 inch', '1.5 inches', '2 inches', '2.5 inches', '3 inches', '4 inches'];
-      const colorCounts = ['1 Color', '2 Colors', '3 Colors', '4 Colors', '5 Colors', '6+ Colors'];
-      const edgeFinishes = ['Cut Edge', 'Folded Edge', 'Heat Cut', 'Ultrasonic Cut', 'Laser Cut'];
-
-      const wField = document.getElementById('quotationWidth');
-      if (wField) wField.value = widths[Math.floor(Math.random() * widths.length)];
-      const lField = document.getElementById('quotationLength');
-      if (lField) lField.value = lengths[Math.floor(Math.random() * lengths.length)];
-
-      const ccField = document.getElementById('quotationColorCount');
-      if (ccField) {
-        const randomCC = colorCounts[Math.floor(Math.random() * colorCounts.length)];
-        for (let i = 0; i < ccField.options.length; i++) {
-          if (ccField.options[i].text === randomCC) { ccField.selectedIndex = i; break; }
-        }
-      }
-
-      const efField = document.getElementById('quotationEdgeFinish');
-      if (efField) {
-        const randomEF = edgeFinishes[Math.floor(Math.random() * edgeFinishes.length)];
-        for (let i = 0; i < efField.options.length; i++) {
-          if (efField.options[i].text === randomEF) { efField.selectedIndex = i; break; }
-        }
-      }
-
-      // Fill generic product fields (for other/outsource types)
-      const pdField = document.getElementById('quotationProductDescription');
-      if (pdField) pdField.value = 'Dummy text ' + Math.floor(Math.random() * 9999);
-      const catField = document.getElementById('quotationCategory');
-      if (catField) catField.value = 'Dummy ' + Math.floor(Math.random() * 9999);
 
       // === Supplier Selection (if visible) ===
-      const supplierSection = document.getElementById('supplierSelectionSection');
       if (supplierSection && supplierSection.style.display !== 'none') {
-        const container = document.getElementById('selectedSuppliersList');
-        if (container) {
-          container.innerHTML = '<div style="color:#999; font-size:14px;">No suppliers selected</div>';
+        const suppliersListContainer = getField('selectedSuppliersList');
+        if (suppliersListContainer) {
+          suppliersListContainer.innerHTML = '<div style="color:#999; font-size:14px;">No suppliers selected</div>';
         }
         try {
           const suppliers = await loadSuppliersFromStorage();
@@ -17072,15 +17164,15 @@
       const quantities = [500, 1000, 2000, 3000, 5000, 10000];
       const unitPrices = [0.25, 0.35, 0.50, 0.75, 1.00, 1.25, 1.50];
 
-      const quantityField = document.getElementById('quotationQuantity');
+      const quantityField = getField('quotationQuantity');
       if (quantityField) quantityField.value = quantities[Math.floor(Math.random() * quantities.length)];
 
-      const unitPriceField = document.getElementById('quotationUnitPrice');
+      const unitPriceField = getField('quotationUnitPrice');
       if (unitPriceField) unitPriceField.value = unitPrices[Math.floor(Math.random() * unitPrices.length)].toFixed(2);
 
       // Calculate total
       if (quantityField && unitPriceField) {
-        const totalField = document.getElementById('quotationTotal');
+        const totalField = getField('quotationTotal');
         if (totalField) {
           totalField.value = (parseFloat(quantityField.value) * parseFloat(unitPriceField.value)).toFixed(2);
         }
@@ -17095,10 +17187,10 @@
         'New design - please confirm artwork before production',
         'Urgent - customer deadline approaching'
       ];
-      const notesField = document.getElementById('quotationNotes');
+      const notesField = getField('quotationNotes');
       if (notesField) notesField.value = notes[Math.floor(Math.random() * notes.length)];
 
-      console.log('Dummy Input: all fields filled');
+      console.log('Dummy Input: all fields filled for type', currentType, 'in', container?.id || 'unknown container');
     };
 
     window.saveQuotationWithConfirmation = async function(tagType, source = 'non email') {
@@ -17167,18 +17259,22 @@
       console.log('source type:', typeof source);
 
       try {
-        const customerName = document.getElementById('quotationCustomerName').value.trim();
-        const contactPerson = document.getElementById('quotationContactPerson').value;
-        const email = document.getElementById('quotationEmail').value.trim();
-        const phone = document.getElementById('quotationPhone').value.trim();
-        const quantity = document.getElementById('quotationQuantity').value;
-        const unitPrice = document.getElementById('quotationUnitPrice').value;
-        const total = document.getElementById('quotationTotal').value;
-        const notes = document.getElementById('quotationNotes').value.trim();
-        const brandId = document.getElementById('quotationBrandId')?.value || null;
-        const customerItemName = document.getElementById('quotationCustomerItemName')?.value?.trim() || null;
-        const heightMm = document.getElementById('quotationHeightMm')?.value || null;
-        const widthMm = document.getElementById('quotationWidthMm')?.value || null;
+        // Get the active container to scope element queries
+        const container = getActiveQuotationContainer();
+        const getField = (id) => container ? container.querySelector('#' + id) : document.getElementById(id);
+
+        const customerName = getField('quotationCustomerName').value.trim();
+        const contactPerson = getField('quotationContactPerson').value;
+        const email = getField('quotationEmail').value.trim();
+        const phone = getField('quotationPhone').value.trim();
+        const quantity = getField('quotationQuantity').value;
+        const unitPrice = getField('quotationUnitPrice').value;
+        const total = getField('quotationTotal').value;
+        const notes = getField('quotationNotes').value.trim();
+        const brandId = getField('quotationBrandId')?.value || null;
+        const customerItemName = getField('quotationCustomerItemName')?.value?.trim() || null;
+        const heightMm = getField('quotationHeightMm')?.value || null;
+        const widthMm = getField('quotationWidthMm')?.value || null;
 
         console.log('Saving quotation with data:', {
           customerName, contactPerson, email, phone, quantity, unitPrice, total, notes, tagType, source,

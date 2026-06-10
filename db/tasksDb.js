@@ -37,6 +37,8 @@ async function ensureSchema(db) {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       remark TEXT,
+      customerName TEXT NOT NULL DEFAULT '',
+      contactPerson TEXT NOT NULL DEFAULT '',
       mailUser TEXT NOT NULL,
       mailPass TEXT NOT NULL,
       imapHost TEXT NOT NULL,
@@ -589,6 +591,22 @@ async function ensureSchema(db) {
   } catch (err) {
     console.warn('Error creating quotation_status_history table:', err);
   }
+
+  // Migrate profiles: add customerName and contactPerson columns if missing
+  try {
+    await db.exec(`ALTER TABLE profiles ADD COLUMN customerName TEXT NOT NULL DEFAULT ''`);
+  } catch (e) {
+    if (!e.message.includes('duplicate column name')) {
+      console.warn('Error adding customerName column:', e);
+    }
+  }
+  try {
+    await db.exec(`ALTER TABLE profiles ADD COLUMN contactPerson TEXT NOT NULL DEFAULT ''`);
+  } catch (e) {
+    if (!e.message.includes('duplicate column name')) {
+      console.warn('Error adding contactPerson column:', e);
+    }
+  }
 }
 
 export async function getTasksDb() {
@@ -604,6 +622,59 @@ export async function getTasksDb() {
     })();
   }
   return dbPromise;
+}
+
+/**
+ * Seed profiles from profiles.json into SQL.
+ * Merges missing profiles — does not delete or overwrite existing SQL rows.
+ */
+export async function seedProfilesFromJson() {
+  try {
+    const jsonPath = path.join(projectRoot, 'profiles.json');
+    const raw = await fs.readFile(jsonPath, 'utf8');
+    const profiles = JSON.parse(raw);
+    if (!Array.isArray(profiles) || profiles.length === 0) return;
+
+    const db = await getTasksDb();
+    const existing = await db.all(`SELECT mailUser FROM profiles`);
+    const existingEmails = new Set(existing.map(r => r.mailUser));
+
+    const now = new Date().toISOString();
+    let added = 0;
+    for (const p of profiles) {
+      // Skip if this mailUser already exists in SQL
+      if (p.mailUser && existingEmails.has(p.mailUser)) continue;
+
+      await db.run(
+        `INSERT INTO profiles (name, remark, customerName, contactPerson, mailUser, mailPass, imapHost, imapPort, imapTls, smtpHost, smtpPort, smtpSecure, port, isActive, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          p.name || 'Unnamed',
+          p.remark || '',
+          p.customerName || '',
+          p.contactPerson || '',
+          p.mailUser || '',
+          p.mailPass || '',
+          p.imapHost || '',
+          Number(p.imapPort) || 993,
+          p.imapTls || 'true',
+          p.smtpHost || '',
+          Number(p.smtpPort) || 465,
+          p.smtpSecure || 'true',
+          Number(p.port) || 3001,
+          p.isActive ? 1 : 0,
+          now,
+          now
+        ]
+      );
+      added++;
+    }
+    if (added > 0) {
+      console.log(`Seeded ${added} profile(s) from profiles.json into SQL`);
+    }
+  } catch (err) {
+    console.warn('Could not seed profiles from JSON:', err.message);
+  }
 }
 
 export const TASK_STATUS = {
@@ -679,12 +750,14 @@ export async function createProfile(profileData) {
 
   const result = await db.run(
     `
-      INSERT INTO profiles (name, remark, mailUser, mailPass, imapHost, imapPort, imapTls, smtpHost, smtpPort, smtpSecure, port, isActive, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO profiles (name, remark, customerName, contactPerson, mailUser, mailPass, imapHost, imapPort, imapTls, smtpHost, smtpPort, smtpSecure, port, isActive, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       profileData.name,
       profileData.remark || '',
+      profileData.customerName || '',
+      profileData.contactPerson || '',
       profileData.mailUser,
       profileData.mailPass,
       profileData.imapHost,
@@ -712,6 +785,8 @@ export async function updateProfile(id, profileData) {
       UPDATE profiles SET
         name = ?,
         remark = ?,
+        customerName = ?,
+        contactPerson = ?,
         mailUser = ?,
         mailPass = ?,
         imapHost = ?,
@@ -728,6 +803,8 @@ export async function updateProfile(id, profileData) {
     [
       profileData.name,
       profileData.remark || '',
+      profileData.customerName || '',
+      profileData.contactPerson || '',
       profileData.mailUser,
       profileData.mailPass,
       profileData.imapHost,

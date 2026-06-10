@@ -32,7 +32,10 @@ import {
   getAllWorkshops, getWorkshopById, createWorkshop, updateWorkshop, deleteWorkshop,
   // Order functions
   getAllOrders, getOrderById, getOrderBySeq, createOrder, updateOrder, deleteOrder,
-  recordOrderDepartmentScan, getOrderProgress, getLastOrderScan
+  recordOrderDepartmentScan, getOrderProgress, getLastOrderScan,
+  // Profile SQL functions
+  getProfiles, createProfile, updateProfile as updateProfileDb, deleteProfile as deleteProfileDb, activateProfile,
+  seedProfilesFromJson
 } from './db/tasksDb.js';
 import SkillManager from './skills/skillManager.js';
 import { getNormalizedRelativePath } from './utils/pathUtils.js';
@@ -370,17 +373,16 @@ const taskRoutes = createTaskRoutes({
 });
 app.use('/api/tasks', taskRoutes);
 
-// Profile routes
+// Seed profiles from profiles.json into SQL if needed
+await seedProfilesFromJson();
+
+// Profile routes (now backed by SQL)
 const profileRoutes = createProfileRoutes({
-  MAIL_USER,
-  MAIL_PASS,
-  IMAP_HOST,
-  IMAP_PORT,
-  IMAP_TLS,
-  SMTP_HOST,
-  SMTP_PORT,
-  SMTP_SECURE,
-  PORT
+  getProfiles,
+  createProfile,
+  updateProfile: updateProfileDb,
+  deleteProfile: deleteProfileDb,
+  activateProfile
 });
 app.use('/api/profiles', profileRoutes);
 

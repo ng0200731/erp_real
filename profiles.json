@@ -14,7 +14,7 @@
     "smtpPort": 465,
     "smtpSecure": "true",
     "port": 3001,
-    "isActive": 0
+    "isActive": 1
   },
   {
     "id": 2,
@@ -65,6 +65,6 @@
     "smtpPort": 465,
     "smtpSecure": "true",
     "port": 3001,
-    "isActive": 1
+    "isActive": 0
   }
 ]
