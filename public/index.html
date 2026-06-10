@@ -12451,14 +12451,16 @@
         // Handle resubmit statuses (e.g. "1st resubmit", "2nd resubmit")
         if (!action && /\d+(?:st|nd|rd|th)\s+resubmit/i.test(status)) {
           const resubmitBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#fd7e14; color:#fff; border:1px solid #fd7e14;" onclick="event.stopPropagation(); updateOutsourcingStatus(${quotation.id}, 'await approval')">${status} - Submit for Approval</button>`;
-          return viewBtn ? `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">${resubmitBtn}${viewBtn}</div>` : resubmitBtn;
+          const reprintBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#6c757d; color:#fff; border:1px solid #6c757d;" onclick="event.stopPropagation(); showSampleSubmissionCard(${quotation.id}, true)">Reprint Card</button>`;
+          return viewBtn ? `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">${resubmitBtn}${reprintBtn}${viewBtn}</div>` : `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">${resubmitBtn}${reprintBtn}</div>`;
         }
 
-        // Handle "await approval" - show Approve and Reject buttons
+        // Handle "await approval" - show Approve, Reject, and Reprint buttons
         if (status === 'await approval') {
           const approveBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#28a745; color:#fff; border:1px solid #28a745;" onclick="event.stopPropagation(); updateOutsourcingStatus(${quotation.id}, 'approved')">Approve</button>`;
           const rejectBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#dc3545; color:#fff; border:1px solid #dc3545;" onclick="event.stopPropagation(); handleReject(${quotation.id})">Reject</button>`;
-          return `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">${approveBtn}${rejectBtn}${viewBtn}</div>`;
+          const reprintBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#6c757d; color:#fff; border:1px solid #6c757d;" onclick="event.stopPropagation(); showSampleSubmissionCard(${quotation.id}, true)">Reprint Card</button>`;
+          return `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">${approveBtn}${rejectBtn}${reprintBtn}${viewBtn}</div>`;
         }
 
         if (!action || !action.next) {
@@ -14026,14 +14028,16 @@
         // Handle resubmit statuses (e.g. "1st resubmit", "2nd resubmit")
         if (/\d+(?:st|nd|rd|th)\s+resubmit/i.test(status)) {
           const resubmitBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#fd7e14; color:#fff; border:1px solid #fd7e14;" onclick="event.stopPropagation(); updateQuotationStatus(${quotation.id}, 'await approval', '${quotation.type || 'non email'}', ${JSON.stringify(quotation).replace(/"/g, '&quot;')})">${status} - Submit for Approval</button>`;
-          return resubmitBtn;
+          const reprintBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#6c757d; color:#fff; border:1px solid #6c757d;" onclick="event.stopPropagation(); showSampleSubmissionCard(${quotation.id}, true)">Reprint Card</button>`;
+          return `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">${resubmitBtn}${reprintBtn}</div>`;
         }
 
-        // Handle "await approval" - show Approve and Reject buttons
+        // Handle "await approval" - show Approve, Reject, and Reprint buttons
         if (status === 'await approval') {
           const approveBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#28a745; color:#fff; border:1px solid #28a745;" onclick="event.stopPropagation(); updateQuotationStatus(${quotation.id}, 'approved', '${quotation.type || 'non email'}', ${JSON.stringify(quotation).replace(/"/g, '&quot;')})">Approve</button>`;
           const rejectBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#dc3545; color:#fff; border:1px solid #dc3545;" onclick="event.stopPropagation(); handleReject(${quotation.id})">Reject</button>`;
-          return `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">${approveBtn}${rejectBtn}</div>`;
+          const reprintBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:#6c757d; color:#fff; border:1px solid #6c757d;" onclick="event.stopPropagation(); showSampleSubmissionCard(${quotation.id}, true)">Reprint Card</button>`;
+          return `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">${approveBtn}${rejectBtn}${reprintBtn}</div>`;
         }
 
         const action = statusMap[status];
@@ -16131,7 +16135,7 @@
     }
 
     // Generate a sample submission card in A4 format
-    async function showSampleSubmissionCard(quotationId) {
+    async function showSampleSubmissionCard(quotationId, isReprint = false) {
       // Fetch quotation data
       let quotation = null;
       try {
@@ -16161,9 +16165,24 @@
         if (activeProfile) internalPic = activeProfile.contactPerson || '';
       } catch (e) { console.warn('Failed to fetch profile for sample card:', e); }
 
-      // Date
+      // Date — use original card date for reprints, current date for new cards
       const now = new Date();
-      const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const reprintDateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      let dateStr;
+      if (isReprint && quotation.productDetails?.lastSampleCardDate) {
+        dateStr = quotation.productDetails.lastSampleCardDate;
+      } else {
+        dateStr = reprintDateStr;
+        // Save this date for future reprints
+        const pd = { ...(quotation.productDetails || {}), lastSampleCardDate: dateStr };
+        try {
+          await fetch(`/api/quotations/${quotationId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...quotation, productDetails: pd })
+          });
+        } catch (e) { console.warn('Failed to save sample card date:', e); }
+      }
 
       // Dimension
       const dimension = (quotation.height_mm && quotation.width_mm)
@@ -16179,7 +16198,7 @@
             <col style="width:140px;"><col style="width:12px;"><col style="width:auto;"><col style="width:140px;"><col style="width:12px;"><col style="width:140px;"><col style="width:auto;">
           </colgroup>
           <tr>
-            <td colspan="6" style="text-align:right; font-weight:bold;">Date : ${dateStr}</td>
+            <td colspan="6" style="text-align:right; font-weight:bold;">Date : ${dateStr}${isReprint ? '<br>Reprinted on ' + reprintDateStr : ''}</td>
           </tr>
           <tr>
             <td class="label">Type</td><td class="sep">:</td><td class="value">${displayType}</td>
@@ -16251,8 +16270,13 @@
 
       // Print function — opens a new window sized to A4, prints it
       window.printSampleCard = function() {
+        // Build filename: YYYY_MM_DD_Seq#_{submitCount}
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        const fileName = `${y}_${m}_${d}_${internalCode || 'NoSeq'}_${submitCount}${isReprint ? '_reprint' : ''}`;
         const w = window.open('', '_blank', 'width=800,height=1000');
-        w.document.write(`<!DOCTYPE html><html><head><title>Sample Submission Card</title>
+        w.document.write(`<!DOCTYPE html><html><head><title>${fileName}</title>
           <style>
             @page { size: A4; margin: 0; }
             html, body { margin:0; padding:0; }
