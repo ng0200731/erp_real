@@ -235,6 +235,29 @@ export function createQuotationRoutes(deps) {
   });
 
   // Set profile image from a local server file (for dummy data generation)
+  // Serve a local image file as binary (used by dummy input to preview before save)
+  router.post('/read-image-file', async (req, res) => {
+    try {
+      const { filePath } = req.body;
+      if (!filePath) return res.status(400).json({ success: false, error: 'filePath is required' });
+
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(__dirname, '..', filePath);
+      const ext = path.extname(absolutePath).toLowerCase();
+      const allowedExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
+      if (!allowedExts.includes(ext)) return res.status(400).json({ success: false, error: 'Invalid image file type' });
+
+      try { await fs.access(absolutePath); } catch { return res.status(404).json({ success: false, error: 'Image file not found' }); }
+
+      const imageBuffer = await fs.readFile(absolutePath);
+      const mimeMap = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp' };
+      res.setHeader('Content-Type', mimeMap[ext]);
+      res.send(imageBuffer);
+    } catch (error) {
+      console.error('Error reading image file:', error);
+      res.status(500).json({ success: false, error: 'Failed to read image file' });
+    }
+  });
+
   router.post('/:id/set-profile-image-from-file', async (req, res) => {
     try {
       const id = Number(req.params.id);

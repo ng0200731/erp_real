@@ -550,6 +550,14 @@ async function ensureSchema(db) {
     }
   }
 
+  try {
+    await db.exec(`ALTER TABLE quotations ADD COLUMN markupPercent REAL DEFAULT 0;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding markupPercent column:', err);
+    }
+  }
+
   // Backfill quotationSeq for existing regular quotations (non-outsourcing)
   try {
     const existingSeqs = await db.all(`SELECT id FROM quotations WHERE quotationSeq IS NULL AND productType NOT IN ('other', 'others', 'outsource') ORDER BY id ASC`);

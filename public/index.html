@@ -13428,10 +13428,13 @@
         const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
         let tableHtml = `
           <div style="margin-bottom:20px;">
+            ${quotation.hasProfileImage ? '<div style="text-align:center; margin-bottom:15px;"><img src="/api/quotations/' + quotation.id + '/profile-image" style="max-width:150px; max-height:150px; object-fit:contain; border:1px solid #ddd; padding:3px;"></div>' : ''}
             <h3 style="margin:0 0 10px 0;">Quotation Details</h3>
             <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
               <tr><td style="padding:6px; border:1px solid #ccc; font-weight:bold; width:150px;">Customer</td><td style="padding:6px; border:1px solid #ccc;">${quotation.customerName}</td></tr>
-              <tr><td style="padding:6px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:6px; border:1px solid #ccc;">${quotation.productType}</td></tr>
+              ${quotation.customerItemName ? '<tr><td style="padding:6px; border:1px solid #ccc; font-weight:bold;">Customer Item</td><td style="padding:6px; border:1px solid #ccc;">' + quotation.customerItemName + '</td></tr>' : ''}
+              <tr><td style="padding:6px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:6px; border:1px solid #ccc;">${emailProductTypeDisplay(quotation.productType, productDetails)}</td></tr>
+              ${emailProductDetailsRows(productDetails)}
               <tr><td style="padding:6px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:6px; border:1px solid #ccc;">${quotation.quantity.toLocaleString()}</td></tr>
             </table>
           </div>
@@ -13522,6 +13525,42 @@
               return;
             }
             const selectedResponse = responses[parseInt(selected.value)];
+
+            // Ask for markup percentage using a custom modal (so we can read input before closing)
+            const markupOverlay = document.createElement('div');
+            markupOverlay.className = 'modal-overlay';
+            markupOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:99999;';
+            markupOverlay.innerHTML = `
+              <div class="modal" style="background:#fff; padding:20px; border-radius:8px; max-width:400px; width:90%;">
+                <div style="font-size:18px; font-weight:bold; margin-bottom:15px;">Markup Percentage</div>
+                <p>Enter the markup percentage to add to the supplier quotation before sending to customer:</p>
+                <div style="margin-top:10px;">
+                  <label style="font-weight:600;">Markup %</label>
+                  <input type="number" id="markupPercentInput" min="0" step="0.1" value="15" style="width:100%; padding:10px; border:1px solid #000; font-size:16px; margin-top:4px;" placeholder="e.g. 15 for 15%">
+                </div>
+                <p style="font-size:12px; color:#666; margin-top:8px;">The unit price and total will be multiplied by (1 + markup%).</p>
+                <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
+                  <button id="markupCancelBtn" style="padding:10px 20px; background:#ccc; color:#000; border:none; cursor:pointer;">Cancel</button>
+                  <button id="markupConfirmBtn" style="padding:10px 20px; background:#000; color:#fff; border:none; cursor:pointer;">Confirm & Send</button>
+                </div>
+              </div>
+            `;
+            document.body.appendChild(markupOverlay);
+
+            const markupPercent = await new Promise((resolve) => {
+              document.getElementById('markupConfirmBtn').onclick = () => {
+                const val = parseFloat(document.getElementById('markupPercentInput').value || 0);
+                document.body.removeChild(markupOverlay);
+                resolve(isNaN(val) || val < 0 ? null : val);
+              };
+              document.getElementById('markupCancelBtn').onclick = () => {
+                document.body.removeChild(markupOverlay);
+                resolve(null);
+              };
+            });
+
+            if (markupPercent === null) return; // User cancelled
+
             try {
               document.body.removeChild(overlay);
               // Show loading spinner
@@ -13530,7 +13569,7 @@
               loadingOverlay.innerHTML = '<div style="background:#fff; padding:30px 40px; border-radius:8px; text-align:center;"><div style="border:4px solid #f3f3f3; border-top:4px solid #000; border-radius:50%; width:40px; height:40px; animation:spin 1s linear infinite; margin:0 auto 15px;"></div><div style="font-size:16px;">Sending quotation to customer...</div></div><style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>';
               document.body.appendChild(loadingOverlay);
               try {
-                await sendQuotationToCustomer(quotationId, quotation, selectedResponse);
+                await sendQuotationToCustomer(quotationId, quotation, selectedResponse, markupPercent);
               } finally {
                 document.body.removeChild(loadingOverlay);
               }
@@ -13570,15 +13609,18 @@
     };
 
     // Generate customer email HTML for selected supplier quotation
-    function generateCustomerComparisonEmailHtml(quotation, selectedResponse, profileImageBase64 = null) {
+    function generateCustomerComparisonEmailHtml(quotation, selectedResponse, profileImageBase64 = null, markupPercent = 0) {
       const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
       const r = selectedResponse;
+      const markupMultiplier = 1 + (markupPercent / 100);
+      const markedUpUnitPrice = r.unitPrice ? (r.unitPrice * markupMultiplier) : null;
+      const markedUpTotalPrice = r.totalPrice ? (r.totalPrice * markupMultiplier) : null;
 
       let html = `
         <div style="font-family:Arial,sans-serif; max-width:800px; margin:0 auto; color:#000;">
           <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Supplier Quotation</h2>
           ${profileImageBase64 ? `
-          <div style="margin-bottom:20px;">
+          <div style="text-align:center; margin:15px 0;">
             <img src="${profileImageBase64}" style="max-width:200px; max-height:200px; object-fit:contain; border:1px solid #ddd; padding:5px;" alt="Product Image">
           </div>` : ''}
           <p>Dear ${quotation.customerName},</p>
@@ -13586,17 +13628,17 @@
 
           <h3 style="margin-top:30px;">Your Request Details:</h3>
           <table style="width:100%; border-collapse:collapse; margin:20px 0;">
-            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold; width:200px;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${quotation.productType}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold; width:200px;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${emailProductTypeDisplay(quotation.productType, productDetails)}</td></tr>
             ${quotation.customerItemName ? `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Item Name</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerItemName}</td></tr>` : ''}
-            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Description</td><td style="padding:8px; border:1px solid #ccc;">${productDetails.description || 'N/A'}</td></tr>
+            ${emailProductDetailsRows(productDetails)}
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity.toLocaleString()}</td></tr>
           </table>
 
           <h3 style="margin-top:30px;">Quotation Details:</h3>
           <table style="width:100%; border-collapse:collapse; margin:20px 0;">
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold; width:200px;">Supplier</td><td style="padding:8px; border:1px solid #ccc;">${r.companyName}</td></tr>
-            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Unit Price (HKD)</td><td style="padding:8px; border:1px solid #ccc;">${r.unitPrice ? r.unitPrice.toFixed(2) : 'N/A'}</td></tr>
-            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Total Price (HKD)</td><td style="padding:8px; border:1px solid #ccc;">${r.totalPrice ? r.totalPrice.toFixed(2) : 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Unit Price (HKD)</td><td style="padding:8px; border:1px solid #ccc;">${markedUpUnitPrice ? markedUpUnitPrice.toFixed(2) : 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Total Price (HKD)</td><td style="padding:8px; border:1px solid #ccc;">${markedUpTotalPrice ? markedUpTotalPrice.toFixed(2) : 'N/A'}</td></tr>
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Delivery Days</td><td style="padding:8px; border:1px solid #ccc;">${r.deliveryDays || 'N/A'}</td></tr>
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Notes</td><td style="padding:8px; border:1px solid #ccc;">${r.notes || '-'}</td></tr>
           </table>
@@ -13611,7 +13653,7 @@
     }
 
     // Send selected supplier quotation to customer
-    window.sendQuotationToCustomer = async function(quotationId, quotation, selectedResponse) {
+    window.sendQuotationToCustomer = async function(quotationId, quotation, selectedResponse, markupPercent = 0) {
       try {
         if (!quotation.email) {
           alert('Customer email not found in quotation.');
@@ -13702,16 +13744,30 @@
           }
         }
 
-        // Fetch profile image for email
-        let profileImageBase64 = null;
+        // Fetch profile image for email — use CID attachment instead of base64 inline
+        let profileImageCid = null;
+        let emailAttachments = [];
         if (quotation.hasProfileImage) {
           try {
-            profileImageBase64 = await fetchProfileImageBase64(quotation.id);
+            const profileImageBase64 = await fetchProfileImageBase64(quotation.id);
+            if (profileImageBase64) {
+              // Extract base64 data and mime type from data URL: "data:image/png;base64,..."
+              const match = profileImageBase64.match(/^data:(image\/\w+);base64,(.+)$/);
+              if (match) {
+                profileImageCid = `profile-image-${quotation.id}@longriverlabel.com`;
+                emailAttachments.push({
+                  filename: 'product-image.png',
+                  content: match[2], // base64 content (without data URL prefix)
+                  contentType: match[1],
+                  cid: profileImageCid
+                });
+              }
+            }
           } catch (e) { console.warn('Could not fetch profile image for email:', e); }
         }
 
-        // Generate email HTML for the selected supplier
-        const emailHtml = generateCustomerComparisonEmailHtml(quotation, selectedResponse, profileImageBase64) + originalEmailHtml;
+        // Generate email HTML for the selected supplier (with markup applied)
+        const emailHtml = generateCustomerComparisonEmailHtml(quotation, selectedResponse, profileImageCid, markupPercent) + originalEmailHtml;
 
         // Build subject as reply to original email if available
         const emailSubject = originalSubject
@@ -13727,6 +13783,9 @@
         if (originalMessageId) {
           sendPayload.inReplyTo = originalMessageId;
           sendPayload.references = originalMessageId;
+        }
+        if (emailAttachments.length > 0) {
+          sendPayload.attachments = emailAttachments;
         }
 
         const sendRes = await fetch('/api/email/send', {
@@ -13750,7 +13809,8 @@
             ...quotation,
             status: 'send to customer',
             selectedSupplierId: selectedResponse.supplierId,
-            selectedSupplierResponseId: selectedResponse.id
+            selectedSupplierResponseId: selectedResponse.id,
+            markupPercent: markupPercent
           })
         });
 
@@ -13767,7 +13827,8 @@
             ...quotation,
             status: 'await customer confirm price',
             selectedSupplierId: selectedResponse.supplierId,
-            selectedSupplierResponseId: selectedResponse.id
+            selectedSupplierResponseId: selectedResponse.id,
+            markupPercent: markupPercent
           })
         });
 
@@ -13776,20 +13837,22 @@
           return;
         }
 
-        // Log which supplier was selected in history
+        // Log which supplier was selected + markup in history
         try {
+          const markupMultiplier = 1 + (markupPercent / 100);
+          const markedUpUnitPrice = selectedResponse.unitPrice ? (selectedResponse.unitPrice * markupMultiplier).toFixed(2) : 'N/A';
           await fetch(`/api/quotations/${quotationId}/log-history`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               fromStatus: 'await quotation',
               toStatus: 'send to customer',
-              note: `Selected supplier: ${selectedResponse.companyName || 'Unknown'} (Unit: $${selectedResponse.unitPrice ? selectedResponse.unitPrice.toFixed(2) : 'N/A'}, Delivery: ${selectedResponse.deliveryDays || 'N/A'} days)`
+              note: `Selected supplier: ${selectedResponse.companyName || 'Unknown'} | Markup: ${markupPercent}% | Original Unit: $${selectedResponse.unitPrice ? selectedResponse.unitPrice.toFixed(2) : 'N/A'} → Marked-up Unit: $${markedUpUnitPrice} | Delivery: ${selectedResponse.deliveryDays || 'N/A'} days`
             })
           });
         } catch (e) { console.warn('Failed to log supplier selection history:', e); }
 
-        alert('Quotation comparison sent to customer successfully!\nStatus updated to "Await Customer Confirm Price".');
+        alert(`Quotation comparison sent to customer successfully!\nMarkup: ${markupPercent}%\nStatus updated to "Await Customer Confirm Price".`);
         await displayOutsourcingQuotations();
 
       } catch (error) {
@@ -17296,6 +17359,67 @@
       ];
       const notesField = getField('quotationNotes');
       if (notesField) notesField.value = notes[Math.floor(Math.random() * notes.length)];
+
+      // === Profile Image — pick a random dummy image ===
+      const dummyImagePaths = [
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172339_127.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172356_184.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172421_543.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172445_063.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172501_563.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172518_390.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172638_157.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172652_458.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172703_705.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172712_175.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172722_004.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172738_692.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172747_939.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172848_834.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172859_250.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172925_226.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173054_638.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173118_588.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173133_961.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173202_765.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173320_677.png',
+        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173350_577.png'
+      ];
+      const randomDummyPath = dummyImagePaths[Math.floor(Math.random() * dummyImagePaths.length)];
+      try {
+        const imgResp = await fetch('/api/quotations/read-image-file', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filePath: randomDummyPath })
+        });
+        if (imgResp.ok) {
+          const blob = await imgResp.blob();
+          const file = new File([blob], 'dummy-profile.png', { type: blob.type });
+          window.tempProfileImageFile = file;
+
+          // Show preview in the drop zone
+          const preview = getField('profileImagePreview');
+          const placeholder = getField('profileImagePlaceholder');
+          const dropZone = getField('profileImageDropZone');
+          const removeBtn = getField('removeProfileImageBtn');
+          if (preview && placeholder && dropZone) {
+            const dataUrl = await new Promise(resolve => {
+              const r = new FileReader();
+              r.onload = e => resolve(e.target.result);
+              r.readAsDataURL(file);
+            });
+            preview.style.backgroundImage = `url(${dataUrl})`;
+            preview.style.display = 'block';
+            placeholder.style.display = 'none';
+            dropZone.style.borderColor = '#000';
+            dropZone.style.backgroundColor = '#f9f9f9';
+            dropZone.style.cursor = 'default';
+            if (removeBtn) removeBtn.style.display = 'inline-block';
+          }
+        }
+      } catch (imgErr) {
+        console.warn('Dummy profile image load failed:', imgErr);
+      }
 
       console.log('Dummy Input: all fields filled for type', currentType, 'in', container?.id || 'unknown container');
     };

@@ -868,7 +868,7 @@ export function createEmailRoutes(deps) {
         });
       }
 
-      const { to, subject, text, html, inReplyTo, references } = req.body || {};
+      const { to, subject, text, html, inReplyTo, references, attachments } = req.body || {};
       if (!to || !subject || (!text && !html)) {
         return res.status(400).json({ success: false, error: 'to, subject, and text|html are required' });
       }
@@ -907,6 +907,16 @@ export function createEmailRoutes(deps) {
           }
           if (references) {
             mailOptions.references = references;
+          }
+
+          // Add CID attachments if provided (for embedding images in email)
+          if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+            mailOptions.attachments = attachments.map(att => ({
+              filename: att.filename || 'image.png',
+              content: Buffer.from(att.content, 'base64'),
+              contentType: att.contentType || 'image/png',
+              cid: att.cid || undefined
+            }));
           }
 
           const sendPromise = transport.sendMail(mailOptions);
