@@ -7166,6 +7166,55 @@
       }
     }, 5000);
 
+    // Auto-refresh outsourcing view — polls every 15 seconds so supplier submissions appear immediately
+    setInterval(async () => {
+      const outsourcingViewPanel = document.getElementById('outsourcingViewPanel');
+      if (outsourcingViewPanel && outsourcingViewPanel.style.display !== 'none') {
+        try {
+          const r = await fetch('/api/quotations/outsourcing');
+          const data = await r.json();
+          if (data.success && data.quotations) {
+            // Compare quotation fields + supplier response counts to detect external changes
+            const fingerprint = data.quotations.map(q =>
+              q.id + ':' + q.status + ':' + (q.selectedSupplierId || '') + ':' + (q.resendCount || 0) + ':' + (q.sampleReadyDate || '')
+            ).join('|');
+            const oldFingerprint = (window._outsourcingCache || []).map(q =>
+              q.id + ':' + q.status + ':' + (q.selectedSupplierId || '') + ':' + (q.resendCount || 0) + ':' + (q.sampleReadyDate || '')
+            ).join('|');
+
+            if (fingerprint !== oldFingerprint && window._outsourcingCache && window._outsourcingCache.length > 0) {
+              console.log('Outsourcing data changed externally, refreshing view');
+              await displayOutsourcingQuotations();
+            } else {
+              // Also check supplier responses (stored in separate table, not on quotation itself)
+              const cachedIds = (window._outsourcingCache || []).map(q => q.id);
+              if (cachedIds.length > 0) {
+                let responsesChanged = false;
+                for (const qId of cachedIds) {
+                  try {
+                    const resRes = await fetch(`/api/supplier-portal/responses/${qId}`);
+                    const resData = await resRes.json();
+                    const responseCount = (resData.success && resData.responses) ? resData.responses.length : 0;
+                    const cacheKey = '_osResp_' + qId;
+                    if (window[cacheKey] !== undefined && window[cacheKey] !== responseCount) {
+                      responsesChanged = true;
+                    }
+                    window[cacheKey] = responseCount;
+                  } catch (e) { /* ignore */ }
+                }
+                if (responsesChanged) {
+                  console.log('Supplier response changed externally, refreshing outsourcing view');
+                  await displayOutsourcingQuotations();
+                }
+              }
+              // Update cache even if no visible change (keeps fingerprint current)
+              window._outsourcingCache = data.quotations;
+            }
+          }
+        } catch (e) { /* ignore fetch errors */ }
+      }
+    }, 15000);
+
     // Factory modal buttons
     document.getElementById('orderFactoryCancelBtn').onclick = () => {
       document.getElementById('orderFactoryModal').style.display = 'none';
@@ -11127,6 +11176,7 @@
 
         alert('Generated 10 quotations successfully!');
         await displayQuotations();
+        await displayOutsourcingQuotations();
       } catch (error) {
         console.error('Error generating quotation dummy data:', error);
         alert('Failed to generate quotation data. Please try again.');
@@ -12259,8 +12309,8 @@
 
       // Load only 'other' type quotations from separate API endpoint
       const quotations = await loadOutsourcingQuotationsFromStorage();
-
-      // Populate Product Type dropdown dynamically from data (use _productTag for outsourcing)
+      // Cache for auto-refresh comparison
+      window._outsourcingCache = quotations;
       const productTypeSet = new Set(quotations.map(q => {
         if (q.productType === 'outsource' && q.productDetails?._productTag) {
           return q.productDetails._productTag;
@@ -13206,6 +13256,7 @@
         let failCount = 0;
         const baseUrl = window.location.origin;
         const errors = [];
+        const sentLinks = []; // Track sent links for display
 
         // Fetch profile image for embedding in reminder email
         const reminderProfileImage = quotation.hasProfileImage ? await fetchProfileImageBase64(quotation.id) : null;
@@ -13275,6 +13326,7 @@
               const sendResult = await sendRes.json();
               if (sendResult.success) {
                 sentCount++;
+                sentLinks.push({ name: member.name, supplier: supplier.companyName, email: email, link: portalLink });
                 console.log(`✓ Reminder sent to ${email}`);
               } else {
                 errors.push(`${supplier.companyName} - ${member.name} (${email}): ${sendResult.error || 'Email send failed'}`);
@@ -13288,7 +13340,17 @@
           }
         }
 
-        // Show detailed results
+        // Show detailed results with portal links (same style as initial send)
+        const linksHtml = sentLinks.map((l, i) => `
+          <div style="margin-bottom:10px; padding:8px; border:1px solid #ddd; background:#f9f9f9;">
+            <div style="font-size:13px; font-weight:600; margin-bottom:4px;">${l.supplier} - ${l.name} (${l.email})</div>
+            <div style="display:flex; gap:6px; flex-direction:column;">
+              <div style="font-family:monospace; font-size:11px; margin-bottom:4px; word-break:break-all; border:1px solid #eee; padding:4px;">${l.link}</div>
+              <button onclick="const el=document.createElement('textarea'); el.value='${l.link}'; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); this.textContent='Copied!';" style="align-self:flex-start; padding:4px 12px; background:#000; color:#fff; border:none; cursor:pointer; font-size:11px;">Copy Link</button>
+            </div>
+          </div>
+        `).join('');
+
         if (sentCount === 0) {
           let errorMsg = 'No reminder emails were sent.\n\n';
           if (errors.length > 0) {
@@ -13298,16 +13360,9 @@
           }
           alert(errorMsg);
         } else if (failCount > 0) {
-          let msg = `Reminder sent to ${sentCount} supplier contact(s), failed ${failCount}.\n\n`;
-          if (errors.length > 0) {
-            msg += 'Errors:\n' + errors.slice(0, 5).join('\n');
-            if (errors.length > 5) {
-              msg += `\n... and ${errors.length - 5} more errors`;
-            }
-          }
-          alert(msg);
+          showModal({ title: 'Partially Sent', body: `<p>Reminder sent to ${sentCount} supplier contact(s), failed ${failCount}.</p><p style="font-size:12px; color:#999;">Errors: ${errors.slice(0, 3).join(', ')}</p>${linksHtml}` });
         } else {
-          alert(`Successfully sent reminder to ${sentCount} supplier contact(s).`);
+          showModal({ title: 'All Reminders Sent', body: `<p>Successfully sent reminder to ${sentCount} supplier contact(s).</p>${linksHtml}` });
         }
 
         // Log reminder in history
@@ -14967,7 +15022,8 @@
           }
         }
 
-        await displayQuotations(); // Refresh the table
+        await displayQuotations(); // Refresh the quotation table
+        await displayOutsourcingQuotations(); // Refresh the outsourcing table
 
         if (failCount === 0) {
           showModal({
@@ -15064,7 +15120,8 @@
           }
         }
 
-        await displayQuotations(); // Refresh the table
+        await displayQuotations(); // Refresh the quotation table
+        await displayOutsourcingQuotations(); // Refresh the outsourcing table
 
         if (failCount === 0) {
           showModal({
