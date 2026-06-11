@@ -1,15 +1,20 @@
 package com.erpnlr.orderscanner
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Bundle
-import android.view.Gravity
 import android.view.View
+import android.widget.ArrayAdapter
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.Spinner
 import android.widget.TableLayout
 import android.widget.TableRow
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.erpnlr.orderscanner.api.ApiClient
@@ -18,10 +23,15 @@ import com.erpnlr.orderscanner.models.StatusHistoryEntry
 import com.erpnlr.orderscanner.models.SupplierInfo
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 class QuotationDetailActivity : AppCompatActivity() {
 
@@ -29,18 +39,32 @@ class QuotationDetailActivity : AppCompatActivity() {
     private lateinit var tvTitle: TextView
     private lateinit var progressBar: ProgressBar
     private lateinit var tvError: TextView
+    private lateinit var imgProfile: ImageView
     private lateinit var tvSeq: TextView
     private lateinit var tvCustomerName: TextView
     private lateinit var tvItemName: TextView
     private lateinit var tvStatus: TextView
+    private lateinit var spinnerStatus: Spinner
+    private lateinit var btnUpdateStatus: MaterialButton
     private lateinit var tvDetails: TextView
     private lateinit var cardSuppliers: MaterialCardView
     private lateinit var tvSuppliers: TextView
     private lateinit var historyTable: TableLayout
-    private lateinit var btnScanAgain: MaterialButton
+    private lateinit var btnScanAgain: ImageButton
 
     private var quotationId: Int = 0
     private var quotationType: String = "quotation"
+
+    private val quotationStatuses = listOf(
+        "pending", "send to customer", "price confirmed", "sampling",
+        "sample delivered", "await approval", "approved", "rejected"
+    )
+
+    private val outsourcingStatuses = listOf(
+        "await quotation", "await customer confirm price", "pending",
+        "send to customer", "price confirmed", "sampling",
+        "sample delivered", "await approval", "approved", "rejected"
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,10 +77,13 @@ class QuotationDetailActivity : AppCompatActivity() {
         tvTitle = findViewById(R.id.tvTitle)
         progressBar = findViewById(R.id.progressBar)
         tvError = findViewById(R.id.tvError)
+        imgProfile = findViewById(R.id.imgProfile)
         tvSeq = findViewById(R.id.tvSeq)
         tvCustomerName = findViewById(R.id.tvCustomerName)
         tvItemName = findViewById(R.id.tvItemName)
         tvStatus = findViewById(R.id.tvStatus)
+        spinnerStatus = findViewById(R.id.spinnerStatus)
+        btnUpdateStatus = findViewById(R.id.btnUpdateStatus)
         tvDetails = findViewById(R.id.tvDetails)
         cardSuppliers = findViewById(R.id.cardSuppliers)
         tvSuppliers = findViewById(R.id.tvSuppliers)
@@ -70,6 +97,14 @@ class QuotationDetailActivity : AppCompatActivity() {
             startActivity(Intent(this, ScannerActivity::class.java))
             finish()
         }
+
+        // Setup status spinner
+        val statuses = if (quotationType == "outsourcing") outsourcingStatuses else quotationStatuses
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, statuses.map { it.replaceFirstChar { c -> c.uppercase() } })
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerStatus.adapter = adapter
+
+        btnUpdateStatus.setOnClickListener { updateStatus() }
 
         loadQuotationDetails()
     }
@@ -112,7 +147,13 @@ class QuotationDetailActivity : AppCompatActivity() {
         tvItemName.text = q.customerItemName ?: "—"
 
         // Status
-        tvStatus.text = (q.status ?: "draft").replaceFirstChar { it.uppercase() }
+        val currentStatus = q.status ?: "draft"
+        tvStatus.text = currentStatus.replaceFirstChar { it.uppercase() }
+
+        // Pre-select current status in spinner
+        val statuses = if (quotationType == "outsourcing") outsourcingStatuses else quotationStatuses
+        val idx = statuses.indexOf(currentStatus)
+        if (idx >= 0) spinnerStatus.setSelection(idx)
 
         // Details
         val details = buildString {
@@ -126,6 +167,9 @@ class QuotationDetailActivity : AppCompatActivity() {
             append("Date: ${formatDate(q.dateCreated)}")
         }
         tvDetails.text = details
+
+        // Profile image
+        loadProfileImage(q.profileImageUrl, q.id)
 
         // Suppliers (outsourcing only)
         if (quotationType == "outsourcing" && suppliers.isNotEmpty()) {
@@ -141,6 +185,65 @@ class QuotationDetailActivity : AppCompatActivity() {
 
         // History
         displayHistory(history)
+    }
+
+    private fun loadProfileImage(imageUrl: String?, quotationId: Int) {
+        val url = imageUrl ?: return
+        val baseUrl = ApiClient.getBaseUrl(this)
+        val fullUrl = baseUrl.trimEnd('/') + url
+
+        lifecycleScope.launch {
+            try {
+                val bitmap = withContext(Dispatchers.IO) {
+                    val client = OkHttpClient.Builder()
+                        .connectTimeout(15, TimeUnit.SECONDS)
+                        .readTimeout(15, TimeUnit.SECONDS)
+                        .build()
+                    val request = Request.Builder().url(fullUrl).build()
+                    val response = client.newCall(request).execute()
+                    if (response.isSuccessful) {
+                        response.body?.byteStream()?.use { BitmapFactory.decodeStream(it) }
+                    } else null
+                }
+                if (bitmap != null) {
+                    imgProfile.setImageBitmap(bitmap)
+                    // Round the corners
+                    imgProfile.clipToOutline = true
+                }
+            } catch (e: Exception) {
+                // Image load failed — keep default placeholder
+            }
+        }
+    }
+
+    private fun updateStatus() {
+        val statuses = if (quotationType == "outsourcing") outsourcingStatuses else quotationStatuses
+        val newStatus = statuses[spinnerStatus.selectedItemPosition]
+
+        btnUpdateStatus.isEnabled = false
+        btnUpdateStatus.text = "Updating..."
+
+        lifecycleScope.launch {
+            try {
+                val apiService = ApiClient.getApiService(this@QuotationDetailActivity)
+                val response = apiService.updateQuotationStatus(quotationId, mapOf("status" to newStatus))
+
+                btnUpdateStatus.isEnabled = true
+                btnUpdateStatus.text = "Update"
+
+                if (response.isSuccessful) {
+                    Toast.makeText(this@QuotationDetailActivity, "Status updated", Toast.LENGTH_SHORT).show()
+                    // Reload to show updated status and history
+                    loadQuotationDetails()
+                } else {
+                    Toast.makeText(this@QuotationDetailActivity, "Failed: ${response.code()}", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                btnUpdateStatus.isEnabled = true
+                btnUpdateStatus.text = "Update"
+                Toast.makeText(this@QuotationDetailActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun displayHistory(history: List<StatusHistoryEntry>) {

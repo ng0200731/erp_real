@@ -66,6 +66,8 @@ export function createQuotationRoutes(deps) {
       if (quotation.productType === 'other' || quotation.productType === 'outsource') {
         try { suppliers = await getSuppliersForQuotation(id) || []; } catch (e) { /* ignore */ }
       }
+      // Add profile image URL for Android app
+      quotation.profileImageUrl = `/api/quotations/${id}/profile-image`;
       res.json({ success: true, quotation, history, suppliers });
     } catch (error) {
       console.error('Error fetching QR quotation:', error);

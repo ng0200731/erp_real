@@ -37,6 +37,15 @@
                 android:textStyle="bold"
                 android:textColor="@color/text_primary"
                 android:layout_marginStart="8dp" />
+
+            <!-- New Scan button — top right corner -->
+            <ImageButton
+                android:id="@+id/btnScanAgain"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@android:drawable/ic_menu_camera"
+                android:contentDescription="New Scan"
+                android:background="?attr/selectableItemBackgroundBorderless" />
         </LinearLayout>
 
         <!-- Loading indicator -->
@@ -71,45 +80,115 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="16dp">
+
+                <!-- Profile Image -->
+                <ImageView
+                    android:id="@+id/imgProfile"
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:scaleType="centerCrop"
+                    android:src="@android:drawable/ic_menu_gallery"
+                    android:contentDescription="Product Image"
+                    android:background="#F0F0F0"
+                    android:layout_marginEnd="12dp" />
+
+                <!-- Text info -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvSeq"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="22sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/primary" />
+
+                    <TextView
+                        android:id="@+id/tvCustomerName"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="16sp"
+                        android:textColor="@color/text_primary"
+                        android:layout_marginTop="4dp" />
+
+                    <TextView
+                        android:id="@+id/tvItemName"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="14sp"
+                        android:textColor="@color/text_secondary"
+                        android:layout_marginTop="2dp" />
+
+                    <TextView
+                        android:id="@+id/tvStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="13sp"
+                        android:textColor="#fff"
+                        android:background="@color/primary"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:paddingTop="3dp"
+                        android:paddingBottom="3dp"
+                        android:layout_marginTop="8dp" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Status Change Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardStatusChange"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="2dp"
+            app:strokeColor="#E0E0E0"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:padding="16dp">
 
                 <TextView
-                    android:id="@+id/tvSeq"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textSize="22sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/primary" />
-
-                <TextView
-                    android:id="@+id/tvCustomerName"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
+                    android:text="Change Status"
                     android:textSize="16sp"
+                    android:textStyle="bold"
                     android:textColor="@color/text_primary"
-                    android:layout_marginTop="4dp" />
+                    android:layout_marginBottom="8dp" />
 
-                <TextView
-                    android:id="@+id/tvItemName"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp"
-                    android:textColor="@color/text_secondary"
-                    android:layout_marginTop="2dp" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
 
-                <TextView
-                    android:id="@+id/tvStatus"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="13sp"
-                    android:textColor="#fff"
-                    android:background="@color/primary"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp"
-                    android:paddingTop="3dp"
-                    android:paddingBottom="3dp"
-                    android:layout_marginTop="8dp" />
+                    <Spinner
+                        android:id="@+id/spinnerStatus"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        android:spinnerMode="dropdown" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnUpdateStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:text="Update"
+                        android:textSize="14sp"
+                        android:layout_marginStart="8dp"
+                        app:cornerRadius="8dp" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -219,19 +298,6 @@
                     android:stretchColumns="1" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
-
-        <!-- Scan Again Button -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnScanAgain"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="Scan Again"
-            android:textSize="16sp"
-            app:cornerRadius="12dp"
-            app:icon="@android:drawable/ic_menu_camera"
-            app:iconGravity="textStart"
-            app:iconPadding="12dp"
-            android:layout_marginTop="8dp" />
 
     </LinearLayout>
 </ScrollView>

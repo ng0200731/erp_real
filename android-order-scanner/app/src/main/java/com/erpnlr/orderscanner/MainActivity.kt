@@ -1,6 +1,8 @@
 package com.erpnlr.orderscanner
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Typeface
 import android.net.ConnectivityManager
@@ -17,10 +19,16 @@ import com.erpnlr.orderscanner.models.ScanResponse
 import com.erpnlr.orderscanner.utils.Constants
 import com.erpnlr.orderscanner.utils.DepartmentColors
 import com.google.android.material.button.MaterialButton
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var imgProfile: ImageView
     private lateinit var tvOrderSeq: TextView
     private lateinit var tvPresentDepartment: TextView
     private lateinit var tvOrderInfo: TextView
@@ -54,6 +62,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initViews() {
+        imgProfile = findViewById(R.id.imgProfile)
         tvOrderSeq = findViewById(R.id.tvPoNumber)
         tvPresentDepartment = findViewById(R.id.tvPresentDepartment)
         tvOrderInfo = TextView(this).apply {
@@ -112,6 +121,7 @@ class MainActivity : AppCompatActivity() {
                                 append("Product: ${order.productType}\n")
                                 append("Qty: ${order.quantity}\n")
                                 append("Factory: ${order.workshopName ?: "Not assigned"}\n")
+                                append("Country: ${order.country ?: "-"}\n")
                                 append("Status: ${order.status}")
                             }
                             tvOrderInfo.text = info
@@ -144,6 +154,8 @@ class MainActivity : AppCompatActivity() {
                             }
                             tvPresentDepartment.visibility = View.VISIBLE
                         }
+                        // Load profile image
+                        loadProfileImage(order.profileImageUrl)
                     } else {
                         showNoHistory()
                     }
@@ -272,6 +284,36 @@ class MainActivity : AppCompatActivity() {
     private fun clearForm() {
         spinnerDepartment.setSelection(0)
         etNotes.text.clear()
+    }
+
+    private fun loadProfileImage(imageUrl: String?) {
+        if (imageUrl == null) return
+        val baseUrl = ApiClient.getBaseUrl(this)
+        val fullUrl = baseUrl.trimEnd('/') + imageUrl
+
+        lifecycleScope.launch {
+            try {
+                val bitmap = withContext(Dispatchers.IO) {
+                    val client = OkHttpClient.Builder()
+                        .connectTimeout(15, TimeUnit.SECONDS)
+                        .readTimeout(15, TimeUnit.SECONDS)
+                        .build()
+                    val request = Request.Builder().url(fullUrl).build()
+                    val response = client.newCall(request).execute()
+                    if (response.isSuccessful) {
+                        response.body?.byteStream()?.use { BitmapFactory.decodeStream(it) }
+                    } else null
+                }
+                if (bitmap != null) {
+                    runOnUiThread {
+                        imgProfile.setImageBitmap(bitmap)
+                        imgProfile.clipToOutline = true
+                    }
+                }
+            } catch (e: Exception) {
+                // Image load failed — keep default placeholder
+            }
+        }
     }
 
     private fun isNetworkAvailable(): Boolean {

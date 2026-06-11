@@ -55,6 +55,10 @@ export function createOrderRoutes(deps) {
       }
       const progress = await getOrderProgress(order.orderSeq);
       order.progressHistory = progress;
+      // Add profile image URL from linked quotation
+      if (order.quotationId) {
+        order.profileImageUrl = `/api/quotations/${order.quotationId}/profile-image`;
+      }
       res.json({ success: true, order });
     } catch (error) {
       console.error('Error fetching order by seq:', error);

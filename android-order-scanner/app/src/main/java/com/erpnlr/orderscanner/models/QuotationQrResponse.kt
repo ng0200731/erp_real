@@ -25,7 +25,8 @@ data class QuotationDetail(
     @SerializedName("status") val status: String?,
     @SerializedName("dateCreated") val dateCreated: String?,
     @SerializedName("sampleReadyDate") val sampleReadyDate: String?,
-    @SerializedName("brandId") val brandId: Int?
+    @SerializedName("brandId") val brandId: Int?,
+    @SerializedName("profileImageUrl") val profileImageUrl: String?
 )
 
 data class StatusHistoryEntry(

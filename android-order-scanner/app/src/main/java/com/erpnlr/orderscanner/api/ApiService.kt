@@ -17,6 +17,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.HTTP
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 import retrofit2.http.Streaming
@@ -52,4 +53,11 @@ interface ApiService {
     // Quotation/outsourcing QR detail lookup
     @GET("api/quotations/qr/{id}")
     suspend fun getQuotationByQrId(@Path("id") id: Int): Response<QuotationQrResponse>
+
+    // Update quotation/outsourcing status
+    @PUT("api/quotations/{id}")
+    suspend fun updateQuotationStatus(
+        @Path("id") id: Int,
+        @Body body: Map<String, String>
+    ): Response<QuotationQrResponse>
 }

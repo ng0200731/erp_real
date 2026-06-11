@@ -14,6 +14,8 @@ data class OrderDetail(
     val orderSeq: String,
     @SerializedName("quotationSeq")
     val quotationSeq: String?,
+    @SerializedName("quotationId")
+    val quotationId: Int?,
     @SerializedName("customerName")
     val customerName: String,
     @SerializedName("contactPerson")
@@ -37,5 +39,7 @@ data class OrderDetail(
     @SerializedName("status")
     val status: String,
     @SerializedName("progressHistory")
-    val progressHistory: List<ProgressScan>?
+    val progressHistory: List<ProgressScan>?,
+    @SerializedName("profileImageUrl")
+    val profileImageUrl: String?
 )

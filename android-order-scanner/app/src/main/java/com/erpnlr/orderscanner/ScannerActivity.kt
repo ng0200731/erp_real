@@ -148,12 +148,13 @@ class ScannerActivity : AppCompatActivity() {
                 return@runOnUiThread
             }
 
-            // Check if this is a bulk QR code (JSON with type: "bulk" or "cancel")
+            // Check if this is a JSON QR code
             if (qrCode.trimStart().startsWith("{")) {
                 try {
                     val gson = com.google.gson.Gson()
                     val data = gson.fromJson(qrCode, Map::class.java)
                     val type = data?.get("type") as? String
+
                     if (type == "bulk") {
                         // Navigate to orders list with bulk QR data
                         val intent = Intent(this, OrdersListActivity::class.java).apply {
