@@ -68,12 +68,11 @@
       overflow:hidden;
     }
     #sidebar{
-      flex:0 0 64px;
-      min-width:64px;
+      flex:0 0 180px;
+      min-width:180px;
       border-right:1px solid #000;
       padding:16px 12px;
       box-sizing:border-box;
-      transition:flex-basis 0.2s ease;
       display:flex;
       flex-direction:column;
       gap:10px;
@@ -81,9 +80,6 @@
       top: 0;
       height: 100vh;
       overflow-y: auto;
-    }
-    #sidebar:hover{
-      flex-basis:180px;
     }
     #board{
       flex:1;
@@ -703,22 +699,15 @@
     .page-btn:active{ transform: translateY(0); }
     /* Sidebar buttons: make square and center the letter precisely */
     #sidebar .page-btn {
-      width:44px;
+      width:100%;
       height:44px;
-      padding:0;
+      padding:8px 10px;
       display:flex;
       align-items:center;
       justify-content:center;
       box-sizing:border-box;
       overflow:hidden;
       white-space:nowrap;
-      transition: width 0.18s ease, padding 0.18s ease, justify-content 0.18s ease;
-    }
-    /* When sidebar is hovered, expand buttons to fill sidebar width and left-align text */
-    #sidebar:hover .page-btn {
-      width:100%;
-      padding:8px 10px;
-      justify-content:center;
       text-align:center;
     }
     .row{ display:flex; gap:10px; flex-wrap:wrap; }
@@ -1318,62 +1307,69 @@
   <div id="layout">
     <div id="sidebar">
       <div class="menu-group">
-        <button id="menuEmail" class="page-btn" data-short="E" data-full="Email" data-testid="menu-email">E</button>
+        <button id="menuEmail" class="page-btn" data-short="E" data-full="Email" data-testid="menu-email">Email</button>
         <div id="emailSubmenu" class="submenu" style="display:none;">
           <button id="emailReceiveBtn" class="submenu-btn" data-testid="email-receive-btn">Receive</button>
           <button id="emailSendBtn" class="submenu-btn" data-testid="email-send-btn">Send</button>
         </div>
       </div>
       <div class="menu-group">
-        <button id="menuBrand" class="page-btn" data-short="B" data-full="Brand">B</button>
+        <button id="menuBrand" class="page-btn" data-short="B" data-full="Brand">Brand</button>
         <div id="brandSubmenu" class="submenu" style="display:none;">
           <button id="brandCreateBtn" class="submenu-btn">Create</button>
           <button id="brandViewBtn" class="submenu-btn">View</button>
         </div>
       </div>
       <div class="menu-group">
-        <button id="menuCustomer" class="page-btn" data-short="C" data-full="Customer">C</button>
+        <button id="menuCustomer" class="page-btn" data-short="C" data-full="Customer">Customer</button>
         <div id="customerSubmenu" class="submenu" style="display:none;">
           <button id="customerCreateBtn" class="submenu-btn">Create</button>
           <button id="customerViewBtn" class="submenu-btn">View</button>
         </div>
       </div>
       <div class="menu-group">
-        <button id="menuSupplier" class="page-btn" data-short="S" data-full="Supplier">S</button>
+        <button id="menuSupplier" class="page-btn" data-short="S" data-full="Supplier">Supplier</button>
         <div id="supplierSubmenu" class="submenu" style="display:none;">
           <button id="supplierCreateBtn" class="submenu-btn">Create</button>
           <button id="supplierViewBtn" class="submenu-btn">View</button>
         </div>
       </div>
       <div class="menu-group">
-      <button id="menuQuotation" class="page-btn" data-short="Q" data-full="Quotation" data-testid="menu-quotation">Q</button>
+      <button id="menuQuotation" class="page-btn" data-short="I" data-full="In-house production" data-testid="menu-quotation">In-house production</button>
         <div id="quotationSubmenu" class="submenu" style="display:none;">
           <button id="quotationCreateBtn" class="submenu-btn" data-testid="quotation-create-btn">Create</button>
           <button id="quotationViewBtn" class="submenu-btn" data-testid="quotation-view-btn">View</button>
         </div>
       </div>
       <div class="menu-group">
-        <button id="menuOutsourcing" class="page-btn" data-short="O" data-full="Outsourcing">O</button>
+        <button id="menuOutsourcing" class="page-btn" data-short="O" data-full="Outsourcing">Outsourcing</button>
         <div id="outsourcingSubmenu" class="submenu" style="display:none;">
           <button id="outsourcingCreateBtn" class="submenu-btn">Create</button>
           <button id="outsourcingViewBtn" class="submenu-btn">View</button>
         </div>
       </div>
       <div class="menu-group">
-        <button id="menuWorkshop" class="page-btn" data-short="W" data-full="Workshop">W</button>
+        <button id="menuWorkshop" class="page-btn" data-short="W" data-full="Workshop">Workshop</button>
         <div id="workshopSubmenu" class="submenu" style="display:none;">
           <button id="workshopCreateBtn" class="submenu-btn">Create</button>
           <button id="workshopViewBtn" class="submenu-btn">View</button>
         </div>
       </div>
       <div class="menu-group">
-        <button id="menuOrder" class="page-btn" data-short="R" data-full="Order">R</button>
+        <button id="menuOrder" class="page-btn" data-short="R" data-full="Order">Order</button>
         <div id="orderSubmenu" class="submenu" style="display:none;">
           <button id="orderCreatedBtn" class="submenu-btn">Created</button>
           <button id="orderViewBtn" class="submenu-btn">View</button>
         </div>
       </div>
-      <button id="menuSettings" class="page-btn" data-short="S" data-full="Setting">S</button>
+      <div class="menu-group">
+        <button id="menuProduction" class="page-btn" data-short="P" data-full="Production" data-testid="menu-production">Production</button>
+        <div id="productionSubmenu" class="submenu" style="display:none;">
+          <button id="productionInhouseBtn" class="submenu-btn" data-testid="production-inhouse-btn">In-house production</button>
+          <button id="productionOutsourcingBtn" class="submenu-btn" data-testid="production-outsourcing-btn">Outsourcing</button>
+        </div>
+      </div>
+      <button id="menuSettings" class="page-btn" data-short="S" data-full="Setting">Setting</button>
       <div style="flex:1;"></div>
       <div style="font-size:0.75em; text-align:center; color:#666; margin-top:10px; padding:5px;">
         v1.0.23
@@ -7101,6 +7097,32 @@
       submenu.style.display = isVisible ? 'none' : 'block';
     };
 
+    // Production menu (groups In-house production + Outsourcing views)
+    const menuProductionBtn = document.getElementById('menuProduction');
+    menuProductionBtn.onclick = () => {
+      const submenu = document.getElementById('productionSubmenu');
+      const isVisible = submenu.style.display !== 'none';
+      document.querySelectorAll('.submenu').forEach(sub => { sub.style.display = 'none'; });
+      submenu.style.display = isVisible ? 'none' : 'block';
+    };
+
+    const productionInhouseBtn = document.getElementById('productionInhouseBtn');
+    const productionOutsourcingBtn = document.getElementById('productionOutsourcingBtn');
+
+    productionInhouseBtn.onclick = () => {
+      document.getElementById('productionSubmenu').style.display = 'none';
+      ensureTab('quotation-view', 'In-house production');
+      activateTab('quotation-view');
+      initializeQuotationViewPanel();
+    };
+
+    productionOutsourcingBtn.onclick = () => {
+      document.getElementById('productionSubmenu').style.display = 'none';
+      ensureTab('outsourcing-view', 'Outsourcing');
+      activateTab('outsourcing-view');
+      initializeOutsourcingViewPanel();
+    };
+
     const orderCreatedBtn = document.getElementById('orderCreatedBtn');
     const orderViewBtn = document.getElementById('orderViewBtn');
 
@@ -7363,29 +7385,9 @@
       initializeEmailSendPanel();
     };
 
-    // Hover on sidebar to expand full text, leave to collapse to first letter
-    sidebar.onmouseenter = () => {
-      menuEmailBtn.textContent = menuEmailBtn.dataset.full || 'Email';
-      menuCustomerBtn.textContent = menuCustomerBtn.dataset.full || 'Customer';
-      menuSupplierBtn.textContent = menuSupplierBtn.dataset.full || 'Supplier';
-      menuSettingsBtn.textContent = menuSettingsBtn.dataset.full || 'Setting';
-      menuQuotationBtn.textContent = menuQuotationBtn.dataset.full || 'Quotation';
-      menuOutsourcingBtn.textContent = menuOutsourcingBtn.dataset.full || 'Outsourcing';
-      menuBrandBtn.textContent = menuBrandBtn.dataset.full || 'Brand';
-      menuWorkshopBtn.textContent = menuWorkshopBtn.dataset.full || 'Workshop';
-      menuOrderBtn.textContent = menuOrderBtn.dataset.full || 'Order';
-    };
+    // Sidebar stays expanded (full labels always shown).
+    // Keep open submenus visible while hovering; collapse them when leaving.
     sidebar.onmouseleave = () => {
-      menuEmailBtn.textContent = menuEmailBtn.dataset.short || 'E';
-      menuCustomerBtn.textContent = menuCustomerBtn.dataset.short || 'C';
-      menuSupplierBtn.textContent = menuSupplierBtn.dataset.short || 'S';
-      menuSettingsBtn.textContent = menuSettingsBtn.dataset.short || 'S';
-      menuQuotationBtn.textContent = menuQuotationBtn.dataset.short || 'Q';
-      menuOutsourcingBtn.textContent = menuOutsourcingBtn.dataset.short || 'O';
-      menuBrandBtn.textContent = menuBrandBtn.dataset.short || 'B';
-      menuWorkshopBtn.textContent = menuWorkshopBtn.dataset.short || 'W';
-      menuOrderBtn.textContent = menuOrderBtn.dataset.short || 'R';
-      // Hide submenus on mouse leave
       document.querySelectorAll('.submenu').forEach(sub => {
         sub.style.display = 'none';
       });

@@ -55,15 +55,18 @@ class QuotationDetailActivity : AppCompatActivity() {
     private var quotationId: Int = 0
     private var quotationType: String = "quotation"
 
+    // Matches web frontend getActionButton status flow
     private val quotationStatuses = listOf(
         "pending", "send to customer", "price confirmed", "sampling",
-        "sample delivered", "await approval", "approved", "rejected"
+        "await approval", "approved", "rejected", "complete"
     )
 
+    // Matches web frontend getOutsourcingActionButton status flow
     private val outsourcingStatuses = listOf(
-        "await quotation", "await customer confirm price", "pending",
-        "send to customer", "price confirmed", "sampling",
-        "sample delivered", "await approval", "approved", "rejected"
+        "pending", "send to outsourcing supplier", "await quotation",
+        "compare quotation", "send to customer", "await customer confirm price",
+        "price confirmed", "sampling", "await sample ready date",
+        "await approval", "approved", "rejected", "complete"
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -138,9 +141,15 @@ class QuotationDetailActivity : AppCompatActivity() {
     }
 
     private fun displayQuotation(q: QuotationDetail, history: List<StatusHistoryEntry>, suppliers: List<SupplierInfo>) {
-        // Seq / OS Ref
-        val seqLabel = if (quotationType == "outsourcing") q.outsourcingSeq else q.quotationSeq
-        tvSeq.text = seqLabel ?: "#$quotationId"
+        // Seq / OS Ref — show type-appropriate ref, fallback to the other, then to id
+        val seqLabel = when {
+            quotationType == "outsourcing" && !q.outsourcingSeq.isNullOrBlank() -> q.outsourcingSeq
+            quotationType == "outsourcing" && !q.quotationSeq.isNullOrBlank() -> q.quotationSeq
+            !q.quotationSeq.isNullOrBlank() -> q.quotationSeq
+            !q.outsourcingSeq.isNullOrBlank() -> q.outsourcingSeq
+            else -> "#$quotationId"
+        }
+        tvSeq.text = seqLabel
 
         // Customer
         tvCustomerName.text = q.customerName ?: "—"
