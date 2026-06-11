@@ -10,6 +10,7 @@ import com.erpnlr.orderscanner.models.BulkCancelRequest
 import com.erpnlr.orderscanner.models.BulkCancelResponse
 import com.erpnlr.orderscanner.models.BulkScanUpdateRequest
 import com.erpnlr.orderscanner.models.BulkScanUpdateResponse
+import com.erpnlr.orderscanner.models.QuotationQrResponse
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
@@ -47,4 +48,8 @@ interface ApiService {
     @Streaming
     @GET
     suspend fun downloadFile(@Url url: String): Response<ResponseBody>
+
+    // Quotation/outsourcing QR detail lookup
+    @GET("api/quotations/qr/{id}")
+    suspend fun getQuotationByQrId(@Path("id") id: Int): Response<QuotationQrResponse>
 }

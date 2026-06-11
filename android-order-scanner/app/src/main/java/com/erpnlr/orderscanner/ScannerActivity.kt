@@ -161,6 +161,17 @@ class ScannerActivity : AppCompatActivity() {
                         }
                         startActivity(intent)
                         return@runOnUiThread
+                    } else if (type == "quotation" || type == "outsourcing") {
+                        // Navigate to quotation detail view
+                        val id = (data?.get("id") as? Double)?.toInt()
+                        if (id != null) {
+                            val intent = Intent(this, QuotationDetailActivity::class.java).apply {
+                                putExtra("QUOTATION_ID", id)
+                                putExtra("QUOTATION_TYPE", type)
+                            }
+                            startActivity(intent)
+                        }
+                        return@runOnUiThread
                     } else if (type == "cancel") {
                         // Navigate to orders list to cancel PO#s
                         val intent = Intent(this, OrdersListActivity::class.java).apply {

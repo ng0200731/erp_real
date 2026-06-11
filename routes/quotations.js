@@ -50,6 +50,29 @@ export function createQuotationRoutes(deps) {
     }
   });
 
+  // QR-based detail lookup (for QR code scanning by Android app)
+  router.get('/qr/:id', async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const quotation = await getQuotationById(id);
+      if (!quotation) {
+        return res.status(404).json({ success: false, error: 'Quotation not found' });
+      }
+      // Fetch status history
+      let history = [];
+      try { history = await getStatusHistory(id); } catch (e) { /* ignore */ }
+      // Fetch linked suppliers (for outsourcing quotations)
+      let suppliers = [];
+      if (quotation.productType === 'other' || quotation.productType === 'outsource') {
+        try { suppliers = await getSuppliersForQuotation(id) || []; } catch (e) { /* ignore */ }
+      }
+      res.json({ success: true, quotation, history, suppliers });
+    } catch (error) {
+      console.error('Error fetching QR quotation:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch quotation' });
+    }
+  });
+
   // Get quotation by ID
   router.get('/:id', async (req, res) => {
     try {

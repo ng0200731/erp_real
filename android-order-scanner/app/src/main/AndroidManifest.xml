@@ -77,6 +77,12 @@
             android:name=".SettingsActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
+
+        <!-- Quotation Detail Activity (from QR scan) -->
+        <activity
+            android:name=".QuotationDetailActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
     </application>
 
 </manifest>
