@@ -168,19 +168,39 @@ export function createQuotationRoutes(deps) {
     }
   });
 
-  // Serve profile image from database
+  // Serve profile image from database BLOB or file path fallback
   router.get('/:id/profile-image', async (req, res) => {
     try {
       const id = Number(req.params.id);
       const imageData = await getQuotationProfileImage(id);
 
-      if (!imageData || !imageData.profileImageBlob) {
-        return res.status(404).json({ success: false, error: 'Profile image not found' });
+      // Try serving from database BLOB first
+      if (imageData && imageData.profileImageBlob) {
+        res.setHeader('Content-Type', imageData.profileImageMime || 'image/jpeg');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        return res.send(Buffer.from(imageData.profileImageBlob));
       }
 
-      res.setHeader('Content-Type', imageData.profileImageMime || 'image/jpeg');
-      res.setHeader('Cache-Control', 'public, max-age=86400');
-      res.send(Buffer.from(imageData.profileImageBlob));
+      // Fallback: serve from file path if no BLOB
+      const quotation = await getQuotationById(id);
+      if (quotation && quotation.profileImagePath) {
+        const filePath = path.isAbsolute(quotation.profileImagePath)
+          ? quotation.profileImagePath
+          : path.join(__dirname, '..', quotation.profileImagePath);
+        try {
+          await fs.access(filePath);
+          const ext = path.extname(filePath).toLowerCase();
+          const mimeMap = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp' };
+          res.setHeader('Content-Type', mimeMap[ext] || 'image/jpeg');
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+          const fileBuffer = await fs.readFile(filePath);
+          return res.send(fileBuffer);
+        } catch {
+          // File not found on disk, fall through to 404
+        }
+      }
+
+      return res.status(404).json({ success: false, error: 'Profile image not found' });
     } catch (error) {
       console.error('Error serving profile image:', error);
       res.status(500).json({ success: false, error: 'Failed to serve profile image' });
