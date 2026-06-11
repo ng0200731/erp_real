@@ -7,6 +7,10 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📧</text></svg>">
   <style>
     /* STRICT monochrome: only black (#000) and white (#fff) */
+    /* Outsourcing panel: supplier section is ALWAYS visible (never hidden by JS) */
+    #outsourcingSubBoardContent #supplierSelectionSection {
+      display: block !important;
+    }
     html, body {
       margin: 0;
       padding: 0;
@@ -4253,6 +4257,19 @@
       document.getElementById('orderViewPanel').style.display = id === 'order-view' ? 'block' : 'none';
       // settingsPanel is shown inline within profiles when a profile is clicked
       settingsPanel.style.display = 'none';
+
+      // Outsourcing tab: ensure supplier section is always visible
+      if (id === 'outsourcing') {
+        requestAnimationFrame(() => {
+          const outsourcingContent = document.getElementById('outsourcingSubBoardContent');
+          if (outsourcingContent) {
+            const supplierSection = outsourcingContent.querySelector('#supplierSelectionSection');
+            if (supplierSection) {
+              supplierSection.style.display = 'block';
+            }
+          }
+        });
+      }
 
       if (id === 'profiles') {
         loadProfilesList().catch(() => {});
@@ -15501,32 +15518,36 @@
         '<button type="button" class="page-btn" onclick="saveQuotationWithConfirmation(\'' + tagType + '\', \'non email\')">SAVE</button>' +
         '<button type="button" class="page-btn primary" onclick="generateQuotation(\'' + tagType + '\')">Generate PDF</button>';
 
-      // Refresh brands cache then generate content
+      // Refresh brands cache then generate content (mode='outsourcing' shows supplier section)
       loadBrandsCache().then(() => {
-        const content = generateQuotationContent(tagType, tagName, 'non email');
+        const content = generateQuotationContent(tagType, tagName, 'non email', false, 'outsourcing');
         subBoardContent.innerHTML = content;
 
       setTimeout(() => {
-        if (document.getElementById('quotationCustomerName')) {
+        // Scope lookups to outsourcing sub-board content to avoid duplicate ID conflicts
+        const getField = (id) => subBoardContent.querySelector('#' + id) || document.getElementById(id);
+
+        if (getField('quotationCustomerName')) {
           window.customerAutocomplete = new CustomerAutocomplete('quotationCustomerName', 'customerAutocompleteDropdown');
         }
         initializeFileUploads(tagType);
         initSizeRatioPreview('quotationSize', 'sizeRatioPreview');
 
-        // Always show supplier section in outsourcing panel
-        const supplierSection = document.getElementById('supplierSelectionSection');
-        if (supplierSection) {
-          supplierSection.style.display = 'block';
+        // Supplier section is already visible via template (mode='outsourcing')
+        // Set up supplier autocomplete scoped to this panel
+        const supplierInput = getField('quotationSupplierSearch');
+        const supplierDropdown = getField('supplierAutocompleteDropdown');
+        if (supplierInput && supplierDropdown) {
+          setupSupplierAutocompleteIn(supplierInput, supplierDropdown);
         }
-        setupSupplierAutocomplete();
 
-        // Add event listener for contact person selection
-        const contactPersonField = document.getElementById('quotationContactPerson');
+        // Add event listener for contact person selection (scoped to this panel)
+        const contactPersonField = getField('quotationContactPerson');
         if (contactPersonField) {
           contactPersonField.addEventListener('change', function() {
             const selectedOption = this.options[this.selectedIndex];
-            const emailField = document.getElementById('quotationEmail');
-            const phoneField = document.getElementById('quotationPhone');
+            const emailField = getField('quotationEmail');
+            const phoneField = getField('quotationPhone');
             if (selectedOption && selectedOption.value && selectedOption.dataset.memberData) {
               const memberData = JSON.parse(selectedOption.dataset.memberData);
               if (emailField && memberData.emailPrefix) {
@@ -15555,16 +15576,16 @@
 
       }, 100);
 
-      // Set up event listeners for total calculation
+      // Set up event listeners for total calculation (scoped to this panel)
       setTimeout(() => {
-        const quantityInput = document.getElementById('quotationQuantity');
-        const unitPriceInput = document.getElementById('quotationUnitPrice');
+        const quantityInput = subBoardContent.querySelector('#quotationQuantity');
+        const unitPriceInput = subBoardContent.querySelector('#quotationUnitPrice');
         if (quantityInput && unitPriceInput) {
           const updateTotal = () => {
             const quantity = parseFloat(quantityInput.value) || 0;
             const unitPrice = parseFloat(unitPriceInput.value) || 0;
             const total = quantity * unitPrice;
-            const totalInput = document.getElementById('quotationTotal');
+            const totalInput = subBoardContent.querySelector('#quotationTotal');
             if (totalInput) {
               totalInput.value = total.toFixed(2);
             }
@@ -16165,15 +16186,16 @@
         if (activeProfile) internalPic = activeProfile.contactPerson || '';
       } catch (e) { console.warn('Failed to fetch profile for sample card:', e); }
 
-      // Date — use original card date for reprints, current date for new cards
+      // Date — last sample card generation date (saved), or today for first generation
       const now = new Date();
       const reprintDateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
       let dateStr;
       if (isReprint && quotation.productDetails?.lastSampleCardDate) {
+        // Reprint: use the saved card date
         dateStr = quotation.productDetails.lastSampleCardDate;
       } else {
+        // New card: use today, and save it
         dateStr = reprintDateStr;
-        // Save this date for future reprints
         const pd = { ...(quotation.productDetails || {}), lastSampleCardDate: dateStr };
         try {
           await fetch(`/api/quotations/${quotationId}`, {
@@ -16252,6 +16274,7 @@
               <td class="value">&nbsp;</td>
             </tr>
           </table>
+          <div style="border-top:2px solid #000; margin-top:8px;"></div>
         </div>
       `;
 
@@ -16478,17 +16501,21 @@
       '</div>';
     }
 
-    function generateQuotationContent(tagType, tagName, source = 'non email', isDummy2Mode = false) {
+    function generateQuotationContent(tagType, tagName, source = 'non email', isDummy2Mode = false, mode = 'quotation') {
       console.log('=== generateQuotationContent called ===');
       console.log('tagType:', tagType);
       console.log('tagName:', tagName);
       console.log('source:', source);
       console.log('isDummy2Mode:', isDummy2Mode);
+      console.log('mode:', mode);
 
       // Determine if customer fields should be disabled
       const customerFieldsDisabled = isDummy2Mode;
       const disabledStyle = customerFieldsDisabled ? 'background:#f5f5f5; color:#999; cursor:not-allowed;' : '';
       const disabledAttr = customerFieldsDisabled ? 'disabled' : '';
+
+      // Supplier section visibility: outsourcing shows it, quotation hides it
+      const supplierDisplay = mode === 'outsourcing' ? 'display:block' : 'display:none';
 
       // Base form structure with split layout (left: form, right: file uploads)
       return '<div style="display:flex; height:600px;">' +
@@ -16555,7 +16582,7 @@
               '<div id="productSpecificFields">' + getProductSpecificFields(tagType) + '</div>' +
             '</div>' +
 
-            '<div id="supplierSelectionSection" style="margin-bottom:20px; display:none;">' +
+            '<div id="supplierSelectionSection" style="margin-bottom:20px; ' + supplierDisplay + ';">' +
               '<h4>Supplier Selection</h4>' +
               '<div style="margin-bottom:10px;">' +
                 '<label style="display:block; margin-bottom:5px; font-weight:600;">Select Suppliers</label>' +
@@ -17146,6 +17173,12 @@
       const dropdown = document.getElementById('supplierAutocompleteDropdown');
 
       if (!supplierInput || !dropdown) return;
+      setupSupplierAutocompleteIn(supplierInput, dropdown);
+    }
+
+    // Scoped version: accepts specific elements to avoid duplicate-ID conflicts
+    function setupSupplierAutocompleteIn(supplierInput, dropdown) {
+      if (!supplierInput || !dropdown) return;
 
       let allSuppliers = [];
       let selectedSuppliers = new Set();
@@ -17210,7 +17243,7 @@
     }
 
     function addSupplierTag(supplier) {
-      const container = document.getElementById('selectedSuppliersList');
+      const container = getActiveQuotationContainer()?.querySelector('#selectedSuppliersList') || document.getElementById('selectedSuppliersList');
 
       // Remove "no suppliers" message if present
       const noSuppliersMsg = container.querySelector('[style*="color:#999"]');
@@ -17231,7 +17264,7 @@
     }
 
     window.removeSupplierTag = function(supplierId) {
-      const container = document.getElementById('selectedSuppliersList');
+      const container = getActiveQuotationContainer()?.querySelector('#selectedSuppliersList') || document.getElementById('selectedSuppliersList');
       const tag = container.querySelector(`[data-supplier-id="${supplierId}"]`);
 
       if (tag) {
@@ -17245,13 +17278,15 @@
     };
 
     function getSelectedSupplierIds() {
-      const container = document.getElementById('selectedSuppliersList');
-      const tags = container.querySelectorAll('.supplier-tag[data-supplier-id]');
+      const container = getActiveQuotationContainer();
+      const listEl = container ? container.querySelector('#selectedSuppliersList') : document.getElementById('selectedSuppliersList');
+      const tags = listEl?.querySelectorAll('.supplier-tag[data-supplier-id]') || [];
       return Array.from(tags).map(tag => parseInt(tag.getAttribute('data-supplier-id')));
     }
 
     function toggleSupplierSection(productType) {
-      const supplierSection = document.getElementById('supplierSelectionSection');
+      const container = getActiveQuotationContainer();
+      const supplierSection = container ? container.querySelector('#supplierSelectionSection') : document.getElementById('supplierSelectionSection');
       if (supplierSection) {
         // Only show supplier section for outsourcing types
         if (productType === 'outsource' || productType === 'other' || productType === 'others') {
@@ -17365,12 +17400,12 @@
         }
 
         // Check if supplier selection section is visible (for Outsource product type)
-        const supplierSection = document.getElementById('supplierSelectionSection');
+        const supplierSection = getField('supplierSelectionSection');
         if (supplierSection && supplierSection.style.display !== 'none') {
           // Clear existing selected suppliers
-          const container = document.getElementById('selectedSuppliersList');
-          if (container) {
-            container.innerHTML = '<div style="color:#999; font-size:14px;">No suppliers selected</div>';
+          const supplierContainer = getField('selectedSuppliersList');
+          if (supplierContainer) {
+            supplierContainer.innerHTML = '<div style="color:#999; font-size:14px;">No suppliers selected</div>';
           }
 
           // Load suppliers from database and select random ones
