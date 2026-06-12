@@ -876,6 +876,11 @@
       margin: 6px 4px;
       width: auto;
     }
+    #menuExpandToggle:hover {
+      background: var(--nav-accent-soft, #EFF6FF);
+      color: var(--nav-accent, #2563EB);
+      border-color: var(--nav-accent-border, #BFDBFE);
+    }
 
     /* Autocomplete dropdown styling */
     .autocomplete-container {
@@ -1325,6 +1330,10 @@
 <body>
   <div id="layout">
     <div id="sidebar">
+      <button id="menuExpandToggle" style="display:flex; justify-content:center; align-items:center; width:26px; height:26px; margin:5px auto; border:1px solid var(--nav-border, #E2E8F0); border-radius:var(--nav-radius, 8px); background:transparent; cursor:pointer; color:var(--nav-text, #0F172A); transition:background-color .15s ease, color .15s ease, border-color .15s ease;" title="Expand level 1">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <hr class="menu-divider">
       <div class="menu-group">
         <button id="menuEmail" class="page-btn" data-short="E" data-full="Email" data-testid="menu-email">Email</button>
         <div id="emailSubmenu" class="submenu" style="display:none;">
@@ -1354,18 +1363,10 @@
       </div>
       <hr class="menu-divider">
       <div class="menu-group">
-        <button id="menuOrder" class="page-btn" data-short="R" data-full="Order">Order</button>
+        <button id="menuOrder" class="page-btn" data-short="R" data-full="Ordering">Ordering</button>
         <div id="orderSubmenu" class="submenu" style="display:none;">
           <button id="orderCreatedBtn" class="submenu-btn">Created</button>
           <button id="orderViewBtn" class="submenu-btn">View</button>
-        </div>
-      </div>
-      <hr class="menu-divider">
-      <div class="menu-group">
-        <button id="menuWorkshop" class="page-btn" data-short="W" data-full="Workshop">Workshop</button>
-        <div id="workshopSubmenu" class="submenu" style="display:none;">
-          <button id="workshopCreateBtn" class="submenu-btn">Create</button>
-          <button id="workshopViewBtn" class="submenu-btn">View</button>
         </div>
       </div>
       <hr class="menu-divider">
@@ -1391,6 +1392,13 @@
             <div id="supplierSubmenu" class="sub-submenu" style="display:none;">
               <button id="supplierCreateBtn" class="submenu-btn">Create</button>
               <button id="supplierViewBtn" class="submenu-btn">View</button>
+            </div>
+          </div>
+          <div class="menu-group">
+            <button id="menuWorkshop" class="submenu-btn">Workshop</button>
+            <div id="workshopSubmenu" class="sub-submenu" style="display:none;">
+              <button id="workshopCreateBtn" class="submenu-btn">Create</button>
+              <button id="workshopViewBtn" class="submenu-btn">View</button>
             </div>
           </div>
           <button id="menuProfilesBtn" class="submenu-btn">Profiles / Config</button>
@@ -7117,11 +7125,12 @@
       submenu.style.display = isVisible ? 'none' : 'block';
     };
 
-    // Menu click: toggle workshop submenu
+    // Menu click: toggle Workshop sub-submenu (inside Setting)
     menuWorkshopBtn.onclick = () => {
       const submenu = document.getElementById('workshopSubmenu');
       const isVisible = submenu.style.display !== 'none';
-      document.querySelectorAll('.submenu').forEach(sub => { sub.style.display = 'none'; });
+      // Hide sibling sub-submenus only (keep parent Setting open)
+      document.querySelectorAll('.sub-submenu').forEach(sub => { sub.style.display = 'none'; });
       submenu.style.display = isVisible ? 'none' : 'block';
     };
 
@@ -7397,12 +7406,7 @@
     };
 
     // Sidebar stays expanded (full labels always shown).
-    // Keep open submenus visible while hovering; collapse them when leaving.
-    sidebar.onmouseleave = () => {
-      document.querySelectorAll('.submenu, .sub-submenu').forEach(sub => {
-        sub.style.display = 'none';
-      });
-    };
+    // Submenus persist — they only change on explicit click or toggle button.
 
     // Menu click: toggle Setting submenu (groups Brand + Customer + Supplier + Profiles)
     menuSettingsBtn.onclick = () => {
@@ -7421,6 +7425,34 @@
       ensureTab('profiles', 'Setting');
       activateTab('profiles');
       loadProfilesList();
+    };
+
+    // Expand / Collapse cycle: L1 only -> L1+L2 -> collapse all -> L1 ...
+    const menuExpandToggle = document.getElementById('menuExpandToggle');
+    const ICON_L1 = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+    const ICON_L2 = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 12 10 18 4"/><polyline points="6 14 12 20 18 14"/></svg>';
+    const ICON_COLLAPSE = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 20 12 14 18 20"/><polyline points="6 10 12 4 18 10"/></svg>';
+    let toggleState = 0; // 0=collapsed, 1=level1, 2=all
+    menuExpandToggle.onclick = () => {
+      toggleState = (toggleState + 1) % 3;
+      if (toggleState === 1) {
+        // Expand level 1 only
+        document.querySelectorAll('#sidebar .submenu').forEach(sub => { sub.style.display = 'block'; });
+        document.querySelectorAll('#sidebar .sub-submenu').forEach(sub => { sub.style.display = 'none'; });
+        menuExpandToggle.innerHTML = ICON_L2;
+        menuExpandToggle.title = 'Expand level 2';
+      } else if (toggleState === 2) {
+        // Expand level 1 + level 2
+        document.querySelectorAll('#sidebar .submenu').forEach(sub => { sub.style.display = 'block'; });
+        document.querySelectorAll('#sidebar .sub-submenu').forEach(sub => { sub.style.display = 'block'; });
+        menuExpandToggle.innerHTML = ICON_COLLAPSE;
+        menuExpandToggle.title = 'Collapse all';
+      } else {
+        // Collapse all
+        document.querySelectorAll('#sidebar .submenu, #sidebar .sub-submenu').forEach(sub => { sub.style.display = 'none'; });
+        menuExpandToggle.innerHTML = ICON_L1;
+        menuExpandToggle.title = 'Expand level 1';
+      }
     };
 
     // Menu click: toggle Brand sub-submenu (inside Setting)
