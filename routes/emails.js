@@ -1156,6 +1156,54 @@ export function createEmailRoutes(deps) {
     }
   });
 
+  // Test send email endpoint
+  router.post('/email/test', async (req, res) => {
+    try {
+      const profiles = await getProfilesMemory();
+      const activeProfile = profiles.find(p => p.isActive === 1);
+      if (!activeProfile) {
+        return res.status(400).json({
+          success: false,
+          error: 'No active email profile found. Please activate a profile in Settings.'
+        });
+      }
+
+      const transport = createSmtpTransport(activeProfile);
+      const info = await transport.sendMail({
+        from: `"ERP System" <${activeProfile.mailUser}>`,
+        to: 'eric.brilliant@gmail.com',
+        subject: 'Test Email from ERP',
+        text: 'This is a test email sent from the ERP system.',
+        html: '<p>This is a test email sent from the <strong>ERP system</strong>.</p>',
+      });
+      transport.close();
+
+      try {
+        await createSentEmail({
+          to_email: 'eric.brilliant@gmail.com',
+          subject: 'Test Email from ERP',
+          body_text: 'This is a test email sent from the ERP system.',
+          body_html: '<p>This is a test email sent from the <strong>ERP system</strong>.</p>',
+          message_id: info.messageId,
+          smtp_response: info.response,
+          status: 'sent',
+          sender_email: activeProfile.mailUser,
+        });
+      } catch (dbErr) {
+        console.error('Failed to store test email:', dbErr);
+      }
+
+      res.json({ success: true, to: 'eric.brilliant@gmail.com', messageId: info.messageId });
+    } catch (err) {
+      console.error('Test email error:', err);
+      res.status(500).json({
+        success: false,
+        error: err.message || 'Failed to send test email',
+        code: err.code || 'UNKNOWN',
+      });
+    }
+  });
+
   // Search customer by email address
   router.post('/email/search-customer', async (req, res) => {
     try {
