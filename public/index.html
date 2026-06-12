@@ -692,20 +692,36 @@
     .btn.primary{ background:#000; color:#fff; }
     .btn.primary:hover{ background:#fff; color:#000; }
 
-    /* Page buttons */
-    .topbar{ margin-bottom:15px; display:flex; gap:10px; flex-wrap:wrap; }
+    /* Page buttons (action bars — compose, refresh, select all, etc.) */
+    .topbar{ margin-bottom:15px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
     .page-btn{
-      border:1.5px solid #000;
+      border:1px solid var(--nav-border, #E2E8F0);
       background:#fff;
-      color:#000;
-      padding:10px 16px;
+      color:var(--nav-text, #0F172A);
+      padding:8px 14px;
       cursor:pointer;
-      font-weight:700;
+      font-weight:600;
+      font-size:13px;
       text-align:center;
-      transition: all 0.12s ease;
+      border-radius:6px;
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
     }
-    .page-btn:hover{ background:#000; color:#fff; transform: translateY(-1px); }
-    .page-btn:active{ transform: translateY(0); }
+    .page-btn:hover{
+      background: var(--nav-accent-soft, #EFF6FF);
+      color: var(--nav-accent, #2563EB);
+      border-color: var(--nav-accent-border, #BFDBFE);
+    }
+    .page-btn:active{
+      background: var(--nav-accent, #2563EB);
+      color: #fff;
+      border-color: var(--nav-accent, #2563EB);
+    }
+    .page-btn:disabled{ opacity:0.5; cursor:not-allowed; }
+    .page-btn:disabled:hover{
+      background:#fff;
+      color:var(--nav-text, #0F172A);
+      border-color:var(--nav-border, #E2E8F0);
+    }
     /* Sidebar navigation buttons */
     #sidebar .page-btn {
       width:100%;
@@ -783,64 +799,128 @@
       font-weight:700;
     }
 
-    /* Tabs (board top) */
+    /* Tabs (board top) — modern mini tabs */
     .tabs-bar{
       display:flex;
-      gap:4px;
-      margin-bottom:10px;
+      gap:2px;
       position: sticky;
       top: 0;
-      background: #fff;
-      border-bottom: 1px solid #000;
-      padding: 10px 0;
+      background: #F8FAFC;
+      border-bottom: 1px solid var(--nav-border, #E2E8F0);
+      padding: 6px 12px;
       z-index: 100;
+      overflow-x: auto;
+      flex-shrink: 0;
     }
     .tab{
-      border:1px solid #000;
-      background:#fff;
-      color:#000;
-      padding:6px 10px;
-      cursor:pointer;
-      font-weight:600;
-      position:relative;
-      display:flex;
-      align-items:center;
-      gap:6px;
+      border: none;
+      background: transparent;
+      color: var(--nav-muted, #64748B);
+      padding: 5px 10px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 12px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      border-radius: 4px;
+      transition: background-color .15s ease, color .15s ease;
+      white-space: nowrap;
+    }
+    .tab:hover{
+      background: var(--nav-accent-soft, #EFF6FF);
+      color: var(--nav-accent, #2563EB);
     }
     .tab-active{
-      background:#000;
-      color:#fff;
+      background: var(--nav-accent, #2563EB);
+      color: #fff;
+      font-weight: 600;
+    }
+    .tab-active:hover{
+      background: var(--nav-accent, #2563EB);
+      color: #fff;
     }
     .tab-disabled{
-      opacity:0.5;
+      opacity:0.4;
       cursor:not-allowed;
-      background:#f0f0f0;
-      color:#999;
     }
 
     /* Quotation tag selection styles */
     .quotation-tag-btn.selected {
-      background:#000 !important;
-      color:#fff !important;
+      background: var(--nav-accent, #2563EB) !important;
+      color: #fff !important;
     }
     .quotation-tag-btn:hover:not(.selected) {
-      background:#ccc !important;
-      color:#000 !important;
+      background: var(--nav-accent-soft, #EFF6FF) !important;
+      color: var(--nav-accent, #2563EB) !important;
     }
     .tab-close{
-      display:none;
-      border:none;
-      background:transparent;
-      color:inherit;
-      cursor:pointer;
-      padding:0;
-      width:16px;
-      height:16px;
-      font-size:14px;
-      line-height:1;
+      opacity: 0;
+      border: none;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      padding: 0;
+      width: 16px;
+      height: 16px;
+      font-size: 12px;
+      line-height: 1;
+      border-radius: 3px;
+      transition: opacity .15s ease, background-color .15s ease;
     }
     .tab:hover .tab-close{
-      display:block;
+      opacity: 0.6;
+    }
+    .tab:hover .tab-close:hover{
+      opacity: 1;
+      background: rgba(0,0,0,0.1);
+    }
+    .tab-active .tab-close:hover{
+      background: rgba(255,255,255,0.25);
+    }
+
+    /* ===== GLOBAL TABLE STYLES (soft borders, header, zebra, hover) ===== */
+    #board table {
+      border: 1px solid var(--nav-border, #E2E8F0) !important;
+      border-collapse: collapse;
+    }
+    #board th,
+    #board td {
+      border: 1px solid var(--nav-border, #E2E8F0) !important;
+      padding: 8px 10px !important;
+      text-align: left;
+      font-size: 13px;
+      vertical-align: middle;
+    }
+    #board thead th {
+      background: #F1F5F9 !important;
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--nav-text, #0F172A);
+    }
+    #board thead tr {
+      background: #F1F5F9 !important;
+    }
+    #board tbody tr:nth-child(even) {
+      background: #F8FAFC;
+    }
+    #board tbody tr:hover {
+      background: var(--nav-accent-soft, #EFF6FF) !important;
+    }
+    /* Sticky columns must match zebra/hover states (else white gaps appear) */
+    #board tbody tr:nth-child(even) .sticky-checkbox,
+    #board tbody tr:nth-child(even) .sticky-col {
+      background: #F8FAFC !important;
+    }
+    #board tbody tr:hover .sticky-checkbox,
+    #board tbody tr:hover .sticky-col {
+      background: var(--nav-accent-soft, #EFF6FF) !important;
+    }
+    #board table input.filter-input {
+      font-size: 12px;
     }
 
     /* Submenu styling */
@@ -880,6 +960,18 @@
       background: var(--nav-accent-soft, #EFF6FF);
       color: var(--nav-accent, #2563EB);
       border-color: var(--nav-accent-border, #BFDBFE);
+    }
+    /* Active sidebar item — corresponds to the active right-frame tab */
+    #sidebar .page-btn.menu-active {
+      background: var(--nav-accent-soft, #EFF6FF);
+      color: var(--nav-accent, #2563EB);
+      border-color: var(--nav-accent-border, #BFDBFE);
+      font-weight: 700;
+    }
+    #sidebar .submenu-btn.menu-active {
+      background: var(--nav-accent-soft, #EFF6FF);
+      color: var(--nav-accent, #2563EB);
+      font-weight: 600;
     }
 
     /* Autocomplete dropdown styling */
@@ -4302,6 +4394,40 @@
           el.classList.remove('tab-active');
         }
       });
+
+      // Highlight corresponding sidebar menu items down to the active leaf level
+      const tabHighlight = {
+        'emails':           { btns: ['emailReceiveBtn', 'menuEmail'],                            open: ['emailSubmenu'] },
+        'email-send':       { btns: ['emailSendBtn', 'menuEmail'],                               open: ['emailSubmenu'] },
+        'profiles':         { btns: ['menuProfilesBtn', 'menuSettings'],                         open: ['settingSubmenu'] },
+        'brand-create':     { btns: ['brandCreateBtn', 'menuBrand', 'menuSettings'],             open: ['settingSubmenu', 'brandSubmenu'] },
+        'brand-view':       { btns: ['brandViewBtn', 'menuBrand', 'menuSettings'],               open: ['settingSubmenu', 'brandSubmenu'] },
+        'customer':         { btns: ['customerCreateBtn', 'menuCustomer', 'menuSettings'],       open: ['settingSubmenu', 'customerSubmenu'] },
+        'customer-view':    { btns: ['customerViewBtn', 'menuCustomer', 'menuSettings'],         open: ['settingSubmenu', 'customerSubmenu'] },
+        'supplier':         { btns: ['supplierCreateBtn', 'menuSupplier', 'menuSettings'],       open: ['settingSubmenu', 'supplierSubmenu'] },
+        'supplier-view':    { btns: ['supplierViewBtn', 'menuSupplier', 'menuSettings'],         open: ['settingSubmenu', 'supplierSubmenu'] },
+        'quotation':        { btns: ['quotationCreateBtn', 'menuQuotation', 'menuSampling'],     open: ['samplingSubmenu', 'quotationSubmenu'] },
+        'quotation-view':   { btns: ['quotationViewBtn', 'menuQuotation', 'menuSampling'],       open: ['samplingSubmenu', 'quotationSubmenu'] },
+        'outsourcing':      { btns: ['outsourcingCreateBtn', 'menuOutsourcing', 'menuSampling'], open: ['samplingSubmenu', 'outsourcingSubmenu'] },
+        'outsourcing-view': { btns: ['outsourcingViewBtn', 'menuOutsourcing', 'menuSampling'],   open: ['samplingSubmenu', 'outsourcingSubmenu'] },
+        'workshop':         { btns: ['workshopCreateBtn', 'menuWorkshop', 'menuSettings'],       open: ['settingSubmenu', 'workshopSubmenu'] },
+        'workshop-view':    { btns: ['workshopViewBtn', 'menuWorkshop', 'menuSettings'],         open: ['settingSubmenu', 'workshopSubmenu'] },
+        'order-created':    { btns: ['orderCreatedBtn', 'menuOrder'],                            open: ['orderSubmenu'] },
+        'order-view':       { btns: ['orderViewBtn', 'menuOrder'],                               open: ['orderSubmenu'] },
+      };
+      document.querySelectorAll('#sidebar .menu-active').forEach(el => el.classList.remove('menu-active'));
+      document.querySelectorAll('#sidebar .submenu, #sidebar .sub-submenu').forEach(sub => { sub.style.display = 'none'; });
+      const cfg = tabHighlight[id];
+      if (cfg) {
+        cfg.btns.forEach(bid => {
+          const el = document.getElementById(bid);
+          if (el) el.classList.add('menu-active');
+        });
+        cfg.open.forEach(sid => {
+          const sub = document.getElementById(sid);
+          if (sub) sub.style.display = 'block';
+        });
+      }
 
       // Panels
       welcomePanel.style.display = id === 'welcome' ? 'block' : 'none';
