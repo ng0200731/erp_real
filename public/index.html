@@ -1334,29 +1334,6 @@
       </div>
       <hr class="menu-divider">
       <div class="menu-group">
-        <button id="menuBrand" class="page-btn" data-short="B" data-full="Brand">Brand</button>
-        <div id="brandSubmenu" class="submenu" style="display:none;">
-          <button id="brandCreateBtn" class="submenu-btn">Create</button>
-          <button id="brandViewBtn" class="submenu-btn">View</button>
-        </div>
-      </div>
-      <hr class="menu-divider">
-      <div class="menu-group">
-        <button id="menuCustomer" class="page-btn" data-short="C" data-full="Customer">Customer</button>
-        <div id="customerSubmenu" class="submenu" style="display:none;">
-          <button id="customerCreateBtn" class="submenu-btn">Create</button>
-          <button id="customerViewBtn" class="submenu-btn">View</button>
-        </div>
-      </div>
-      <div class="menu-group">
-        <button id="menuSupplier" class="page-btn" data-short="S" data-full="Supplier">Supplier</button>
-        <div id="supplierSubmenu" class="submenu" style="display:none;">
-          <button id="supplierCreateBtn" class="submenu-btn">Create</button>
-          <button id="supplierViewBtn" class="submenu-btn">View</button>
-        </div>
-      </div>
-      <hr class="menu-divider">
-      <div class="menu-group">
         <button id="menuSampling" class="page-btn">Sampling</button>
         <div id="samplingSubmenu" class="submenu" style="display:none;">
           <div class="menu-group">
@@ -1391,8 +1368,35 @@
           <button id="workshopViewBtn" class="submenu-btn">View</button>
         </div>
       </div>
+      <hr class="menu-divider">
+      <div class="menu-group">
+        <button id="menuSettings" class="page-btn">Setting</button>
+        <div id="settingSubmenu" class="submenu" style="display:none;">
+          <div class="menu-group">
+            <button id="menuBrand" class="submenu-btn">Brand</button>
+            <div id="brandSubmenu" class="sub-submenu" style="display:none;">
+              <button id="brandCreateBtn" class="submenu-btn">Create</button>
+              <button id="brandViewBtn" class="submenu-btn">View</button>
+            </div>
+          </div>
+          <div class="menu-group">
+            <button id="menuCustomer" class="submenu-btn">Customer</button>
+            <div id="customerSubmenu" class="sub-submenu" style="display:none;">
+              <button id="customerCreateBtn" class="submenu-btn">Create</button>
+              <button id="customerViewBtn" class="submenu-btn">View</button>
+            </div>
+          </div>
+          <div class="menu-group">
+            <button id="menuSupplier" class="submenu-btn">Supplier</button>
+            <div id="supplierSubmenu" class="sub-submenu" style="display:none;">
+              <button id="supplierCreateBtn" class="submenu-btn">Create</button>
+              <button id="supplierViewBtn" class="submenu-btn">View</button>
+            </div>
+          </div>
+          <button id="menuProfilesBtn" class="submenu-btn">Profiles / Config</button>
+        </div>
+      </div>
       <div style="flex:1;"></div>
-      <button id="menuSettings" class="page-btn" data-short="S" data-full="Setting">Setting</button>
       <div style="font-size:0.75em; text-align:center; color:var(--nav-muted, #64748B); margin-top:10px; padding:5px;">
         v1.0.23
       </div>
@@ -7060,17 +7064,17 @@
       submenu.style.display = isVisible ? 'none' : 'block';
     };
 
-    // Menu click: toggle customer submenu
+    // Menu click: toggle Customer sub-submenu (inside Setting)
     menuCustomerBtn.onclick = () => {
       const submenu = document.getElementById('customerSubmenu');
       const isVisible = submenu.style.display !== 'none';
 
-      // Hide all other submenus first
-      document.querySelectorAll('.submenu').forEach(sub => {
+      // Hide sibling sub-submenus only (keep parent Setting open)
+      document.querySelectorAll('.sub-submenu').forEach(sub => {
         sub.style.display = 'none';
       });
 
-      // Toggle this submenu
+      // Toggle this sub-submenu
       submenu.style.display = isVisible ? 'none' : 'block';
     };
 
@@ -7333,18 +7337,18 @@
       initializeCustomerViewPanel();
     };
 
-    // Menu click: toggle supplier submenu
+    // Menu click: toggle Supplier sub-submenu (inside Setting)
     const menuSupplierBtn = document.getElementById('menuSupplier');
     menuSupplierBtn.onclick = () => {
       const submenu = document.getElementById('supplierSubmenu');
       const isVisible = submenu.style.display !== 'none';
 
-      // Hide all other submenus first
-      document.querySelectorAll('.submenu').forEach(sub => {
+      // Hide sibling sub-submenus only (keep parent Setting open)
+      document.querySelectorAll('.sub-submenu').forEach(sub => {
         sub.style.display = 'none';
       });
 
-      // Toggle this submenu
+      // Toggle this sub-submenu
       submenu.style.display = isVisible ? 'none' : 'block';
     };
 
@@ -7400,18 +7404,31 @@
       });
     };
 
-    // Menu click: show profiles list (settings landing page)
+    // Menu click: toggle Setting submenu (groups Brand + Customer + Supplier + Profiles)
     menuSettingsBtn.onclick = () => {
+      const submenu = document.getElementById('settingSubmenu');
+      const isVisible = submenu.style.display !== 'none';
+      // Hide all other top-level submenus and any open sub-submenus
+      document.querySelectorAll('.submenu').forEach(sub => { sub.style.display = 'none'; });
+      document.querySelectorAll('.sub-submenu').forEach(sub => { sub.style.display = 'none'; });
+      submenu.style.display = isVisible ? 'none' : 'block';
+    };
+
+    // Menu click: show profiles list (app config landing page) — inside Setting group
+    const menuProfilesBtn = document.getElementById('menuProfilesBtn');
+    menuProfilesBtn.onclick = () => {
+      document.getElementById('settingSubmenu').style.display = 'none';
       ensureTab('profiles', 'Setting');
       activateTab('profiles');
       loadProfilesList();
     };
 
-    // Menu click: show brand
+    // Menu click: toggle Brand sub-submenu (inside Setting)
     menuBrandBtn.onclick = () => {
       const submenu = document.getElementById('brandSubmenu');
       const isVisible = submenu.style.display !== 'none';
-      document.querySelectorAll('.submenu').forEach(sub => {
+      // Hide sibling sub-submenus only (keep parent Setting open)
+      document.querySelectorAll('.sub-submenu').forEach(sub => {
         sub.style.display = 'none';
       });
       submenu.style.display = isVisible ? 'none' : 'block';
