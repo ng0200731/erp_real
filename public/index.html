@@ -68,14 +68,23 @@
       overflow:hidden;
     }
     #sidebar{
-      flex:0 0 180px;
-      min-width:180px;
-      border-right:1px solid #000;
-      padding:16px 12px;
+      --nav-bg: #F8FAFC;
+      --nav-text: #0F172A;
+      --nav-muted: #64748B;
+      --nav-border: #E2E8F0;
+      --nav-accent: #2563EB;
+      --nav-accent-soft: #EFF6FF;
+      --nav-accent-border: #BFDBFE;
+      --nav-radius: 8px;
+      flex:0 0 200px;
+      min-width:200px;
+      background: var(--nav-bg);
+      border-right:1px solid var(--nav-border);
+      padding:12px 8px;
       box-sizing:border-box;
       display:flex;
       flex-direction:column;
-      gap:10px;
+      gap:4px;
       position: sticky;
       top: 0;
       height: 100vh;
@@ -697,18 +706,46 @@
     }
     .page-btn:hover{ background:#000; color:#fff; transform: translateY(-1px); }
     .page-btn:active{ transform: translateY(0); }
-    /* Sidebar buttons: make square and center the letter precisely */
+    /* Sidebar navigation buttons */
     #sidebar .page-btn {
       width:100%;
-      height:44px;
-      padding:8px 10px;
+      min-height:40px;
+      padding:9px 12px;
       display:flex;
       align-items:center;
-      justify-content:center;
+      gap:10px;
+      justify-content:flex-start;
       box-sizing:border-box;
       overflow:hidden;
       white-space:nowrap;
-      text-align:center;
+      border:1px solid transparent;
+      border-radius:var(--nav-radius, 8px);
+      background:transparent;
+      color:var(--nav-text, #0F172A);
+      font-weight:600;
+      font-size:13px;
+      cursor:pointer;
+      transition:background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+    #sidebar .page-btn:hover {
+      background:var(--nav-accent-soft, #EFF6FF);
+      color:var(--nav-accent, #2563EB);
+      border-color:var(--nav-accent-border, #BFDBFE);
+    }
+    /* Chevron indicator for expandable groups (pure CSS, progressive) */
+    .menu-group > .page-btn::after {
+      content:'';
+      margin-left:auto;
+      width:0; height:0;
+      border-left:4px solid transparent;
+      border-right:4px solid transparent;
+      border-top:5px solid var(--nav-muted, #64748B);
+      transition:transform .2s ease;
+      flex-shrink:0;
+    }
+    .menu-group:has(> .submenu[style*="block"]) > .page-btn::after {
+      transform:rotate(180deg);
+      border-top-color:var(--nav-accent, #2563EB);
     }
     .row{ display:flex; gap:10px; flex-wrap:wrap; }
 
@@ -810,52 +847,34 @@
     .menu-group {
       position: relative;
     }
-    .submenu {
-      margin-left: 20px;
-      margin-top: 5px;
+    .submenu, .sub-submenu {
+      margin: 4px 0 4px 12px;
+      padding-left: 8px;
+      border-left: 1.5px solid var(--nav-border, #E2E8F0);
     }
     .submenu-btn {
       appearance: none;
-      border: 1px solid #000;
-      background: #fff;
-      color: #000;
-      padding: 6px 12px;
+      border: none;
+      background: transparent;
+      color: var(--nav-muted, #64748B);
+      padding: 7px 10px;
       cursor: pointer;
-      font-weight: 600;
-      font-size: 0.9em;
+      font-weight: 500;
+      font-size: 12.5px;
       width: 100%;
       text-align: left;
-      margin-bottom: 2px;
+      border-radius: 6px;
+      transition: background-color .15s ease, color .15s ease;
     }
     .submenu-btn:hover {
-      background: #000;
-      color: #fff;
+      background: var(--nav-accent-soft, #EFF6FF);
+      color: var(--nav-accent, #2563EB);
     }
-
-    /* Submenu styling */
-    .menu-group {
-      position: relative;
-    }
-    .submenu {
-      margin-left: 20px;
-      margin-top: 5px;
-    }
-    .submenu-btn {
-      appearance: none;
-      border: 1px solid #000;
-      background: #fff;
-      color: #000;
-      padding: 6px 12px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.9em;
-      width: 100%;
-      text-align: left;
-      margin-bottom: 2px;
-    }
-    .submenu-btn:hover {
-      background: #000;
-      color: #fff;
+    .menu-divider {
+      border: none;
+      border-top: 1px solid var(--nav-border, #E2E8F0);
+      margin: 6px 4px;
+      width: auto;
     }
 
     /* Autocomplete dropdown styling */
@@ -1313,6 +1332,7 @@
           <button id="emailSendBtn" class="submenu-btn" data-testid="email-send-btn">Send</button>
         </div>
       </div>
+      <hr class="menu-divider">
       <div class="menu-group">
         <button id="menuBrand" class="page-btn" data-short="B" data-full="Brand">Brand</button>
         <div id="brandSubmenu" class="submenu" style="display:none;">
@@ -1320,6 +1340,7 @@
           <button id="brandViewBtn" class="submenu-btn">View</button>
         </div>
       </div>
+      <hr class="menu-divider">
       <div class="menu-group">
         <button id="menuCustomer" class="page-btn" data-short="C" data-full="Customer">Customer</button>
         <div id="customerSubmenu" class="submenu" style="display:none;">
@@ -1334,27 +1355,27 @@
           <button id="supplierViewBtn" class="submenu-btn">View</button>
         </div>
       </div>
+      <hr class="menu-divider">
       <div class="menu-group">
-      <button id="menuQuotation" class="page-btn" data-short="I" data-full="In-house production" data-testid="menu-quotation">In-house production</button>
-        <div id="quotationSubmenu" class="submenu" style="display:none;">
-          <button id="quotationCreateBtn" class="submenu-btn" data-testid="quotation-create-btn">Create</button>
-          <button id="quotationViewBtn" class="submenu-btn" data-testid="quotation-view-btn">View</button>
+        <button id="menuSampling" class="page-btn">Sampling</button>
+        <div id="samplingSubmenu" class="submenu" style="display:none;">
+          <div class="menu-group">
+            <button id="menuQuotation" class="submenu-btn" data-testid="menu-quotation">In-house production</button>
+            <div id="quotationSubmenu" class="sub-submenu" style="display:none;">
+              <button id="quotationCreateBtn" class="submenu-btn" data-testid="quotation-create-btn">Create</button>
+              <button id="quotationViewBtn" class="submenu-btn" data-testid="quotation-view-btn">View</button>
+            </div>
+          </div>
+          <div class="menu-group">
+            <button id="menuOutsourcing" class="submenu-btn">Outsourcing</button>
+            <div id="outsourcingSubmenu" class="sub-submenu" style="display:none;">
+              <button id="outsourcingCreateBtn" class="submenu-btn">Create</button>
+              <button id="outsourcingViewBtn" class="submenu-btn">View</button>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="menu-group">
-        <button id="menuOutsourcing" class="page-btn" data-short="O" data-full="Outsourcing">Outsourcing</button>
-        <div id="outsourcingSubmenu" class="submenu" style="display:none;">
-          <button id="outsourcingCreateBtn" class="submenu-btn">Create</button>
-          <button id="outsourcingViewBtn" class="submenu-btn">View</button>
-        </div>
-      </div>
-      <div class="menu-group">
-        <button id="menuWorkshop" class="page-btn" data-short="W" data-full="Workshop">Workshop</button>
-        <div id="workshopSubmenu" class="submenu" style="display:none;">
-          <button id="workshopCreateBtn" class="submenu-btn">Create</button>
-          <button id="workshopViewBtn" class="submenu-btn">View</button>
-        </div>
-      </div>
+      <hr class="menu-divider">
       <div class="menu-group">
         <button id="menuOrder" class="page-btn" data-short="R" data-full="Order">Order</button>
         <div id="orderSubmenu" class="submenu" style="display:none;">
@@ -1362,16 +1383,17 @@
           <button id="orderViewBtn" class="submenu-btn">View</button>
         </div>
       </div>
+      <hr class="menu-divider">
       <div class="menu-group">
-        <button id="menuProduction" class="page-btn" data-short="P" data-full="Production" data-testid="menu-production">Production</button>
-        <div id="productionSubmenu" class="submenu" style="display:none;">
-          <button id="productionInhouseBtn" class="submenu-btn" data-testid="production-inhouse-btn">In-house production</button>
-          <button id="productionOutsourcingBtn" class="submenu-btn" data-testid="production-outsourcing-btn">Outsourcing</button>
+        <button id="menuWorkshop" class="page-btn" data-short="W" data-full="Workshop">Workshop</button>
+        <div id="workshopSubmenu" class="submenu" style="display:none;">
+          <button id="workshopCreateBtn" class="submenu-btn">Create</button>
+          <button id="workshopViewBtn" class="submenu-btn">View</button>
         </div>
       </div>
-      <button id="menuSettings" class="page-btn" data-short="S" data-full="Setting">Setting</button>
       <div style="flex:1;"></div>
-      <div style="font-size:0.75em; text-align:center; color:#666; margin-top:10px; padding:5px;">
+      <button id="menuSettings" class="page-btn" data-short="S" data-full="Setting">Setting</button>
+      <div style="font-size:0.75em; text-align:center; color:var(--nav-muted, #64748B); margin-top:10px; padding:5px;">
         v1.0.23
       </div>
     </div>
@@ -7052,31 +7074,42 @@
       submenu.style.display = isVisible ? 'none' : 'block';
     };
 
-    // Menu click: toggle quotation submenu
+    // Menu click: toggle Sampling submenu (groups In-house production + Outsourcing)
+    const menuSamplingBtn = document.getElementById('menuSampling');
+    menuSamplingBtn.onclick = () => {
+      const submenu = document.getElementById('samplingSubmenu');
+      const isVisible = submenu.style.display !== 'none';
+      // Hide all other top-level submenus and any open sub-submenus
+      document.querySelectorAll('.submenu').forEach(sub => { sub.style.display = 'none'; });
+      document.querySelectorAll('.sub-submenu').forEach(sub => { sub.style.display = 'none'; });
+      submenu.style.display = isVisible ? 'none' : 'block';
+    };
+
+    // Menu click: toggle In-house production sub-submenu (inside Sampling)
     menuQuotationBtn.onclick = () => {
       const submenu = document.getElementById('quotationSubmenu');
       const isVisible = submenu.style.display !== 'none';
 
-      // Hide all other submenus first
-      document.querySelectorAll('.submenu').forEach(sub => {
+      // Hide sibling sub-submenus only (keep parent Sampling open)
+      document.querySelectorAll('.sub-submenu').forEach(sub => {
         sub.style.display = 'none';
       });
 
-      // Toggle this submenu
+      // Toggle this sub-submenu
       submenu.style.display = isVisible ? 'none' : 'block';
     };
 
-    // Menu click: toggle outsourcing submenu
+    // Menu click: toggle Outsourcing sub-submenu (inside Sampling)
     menuOutsourcingBtn.onclick = () => {
       const submenu = document.getElementById('outsourcingSubmenu');
       const isVisible = submenu.style.display !== 'none';
 
-      // Hide all other submenus first
-      document.querySelectorAll('.submenu').forEach(sub => {
+      // Hide sibling sub-submenus only (keep parent Sampling open)
+      document.querySelectorAll('.sub-submenu').forEach(sub => {
         sub.style.display = 'none';
       });
 
-      // Toggle this submenu
+      // Toggle this sub-submenu
       submenu.style.display = isVisible ? 'none' : 'block';
     };
 
@@ -7095,32 +7128,6 @@
       const isVisible = submenu.style.display !== 'none';
       document.querySelectorAll('.submenu').forEach(sub => { sub.style.display = 'none'; });
       submenu.style.display = isVisible ? 'none' : 'block';
-    };
-
-    // Production menu (groups In-house production + Outsourcing views)
-    const menuProductionBtn = document.getElementById('menuProduction');
-    menuProductionBtn.onclick = () => {
-      const submenu = document.getElementById('productionSubmenu');
-      const isVisible = submenu.style.display !== 'none';
-      document.querySelectorAll('.submenu').forEach(sub => { sub.style.display = 'none'; });
-      submenu.style.display = isVisible ? 'none' : 'block';
-    };
-
-    const productionInhouseBtn = document.getElementById('productionInhouseBtn');
-    const productionOutsourcingBtn = document.getElementById('productionOutsourcingBtn');
-
-    productionInhouseBtn.onclick = () => {
-      document.getElementById('productionSubmenu').style.display = 'none';
-      ensureTab('quotation-view', 'In-house production');
-      activateTab('quotation-view');
-      initializeQuotationViewPanel();
-    };
-
-    productionOutsourcingBtn.onclick = () => {
-      document.getElementById('productionSubmenu').style.display = 'none';
-      ensureTab('outsourcing-view', 'Outsourcing');
-      activateTab('outsourcing-view');
-      initializeOutsourcingViewPanel();
     };
 
     const orderCreatedBtn = document.getElementById('orderCreatedBtn');
@@ -7388,7 +7395,7 @@
     // Sidebar stays expanded (full labels always shown).
     // Keep open submenus visible while hovering; collapse them when leaving.
     sidebar.onmouseleave = () => {
-      document.querySelectorAll('.submenu').forEach(sub => {
+      document.querySelectorAll('.submenu, .sub-submenu').forEach(sub => {
         sub.style.display = 'none';
       });
     };
@@ -22244,9 +22251,12 @@
     }
 
     // Open web QR scanner from Order > View
-    document.getElementById('orderScanQrBtn').onclick = () => {
-      startWebQrScanner();
-    };
+    const orderScanQrBtn = document.getElementById('orderScanQrBtn');
+    if (orderScanQrBtn) {
+      orderScanQrBtn.onclick = () => {
+        startWebQrScanner();
+      };
+    }
 
     // Also add scan entry from Order > Created menu
     // (reuse the same scanner modal)
