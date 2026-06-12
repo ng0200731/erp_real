@@ -158,6 +158,32 @@
       color: #000;
     }
 
+    .dtype-opt {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 7px 14px;
+      color: #fff;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .dtype-opt:hover {
+      background: rgba(255,255,255,0.12);
+    }
+
+    .dtype-opt input {
+      accent-color: #fff;
+      cursor: pointer;
+      margin-left: auto;
+    }
+
     .dashboard-grid-container {
       flex: 1;
       overflow: visible;
@@ -193,6 +219,11 @@
     .hidden-quadrant {
       display: none !important;
       opacity: 0;
+    }
+
+    /* Hidden by the dashboard TYPE multi-select filter (independent of expand logic) */
+    .quadrant-filtered-out {
+      display: none !important;
     }
 
     .dashboard-quadrant.visible {
@@ -284,6 +315,56 @@
       color: #999;
       letter-spacing: 0.1em;
       text-transform: uppercase;
+    }
+
+    /* ── Order dashboard (separate view, shown via TYPE ▸ Order) ── */
+    .order-dashboard-wrapper {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      background: #000;
+    }
+
+    #orderDashboardGrid {
+      flex: 1 1 0;
+      min-height: 0;
+      height: auto;
+    }
+
+    .order-toggle-pills {
+      display: flex;
+      gap: 1px;
+      background: #000;
+      flex-shrink: 0;
+    }
+
+    .order-pill {
+      flex: 1;
+      padding: 9px 10px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      border: none;
+      background: #e8e8e8;
+      color: #999;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .order-pill.active {
+      background: #fff;
+      color: #000;
+    }
+
+    .order-pill:hover {
+      background: #f5f5f5;
+    }
+
+    .order-pill.active:hover {
+      background: #fff;
     }
 
     .placeholder-content {
@@ -1511,6 +1592,17 @@
           <div class="dashboard-header-content">
             <h1 class="dashboard-title">Dashboard</h1>
             <div class="dashboard-controls">
+              <div class="dashboard-type-dropdown" style="position:relative;">
+                <button id="dashboardTypeToggle" class="view-toggle" title="Filter dashboard types" onclick="event.stopPropagation()">TYPE ▾</button>
+                <div id="dashboardTypeMenu" style="display:none; position:absolute; top:calc(100% + 6px); right:0; background:#1a1a1a; border:2px solid #fff; padding:6px 0; width:240px; z-index:100;">
+                  <label class="dtype-opt"><span>Quotation</span><input type="checkbox" data-quadrant="quotationDistributionColumn" checked></label>
+                  <label class="dtype-opt"><span>Outsourcing</span><input type="checkbox" data-quadrant="outsourcingDistributionColumn" checked></label>
+                  <label class="dtype-opt"><span>Brand Distribution</span><input type="checkbox" data-quadrant="brandDistributionColumn" checked></label>
+                  <label class="dtype-opt"><span>Brand VS Total</span><input type="checkbox" data-quadrant="brandValueColumn" checked></label>
+                  <div style="height:1px; background:rgba(255,255,255,0.3); margin:6px 0;"></div>
+                  <label class="dtype-opt"><span>Order</span><input type="checkbox" data-quadrant="orderDashboardColumn"></label>
+                </div>
+              </div>
               <button id="viewModePie" class="view-toggle active" title="Pie Chart">PIE</button>
               <button id="viewModeBar" class="view-toggle" title="Bar Chart">BAR</button>
             </div>
@@ -1828,6 +1920,71 @@
             </div>
 
           </div>
+
+          <!-- Order dashboard (separate view, shown when Order checkbox in TYPE is checked) -->
+          <div id="orderDashboardColumn" class="order-dashboard-wrapper quadrant-filtered-out">
+            <div class="order-toggle-pills" id="orderTogglePills">
+              <button type="button" class="order-pill active" data-order-chart="productType">Product Type</button>
+              <button type="button" class="order-pill active" data-order-chart="status">Status</button>
+              <button type="button" class="order-pill active" data-order-chart="country">Country</button>
+              <button type="button" class="order-pill active" data-order-chart="department">Department</button>
+            </div>
+            <div id="orderDashboardGrid" class="dashboard-grid">
+              <!-- Order Quadrant 1: Product Type Distribution -->
+              <div id="orderProductTypeColumn" class="dashboard-quadrant placeholder-quadrant" style="cursor:default;">
+                <div class="quadrant-header">
+                  <span class="quadrant-number">01</span>
+                  <h2 class="quadrant-title">Product Type</h2>
+                </div>
+                <div class="quadrant-content">
+                  <div class="chart-container">
+                    <canvas id="orderProductTypeCanvas"></canvas>
+                    <div id="orderProductTypeLoading" class="chart-loading">Loading...</div>
+                  </div>
+                </div>
+              </div>
+              <!-- Order Quadrant 2: Status Distribution -->
+              <div id="orderStatusColumn" class="dashboard-quadrant placeholder-quadrant" style="cursor:default;">
+                <div class="quadrant-header">
+                  <span class="quadrant-number">02</span>
+                  <h2 class="quadrant-title">Status</h2>
+                </div>
+                <div class="quadrant-content">
+                  <div class="chart-container">
+                    <canvas id="orderStatusCanvas"></canvas>
+                    <div id="orderStatusLoading" class="chart-loading">Loading...</div>
+                  </div>
+                </div>
+              </div>
+              <!-- Order Quadrant 3: Country Distribution -->
+              <div id="orderCountryColumn" class="dashboard-quadrant placeholder-quadrant" style="cursor:default;">
+                <div class="quadrant-header">
+                  <span class="quadrant-number">03</span>
+                  <h2 class="quadrant-title">Country</h2>
+                </div>
+                <div class="quadrant-content">
+                  <div class="chart-container">
+                    <canvas id="orderCountryCanvas"></canvas>
+                    <div id="orderCountryLoading" class="chart-loading">Loading...</div>
+                  </div>
+                </div>
+              </div>
+              <!-- Order Quadrant 4: Department Distribution -->
+              <div id="orderDepartmentColumn" class="dashboard-quadrant placeholder-quadrant" style="cursor:default;">
+                <div class="quadrant-header">
+                  <span class="quadrant-number">04</span>
+                  <h2 class="quadrant-title">Department</h2>
+                </div>
+                <div class="quadrant-content">
+                  <div class="chart-container">
+                    <canvas id="orderDepartmentCanvas"></canvas>
+                    <div id="orderDepartmentLoading" class="chart-loading">Loading...</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -3616,7 +3773,10 @@
       <!-- Brand View Panel -->
       <div id="brandViewPanel" style="margin:0; display:none; width:100%;">
         <div style="border:1px solid #000; padding:20px; margin-bottom:20px;">
-          <h3>Brand - View</h3>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h3 style="margin:0;">Brand - View</h3>
+            <button id="brandViewRefreshBtn" class="page-btn" style="padding:8px 16px;">🔄 Refresh</button>
+          </div>
           <div id="brandList" style="max-height:calc(100vh - 200px); overflow-y:auto;">
             <p style="color:#666;">No brands yet.</p>
           </div>
@@ -4372,15 +4532,26 @@
       document.getElementById('quotationDefaultsPanel').style.display = 'none';
       document.getElementById('productProfilesPanel').style.display = 'none';
       
-      // Remove tab
+      // Remove tab — but first remember which tab to activate next.
+      // Prefer the tab immediately to the left (e.g. closing #3 of [1,2,3,4] activates #2),
+      // otherwise fall back to the next remaining tab, and only use welcome if none are left.
       const tab = tabsBar.querySelector(`[data-tab-id="${id}"]`);
+      let nextTabId = null;
       if (tab) {
+        const prev = tab.previousElementSibling;
+        if (prev && prev.dataset && prev.dataset.tabId) {
+          nextTabId = prev.dataset.tabId;
+        }
         tab.remove();
+        if (!nextTabId) {
+          const firstRemaining = tabsBar.querySelector('[data-tab-id]');
+          if (firstRemaining) nextTabId = firstRemaining.dataset.tabId;
+        }
       }
-      
-      // Always switch to welcome when closing a tab
-      activateTab('welcome');
-      
+
+      // Activate the previous tab, or welcome page only when no tabs remain
+      activateTab(nextTabId || 'welcome');
+
       // Reset unsaved changes flag
       settingsHasUnsavedChanges = false;
     }
@@ -4488,10 +4659,13 @@
         } else {
           // First load — create charts
           loadBrandsCache().then(() => {
+            setupDashboardTypeFilter();
             loadDashboardQuotations().catch(() => {});
             loadDashboardOutsourcing().catch(() => {});
             loadDashboardBrand().catch(() => {});
             loadDashboardBrandValue().catch(() => {});
+            loadDashboardOrders().catch(() => {});
+            setupOrderTogglePills();
           }).catch(() => {});
         }
       }
@@ -4506,9 +4680,402 @@
     }
 
     let currentDashboardView = 'pie'; // 'pie' or 'bar'
+
+    // ── Dashboard TYPE multi-select filter ──
+    let _dashboardTypeFilterReady = false;
+    function setupDashboardTypeFilter() {
+      if (_dashboardTypeFilterReady) return;
+      _dashboardTypeFilterReady = true;
+
+      const toggleBtn = document.getElementById('dashboardTypeToggle');
+      const menu = document.getElementById('dashboardTypeMenu');
+      if (!toggleBtn || !menu) return;
+
+      // Toggle menu open / closed
+      toggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const open = menu.style.display === 'none';
+        menu.style.display = open ? 'block' : 'none';
+        toggleBtn.classList.toggle('active', open);
+      });
+
+      // Close menu when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!menu.contains(e.target) && e.target !== toggleBtn) {
+          menu.style.display = 'none';
+          toggleBtn.classList.remove('active');
+        }
+      });
+
+      // Prevent menu clicks from closing it
+      menu.addEventListener('click', (e) => e.stopPropagation());
+
+      // Checkbox change handler
+      menu.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          const checked = menu.querySelectorAll('input[type="checkbox"]:checked');
+          // Prevent unchecking the last one
+          if (checked.length === 0) {
+            cb.checked = true;
+            return;
+          }
+          applyDashboardTypeFilter();
+        });
+      });
+    }
+
+    function applyDashboardTypeFilter() {
+      const menu = document.getElementById('dashboardTypeMenu');
+      const grid = document.getElementById('dashboardGrid');
+      if (!menu || !grid) return;
+
+      const orderBox = menu.querySelector('input[data-quadrant="orderDashboardColumn"]');
+      const orderActive = !!(orderBox && orderBox.checked);
+
+      const boxes = menu.querySelectorAll('input[type="checkbox"]');
+      let visibleQuotationCount = 0;
+
+      boxes.forEach(cb => {
+        const el = document.getElementById(cb.dataset.quadrant);
+        if (!el) return;
+        const isOrder = cb.dataset.quadrant === 'orderDashboardColumn';
+        if (cb.checked) {
+          el.classList.remove('quadrant-filtered-out');
+          if (!isOrder) visibleQuotationCount++;
+        } else {
+          el.classList.add('quadrant-filtered-out');
+        }
+      });
+
+      if (orderActive) {
+        // Order mode: hide quotation grid, show order grid (already un-hidden above)
+        grid.style.display = 'none';
+        applyOrderChartLayout();
+        // Load data if needed, then render
+        if (!orderDashboardData) {
+          loadDashboardOrders().catch(function() {});
+        } else {
+          requestAnimationFrame(function() { setTimeout(function() { resizeOrderCharts(); renderOrderDashboard(); }, 300); });
+        }
+        return;
+      }
+
+      // Normal mode: show quotation grid, hide order grid (already re-hidden above)
+      grid.style.display = '';
+
+      // Adjust quotation grid layout so visible quadrants fill space nicely
+      if (visibleQuotationCount === 1) {
+        grid.style.gridTemplateColumns = '1fr';
+        grid.style.gridTemplateRows = '1fr';
+      } else if (visibleQuotationCount === 2) {
+        grid.style.gridTemplateColumns = '1fr 1fr';
+        grid.style.gridTemplateRows = '1fr';
+      } else {
+        grid.style.gridTemplateColumns = '1fr 1fr';
+        grid.style.gridTemplateRows = '';
+      }
+
+      // Resize any visible charts after layout change
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          if (typeof chartInstance !== 'undefined' && chartInstance) chartInstance.resize();
+          if (typeof outsourcingChartInstance !== 'undefined' && outsourcingChartInstance) outsourcingChartInstance.resize();
+          if (typeof brandChartInstance !== 'undefined' && brandChartInstance) brandChartInstance.resize();
+          if (typeof brandValueChartInstance !== 'undefined' && brandValueChartInstance) brandValueChartInstance.resize();
+        }, 300);
+      });
+    }
+
     let dashboardData = null;
     let dashboardQuotations = null; // Store quotations for drill-down
     let dashboardExpanded = false; // Track expansion state
+
+    // ── Order dashboard data + helpers ──────────────────────────────────
+    let orderDashboardData = null;
+    const orderChartInstances = { productType: null, status: null, country: null, department: null };
+    const orderChartVisibility = { productType: true, status: true, country: true, department: true };
+    const ORDER_BW_COLORS = ['#000000', '#333333', '#4d4d4d', '#666666', '#808080', '#999999', '#b3b3b3', '#cccccc', '#e0e0e0', '#f0f0f0'];
+    const ORDER_CANVAS = {
+      productType:  { col: 'orderProductTypeColumn',  canvas: 'orderProductTypeCanvas',  loading: 'orderProductTypeLoading',  title: 'Product Type' },
+      status:       { col: 'orderStatusColumn',        canvas: 'orderStatusCanvas',       loading: 'orderStatusLoading',       title: 'Status' },
+      country:      { col: 'orderCountryColumn',       canvas: 'orderCountryCanvas',      loading: 'orderCountryLoading',      title: 'Country' },
+      department:   { col: 'orderDepartmentColumn',    canvas: 'orderDepartmentCanvas',   loading: 'orderDepartmentLoading',   title: 'Department' }
+    };
+
+    function prettifyLabel(s) {
+      return String(s).replace(/[-_]/g, ' ').replace(/\w\S*/g, function(t) { return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase(); });
+    }
+
+    async function loadDashboardOrders() {
+      try {
+        const response = await fetch('/api/orders');
+        const data = await response.json();
+        const orders = (data && data.success && data.orders) ? data.orders : [];
+
+        var bucket = function(key) {
+          var counts = {};
+          orders.forEach(function(o) {
+            var v = (o[key] == null || o[key] === '' || o[key] === '-') ? 'Unassigned' : String(o[key]);
+            counts[v] = (counts[v] || 0) + 1;
+          });
+          var total = Object.values(counts).reduce(function(s, c) { return s + c; }, 0);
+          var segs = Object.keys(counts)
+            .sort(function(a, b) { return counts[b] - counts[a]; })
+            .map(function(name) {
+              return { name: prettifyLabel(name), key: name, count: counts[name], percentage: total > 0 ? ((counts[name] / total) * 100).toFixed(1) : 0 };
+            });
+          return { segments: segs, total: total };
+        };
+
+        orderDashboardData = {
+          productType: bucket('productType'),
+          status:      bucket('status'),
+          country:     bucket('country'),
+          department:  bucket('currentDepartment')
+        };
+
+        renderOrderDashboard();
+      } catch (error) {
+        console.error('Error loading order dashboard:', error);
+      }
+    }
+
+    function renderOrderDashboard() {
+      if (!orderDashboardData) return;
+      ['productType', 'status', 'country', 'department'].forEach(function(key) {
+        if (currentDashboardView === 'pie') {
+          drawOrderPieChart(key);
+        } else {
+          drawOrderBarChart(key);
+        }
+      });
+    }
+
+    function drawOrderPieChart(key) {
+      var cfg = ORDER_CANVAS[key];
+      var canvas = document.getElementById(cfg.canvas);
+      var loading = document.getElementById(cfg.loading);
+      if (!canvas) return;
+      var info = orderDashboardData[key];
+      var segments = info.segments;
+      var total = info.total;
+
+      if (!segments.length || total === 0) {
+        canvas.style.display = 'none';
+        if (loading) { loading.style.display = 'block'; loading.innerHTML = 'No data'; }
+        return;
+      }
+      canvas.style.display = 'block';
+      if (loading) loading.style.display = 'none';
+      if (orderChartInstances[key]) orderChartInstances[key].destroy();
+
+      var labels = segments.map(function(s) { return s.name; });
+      var data = segments.map(function(s) { return s.count; });
+      var colors = ORDER_BW_COLORS.slice(0, data.length);
+
+      var ctx = canvas.getContext('2d');
+      orderChartInstances[key] = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderColor: '#fff', borderWidth: 3, hoverBorderWidth: 4, hoverBorderColor: '#000' }] },
+        options: {
+          responsive: true, maintainAspectRatio: true, aspectRatio: 1, cutout: '55%',
+          layout: { padding: 50 },
+          plugins: { legend: { display: false }, tooltip: { enabled: false } }
+        },
+        plugins: [{
+          id: 'orderSliceLabels_' + key,
+          afterDraw: function(chart) {
+            var ctx2 = chart.ctx;
+            var meta = chart.getDatasetMeta(0);
+            var centerX = (chart.chartArea.left + chart.chartArea.right) / 2;
+            var centerY = (chart.chartArea.top + chart.chartArea.bottom) / 2;
+            var activeEls = chart.getActiveElements();
+            var hoveredIndex = activeEls.length > 0 ? activeEls[0].index : -1;
+
+            // Pass 1: non-hovered slice labels
+            meta.data.forEach(function(arc, i) {
+              var value = chart.data.datasets[0].data[i];
+              if (value === 0) return;
+              if (i === hoveredIndex) return;
+              var segName = segments[i].name;
+              var midAngle = (arc.startAngle + arc.endAngle) / 2;
+              var outerRadius = arc.outerRadius;
+              var edgeX = centerX + Math.cos(midAngle) * outerRadius;
+              var edgeY = centerY + Math.sin(midAngle) * outerRadius;
+              var labelDist = outerRadius + 15;
+              var labelX = centerX + Math.cos(midAngle) * labelDist;
+              var labelY = centerY + Math.sin(midAngle) * labelDist;
+              ctx2.save();
+              ctx2.beginPath();
+              ctx2.arc(edgeX, edgeY, 2, 0, Math.PI * 2);
+              ctx2.fillStyle = '#000'; ctx2.fill();
+              ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
+              ctx2.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+              var textWidth = ctx2.measureText(segName).width;
+              var padX = 6, padY = 4, rad = 4;
+              var rw = textWidth + padX * 2, rh = 12 + padY * 2;
+              var rx = labelX - rw / 2, ry = labelY - rh / 2;
+              ctx2.beginPath();
+              ctx2.moveTo(rx + rad, ry);
+              ctx2.lineTo(rx + rw - rad, ry);
+              ctx2.quadraticCurveTo(rx + rw, ry, rx + rw, ry + rad);
+              ctx2.lineTo(rx + rw, ry + rh - rad);
+              ctx2.quadraticCurveTo(rx + rw, ry + rh, rx + rw - rad, ry + rh);
+              ctx2.lineTo(rx + rad, ry + rh);
+              ctx2.quadraticCurveTo(rx, ry + rh, rx, ry + rh - rad);
+              ctx2.lineTo(rx, ry + rad);
+              ctx2.quadraticCurveTo(rx, ry, rx + rad, ry);
+              ctx2.closePath();
+              ctx2.fillStyle = '#fff'; ctx2.fill();
+              ctx2.strokeStyle = '#000'; ctx2.lineWidth = 1; ctx2.stroke();
+              ctx2.fillStyle = '#000'; ctx2.fillText(segName, labelX, labelY);
+              ctx2.restore();
+            });
+
+            // Pass 2: hovered tooltip
+            if (hoveredIndex >= 0) {
+              var arc = meta.data[hoveredIndex];
+              var value = chart.data.datasets[0].data[hoveredIndex];
+              if (value > 0) {
+                var segName = segments[hoveredIndex].name;
+                var percentage = ((value / total) * 100).toFixed(1);
+                var line1 = segName.toUpperCase();
+                var line2 = value + '  (' + percentage + '%)';
+                ctx2.save();
+                ctx2.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                var l1W = ctx2.measureText(line1).width;
+                ctx2.font = '300 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                var l2W = ctx2.measureText(line2).width;
+                var maxW = Math.max(l1W, l2W);
+                var pad = 10;
+                var boxW = maxW + pad * 2, boxH = 36;
+                var bx = centerX - boxW / 2;
+                var by = chart.chartArea.top - boxH - 4;
+                var br = 4;
+                ctx2.beginPath();
+                ctx2.moveTo(bx + br, by);
+                ctx2.lineTo(bx + boxW - br, by);
+                ctx2.quadraticCurveTo(bx + boxW, by, bx + boxW, by + br);
+                ctx2.lineTo(bx + boxW, by + boxH - br);
+                ctx2.quadraticCurveTo(bx + boxW, by + boxH, bx + boxW - br, by + boxH);
+                ctx2.lineTo(bx + br, by + boxH);
+                ctx2.quadraticCurveTo(bx, by + boxH, bx, by + boxH - br);
+                ctx2.lineTo(bx, by + br);
+                ctx2.quadraticCurveTo(bx, by, bx + br, by);
+                ctx2.closePath();
+                ctx2.fillStyle = '#000'; ctx2.fill();
+                ctx2.fillStyle = '#fff'; ctx2.textAlign = 'center'; ctx2.textBaseline = 'middle';
+                ctx2.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                ctx2.fillText(line1, centerX, by + boxH / 2 - 7);
+                ctx2.font = '300 11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+                ctx2.fillText(line2, centerX, by + boxH / 2 + 7);
+                ctx2.restore();
+              }
+            }
+
+            // Center TOTAL text
+            var width = chart.width, height = chart.height;
+            var fontSize = (height / 180).toFixed(2);
+            ctx2.font = '300 ' + fontSize + 'em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+            ctx2.textBaseline = 'middle';
+            ctx2.fillStyle = '#000';
+            var text = total.toString();
+            var textX = Math.round((width - ctx2.measureText(text).width) / 2);
+            var textY = height / 2 - 10;
+            ctx2.fillText(text, textX, textY);
+            ctx2.font = '600 ' + (fontSize * 0.25).toFixed(2) + 'em -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+            ctx2.fillStyle = '#666';
+            var lbl = 'TOTAL';
+            var lblX = Math.round((width - ctx2.measureText(lbl).width) / 2);
+            var lblY = height / 2 + 20;
+            ctx2.fillText(lbl, lblX, lblY);
+            ctx2.save();
+          }
+        }]
+      });
+    }
+
+    function drawOrderBarChart(key) {
+      var cfg = ORDER_CANVAS[key];
+      var canvas = document.getElementById(cfg.canvas);
+      var loading = document.getElementById(cfg.loading);
+      if (!canvas) return;
+      var info = orderDashboardData[key];
+      var segments = info.segments;
+      var total = info.total;
+
+      if (!segments.length || total === 0) {
+        canvas.style.display = 'none';
+        if (loading) { loading.style.display = 'block'; loading.innerHTML = '<div style="text-align:center; padding:50px; color:#999;">No data</div>'; }
+        return;
+      }
+      canvas.style.display = 'block';
+      if (loading) loading.style.display = 'none';
+      if (orderChartInstances[key]) orderChartInstances[key].destroy();
+
+      var labels = segments.map(function(s) { return s.name; });
+      var data = segments.map(function(s) { return s.count; });
+      var colors = ORDER_BW_COLORS.slice(0, data.length);
+
+      var ctx = canvas.getContext('2d');
+      orderChartInstances[key] = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: labels, datasets: [{ label: cfg.title, data: data, backgroundColor: colors, borderColor: '#000', borderWidth: 1 }] },
+        options: {
+          indexAxis: 'y', responsive: true, maintainAspectRatio: true, aspectRatio: 1.8,
+          layout: { padding: { top: 20, bottom: 20, left: 20, right: 20 } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#000', titleColor: '#fff', bodyColor: '#fff',
+              borderColor: '#000', borderWidth: 1, padding: 12,
+              callbacks: { label: function(context) { var value = context.parsed.x || 0; var percentage = ((value / total) * 100).toFixed(1); return (context.dataset.label || '') + ': ' + value + ' (' + percentage + '%)'; } }
+            }
+          },
+          scales: {
+            x: { beginAtZero: true, ticks: { color: '#000', font: { size: 12, family: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' } }, grid: { color: '#e0e0e0', drawBorder: true, borderColor: '#000' } },
+            y: { ticks: { color: '#000', font: { size: 13, family: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' } }, grid: { display: false, drawBorder: true, borderColor: '#000' } }
+          }
+        }
+      });
+    }
+
+    function applyOrderChartLayout() {
+      var grid = document.getElementById('orderDashboardGrid');
+      if (!grid) return;
+      ['productType', 'status', 'country', 'department'].forEach(function(key) {
+        var col = document.getElementById(ORDER_CANVAS[key].col);
+        if (!col) return;
+        if (orderChartVisibility[key]) col.classList.remove('quadrant-filtered-out');
+        else col.classList.add('quadrant-filtered-out');
+      });
+      var visibleCount = Object.values(orderChartVisibility).filter(Boolean).length;
+      if (visibleCount === 1) { grid.style.gridTemplateColumns = '1fr'; grid.style.gridTemplateRows = '1fr'; }
+      else if (visibleCount === 2) { grid.style.gridTemplateColumns = '1fr 1fr'; grid.style.gridTemplateRows = '1fr'; }
+      else { grid.style.gridTemplateColumns = '1fr 1fr'; grid.style.gridTemplateRows = '1fr 1fr'; }
+    }
+
+    function resizeOrderCharts() {
+      Object.values(orderChartInstances).forEach(function(inst) { if (inst) inst.resize(); });
+    }
+
+    function setupOrderTogglePills() {
+      var pills = document.querySelectorAll('#orderTogglePills .order-pill');
+      pills.forEach(function(pill) {
+        pill.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var key = pill.dataset.orderChart;
+          var activeCount = document.querySelectorAll('#orderTogglePills .order-pill.active').length;
+          if (pill.classList.contains('active') && activeCount === 1) return;
+          pill.classList.toggle('active');
+          orderChartVisibility[key] = pill.classList.contains('active');
+          applyOrderChartLayout();
+          requestAnimationFrame(function() { setTimeout(function() { resizeOrderCharts(); renderOrderDashboard(); }, 300); });
+        });
+      });
+    }
+
+    // ── End Order dashboard helpers ─────────────────────────────────────
 
     // Resize handler to redraw charts when window resizes
     let resizeTimeout;
@@ -4526,6 +5093,9 @@
         }
         if (brandValueDashboardData) {
           renderBrandValueDashboard();
+        }
+        if (orderDashboardData) {
+          renderOrderDashboard();
         }
       }, 150);
     });
@@ -4721,6 +5291,7 @@
             renderOutsourcingDashboard();
             renderBrandDashboard();
             renderBrandValueDashboard();
+            renderOrderDashboard();
           };
 
           barBtn.onclick = () => {
@@ -4731,6 +5302,7 @@
             renderOutsourcingDashboard();
             renderBrandDashboard();
             renderBrandValueDashboard();
+            renderOrderDashboard();
           };
 
           // Set initial button states
@@ -7605,6 +8177,15 @@
       ensureTab('brand-view', 'Brand (view)');
       activateTab('brand-view');
     };
+
+    // Refresh button next to Brand - View heading
+    const brandViewRefreshBtn = document.getElementById('brandViewRefreshBtn');
+    if (brandViewRefreshBtn) {
+      brandViewRefreshBtn.onclick = () => {
+        if (typeof loadBrandsCache === 'function') loadBrandsCache();
+        loadBrands();
+      };
+    }
 
     // Quotation submenu button
     const quotationCreateBtn = document.getElementById('quotationCreateBtn');
@@ -14437,25 +15018,30 @@
         const result = await response.json();
         console.log('Status update result:', result);
 
-        // If changing from "pending" to "send to customer", send email
-        if (newStatus === 'send to customer' && quotationType === 'email') {
+        // If changing to "send to customer", send email to customer (as long as a recipient email exists)
+        if (newStatus === 'send to customer') {
           console.log('Sending quotation email to customer...');
 
-          // Get the full quotation data with email metadata
+          // Get the full quotation data with email metadata (fall back to the row passed in)
           const quotations = await loadQuotationsFromStorage();
-          const quotation = quotations.find(q => q.id == quotationId);
+          const quotation = quotations.find(q => q.id == quotationId) || quotationData;
 
-          if (quotation && quotation.sourceEmailMessageId) {
-            // Construct email metadata from quotation
+          if (quotation && quotation.email) {
+            // Build email metadata. sourceMessageId is only used for reply-threading;
+            // it is optional so manually-created quotations can still be sent.
             const emailMeta = {
-              uid: quotation.sourceEmailUid,
-              subject: quotation.sourceEmailSubject,
-              messageId: quotation.sourceEmailMessageId,
+              uid: quotation.sourceEmailUid || null,
+              subject: quotation.sourceEmailSubject || null,
+              messageId: quotation.sourceEmailMessageId || null,
               email: quotation.email
             };
 
             try {
               await sendQuotationEmail(quotation, emailMeta);
+              // Refresh the Email (send) table so the new record shows immediately
+              if (typeof loadSentEmails === 'function') {
+                loadSentEmails().catch(() => {});
+              }
               showModal({
                 title: 'Success',
                 body: `Status updated to "${newStatus}" and quotation email sent to customer successfully!`
@@ -14470,7 +15056,7 @@
           } else {
             showModal({
               title: 'Warning',
-              body: `Status updated to "${newStatus}", but email metadata not found. Cannot send email automatically.`
+              body: `Status updated to "${newStatus}", but this quotation has no customer email address, so no email was sent.`
             });
           }
         } else {
@@ -18459,17 +19045,22 @@
       // Generate HTML email content
       const emailHtml = generateQuotationEmailHtml(quotation, emailMeta, originalEmailHtml, profileImageBase64);
 
-      // Prepare email subject using original subject from envelope
-      const emailSubject = `Re: ${originalSubject} - Quotation`;
+      // Prepare email subject using original subject from envelope (thread) or standalone
+      const emailSubject = originalSubject
+        ? `Re: ${originalSubject} - Quotation`
+        : `Quotation - ${quotation.customerName || 'Customer'} - ${quotation.productType || ''}`;
 
       // Prepare email data
       const emailData = {
         to: emailMeta.email,
         subject: emailSubject,
-        html: emailHtml,
-        inReplyTo: emailMeta.messageId,
-        references: emailMeta.messageId
+        html: emailHtml
       };
+      // Only add reply-threading headers when a source message-id exists
+      if (emailMeta.messageId) {
+        emailData.inReplyTo = emailMeta.messageId;
+        emailData.references = emailMeta.messageId;
+      }
 
       console.log('Sending email with data:', emailData);
 
@@ -19490,6 +20081,7 @@
         html += '<td style="border:1px solid #000; padding:8px;">' + escapeHtml(brand.address || '-') + '</td>';
         html += '<td style="border:1px solid #000; padding:8px; text-align:center;">';
         html += '<button class="page-btn" onclick="editBrand(' + brand.id + ')" style="margin-right:5px;">Edit</button>';
+        html += '<button class="page-btn" onclick="viewBrandAll(' + brand.id + ')" style="margin-right:5px;">View All</button>';
         html += '<button class="page-btn" onclick="deleteBrand(' + brand.id + ')">Delete</button>';
         html += '</td></tr>';
       });
@@ -19536,6 +20128,7 @@
         .then(r => r.json())
         .then(data => {
           if (data.success) {
+            if (typeof loadBrandsCache === 'function') loadBrandsCache();
             loadBrands();
           } else {
             alert('Error: ' + data.error);
@@ -19545,6 +20138,149 @@
     }
 
     window.deleteBrand = deleteBrand;
+
+    // Show every quotation + outsourcing quotation + order for a brand in one popup
+    function viewBrandAll(brandId) {
+      const brand = (cachedBrands || []).find(b => String(b.id) === String(brandId));
+      const brandName = brand ? brand.name : ('Brand #' + brandId);
+
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:99999;';
+      overlay.innerHTML = `
+        <div class="modal" style="background:#fff; padding:20px; border-radius:8px; max-width:1200px; width:95%; max-height:85vh; overflow-y:auto; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+          <div style="font-size:20px; font-weight:bold; margin-bottom:15px; border-bottom:2px solid #000; padding-bottom:10px;">
+            ${escapeHtml(brandName)} — All Quotations &amp; Orders
+          </div>
+          <div id="brandAllBody" style="text-align:center; padding:30px; color:#666;">Loading...</div>
+          <div style="margin-top:20px; display:flex; justify-content:flex-end;">
+            <button id="brandAllCloseBtn" class="page-btn" style="padding:10px 20px; background:#ccc; color:#000; border:none; cursor:pointer;">Close</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      overlay.querySelector('#brandAllCloseBtn').onclick = () => document.body.removeChild(overlay);
+      overlay.onclick = (e) => { if (e.target === overlay) document.body.removeChild(overlay); };
+
+      const body = overlay.querySelector('#brandAllBody');
+
+      Promise.all([
+        fetch('/api/quotations').then(r => r.json()).catch(() => ({ success: false })),
+        fetch('/api/quotations/outsourcing').then(r => r.json()).catch(() => ({ success: false })),
+        fetch('/api/orders').then(r => r.json()).catch(() => ({ success: false }))
+      ]).then(([qRes, oRes, ordRes]) => {
+        const rows = [];
+
+        // Build a map of quotationId → hasProfileImage so orders can reference it
+        const hasImageMap = {};
+        (qRes.success ? qRes.quotations : []).forEach(q => { hasImageMap[q.id] = q.hasProfileImage; });
+        (oRes.success ? oRes.quotations : []).forEach(q => { hasImageMap[q.id] = q.hasProfileImage; });
+
+        (qRes.success ? qRes.quotations : []).forEach(q => {
+          if (String(q.brandId) === String(brandId)) {
+            rows.push({
+              source: 'Quotation',
+              seq: q.quotationSeq || '-',
+              customer: q.customerName,
+              item: q.customerItemName || '-',
+              productType: getProductTypeDisplayName(q.productType),
+              qty: q.quantity,
+              total: q.total,
+              status: q.status || '-',
+              date: q.dateCreated,
+              imgUrl: q.hasProfileImage ? `/api/quotations/${q.id}/profile-image` : null
+            });
+          }
+        });
+
+        (oRes.success ? oRes.quotations : []).forEach(q => {
+          if (String(q.brandId) === String(brandId)) {
+            const tag = q.productDetails && q.productDetails._productTag ? q.productDetails._productTag : q.productType;
+            rows.push({
+              source: 'Outsourcing',
+              seq: q.outsourcingSeq || '-',
+              customer: q.customerName,
+              item: q.customerItemName || '-',
+              productType: getProductTypeDisplayName(tag),
+              qty: q.quantity,
+              total: q.total,
+              status: q.status || '-',
+              date: q.dateCreated,
+              imgUrl: q.hasProfileImage ? `/api/quotations/${q.id}/profile-image` : null
+            });
+          }
+        });
+
+        (ordRes.success ? ordRes.orders : []).forEach(o => {
+          if (String(o.brandId) === String(brandId)) {
+            // Orders reference the original quotation's profile image
+            const quoteId = o.quotationId;
+            const hasImg = quoteId && hasImageMap[quoteId];
+            rows.push({
+              source: 'Order',
+              seq: o.orderSeq || o.id || '-',
+              customer: o.customerName,
+              item: o.customerItemName || '-',
+              productType: getProductTypeDisplayName(o.productType),
+              qty: o.quantity,
+              total: o.total,
+              status: o.status || '-',
+              date: o.dateCreated || o.createdAt,
+              imgUrl: hasImg ? `/api/quotations/${quoteId}/profile-image` : null
+            });
+          }
+        });
+
+        // Newest first
+        rows.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+        if (rows.length === 0) {
+          body.innerHTML = '<p style="color:#666;">No quotations or orders found for this brand.</p>';
+          return;
+        }
+
+        const sourceColor = { 'Quotation': '#007bff', 'Outsourcing': '#6f42c1', 'Order': '#28a745' };
+        body.innerHTML = `
+          <table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+              <tr style="background:#f0f0f0;">
+                <th style="border:1px solid #000; padding:8px;">Image</th>
+                <th style="border:1px solid #000; padding:8px;">Type</th>
+                <th style="border:1px solid #000; padding:8px;">Ref #</th>
+                <th style="border:1px solid #000; padding:8px;">Customer</th>
+                <th style="border:1px solid #000; padding:8px;">Item</th>
+                <th style="border:1px solid #000; padding:8px;">Product</th>
+                <th style="border:1px solid #000; padding:8px;">Qty</th>
+                <th style="border:1px solid #000; padding:8px;">Total</th>
+                <th style="border:1px solid #000; padding:8px;">Status</th>
+                <th style="border:1px solid #000; padding:8px;">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => `
+                <tr>
+                  <td style="border:1px solid #000; padding:4px; text-align:center;">
+                    ${r.imgUrl ? '<img src="' + r.imgUrl + '" style="width:40px; height:40px; object-fit:cover; border:1px solid #ddd; border-radius:4px;">' : '<span style="color:#ccc;">-</span>'}
+                  </td>
+                  <td style="border:1px solid #000; padding:6px;"><span style="padding:2px 8px; border-radius:4px; color:#fff; background:${sourceColor[r.source] || '#666'};">${r.source}</span></td>
+                  <td style="border:1px solid #000; padding:6px;">${escapeHtml(String(r.seq))}</td>
+                  <td style="border:1px solid #000; padding:6px;">${escapeHtml(r.customer || '-')}</td>
+                  <td style="border:1px solid #000; padding:6px;">${escapeHtml(r.item)}</td>
+                  <td style="border:1px solid #000; padding:6px;">${escapeHtml(r.productType || '-')}</td>
+                  <td style="border:1px solid #000; padding:6px; text-align:right;">${(r.qty || 0).toLocaleString()}</td>
+                  <td style="border:1px solid #000; padding:6px; text-align:right;">${(r.total || 0).toFixed(2)}</td>
+                  <td style="border:1px solid #000; padding:6px;">${escapeHtml(r.status)}</td>
+                  <td style="border:1px solid #000; padding:6px;">${r.date ? new Date(r.date).toLocaleDateString() : '-'}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+          <p style="margin-top:10px; color:#666; font-size:12px;">${rows.length} record(s) — ${rows.filter(r => r.source === 'Quotation').length} quotation(s), ${rows.filter(r => r.source === 'Outsourcing').length} outsourcing, ${rows.filter(r => r.source === 'Order').length} order(s).</p>`;
+      }).catch(err => {
+        console.error('Error loading brand records:', err);
+        body.innerHTML = '<p style="color:#c00;">Failed to load records.</p>';
+      });
+    }
+
+    window.viewBrandAll = viewBrandAll;
 
     function clearBrandForm() {
       document.getElementById('brandEditId').value = '';
@@ -19587,6 +20323,8 @@
         .then(data => {
           if (data.success) {
             clearBrandForm();
+            // Refresh cached brands (dropdowns/dashboards) + the brand list, then switch tab
+            if (typeof loadBrandsCache === 'function') loadBrandsCache();
             ensureTab('brand-view', 'Brand (view)');
             activateTab('brand-view');
           } else {
@@ -20543,6 +21281,20 @@
       } catch (e) {
         console.warn('Failed to fetch fresh data for drilldown, using cache:', e);
         quotations = getQuotationsForDashboard(dashboardType);
+      }
+
+      // Apply the active brand filter for brand / brandValue dashboards so the
+      // drill-down matches the filtered pie + status legend (not all brands).
+      let brandFilter = '';
+      if (dashboardType === 'brand') {
+        const f = document.getElementById('brandStatusFilter');
+        brandFilter = f ? f.value : '';
+      } else if (dashboardType === 'brandValue') {
+        const f = document.getElementById('brandValueStatusFilter');
+        brandFilter = f ? f.value : '';
+      }
+      if (brandFilter) {
+        quotations = quotations.filter(q => String(q.brandId) === brandFilter);
       }
 
       const filtered = quotations.filter(q =>
@@ -21708,6 +22460,12 @@
 
         populateOrderColumnDropdowns();
         applyOrderFilters();
+
+        // Refresh order dashboard charts if the Order view is currently shown
+        const _orderCol = document.getElementById('orderDashboardColumn');
+        if (_orderCol && !_orderCol.classList.contains('quadrant-filtered-out')) {
+          loadDashboardOrders().catch(() => {});
+        }
       } catch (err) {
         console.error('Error loading orders:', err);
         tbody.innerHTML = `<tr><td colspan="15" style="border:1px solid #000; padding:20px; text-align:center; color:#dc3545;">Failed to load orders.</td></tr>`;
