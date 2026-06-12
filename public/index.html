@@ -3093,26 +3093,26 @@
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Product Type</div>
-                  <input class="order-col-filter" data-field="productType" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;" oninput="applyOrderColumnFilters()">
+                  <select class="order-col-filter" data-field="productType" style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;" onchange="applyOrderColumnFilters()"><option value="">All</option></select>
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:right;">Qty</th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Factory</div>
-                  <input class="order-col-filter" data-field="workshopName" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;" oninput="applyOrderColumnFilters()">
+                  <select class="order-col-filter" data-field="workshopName" style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;" onchange="applyOrderColumnFilters()"><option value="">All</option></select>
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Country</div>
-                  <input class="order-col-filter" data-field="country" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;" oninput="applyOrderColumnFilters()">
+                  <select class="order-col-filter" data-field="country" style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;" onchange="applyOrderColumnFilters()"><option value="">All</option></select>
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:center; width:50px;">Image</th>
                 <th style="border:1px solid #000; padding:8px; text-align:center; width:50px;">QR</th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Status</div>
-                  <input class="order-col-filter" data-field="status" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;" oninput="applyOrderColumnFilters()">
+                  <select class="order-col-filter" data-field="status" style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;" onchange="applyOrderColumnFilters()"><option value="">All</option></select>
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Department</div>
-                  <input class="order-col-filter" data-field="currentDepartment" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;" oninput="applyOrderColumnFilters()">
+                  <select class="order-col-filter" data-field="currentDepartment" style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;" onchange="applyOrderColumnFilters()"><option value="">All</option></select>
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">Created</th>
                 <th style="border:1px solid #000; padding:8px; text-align:center;">Action</th>
@@ -7274,14 +7274,14 @@
 
     orderCreatedBtn.onclick = () => {
       document.getElementById('orderSubmenu').style.display = 'none';
-      ensureTab('order-created', 'Order > Created');
+      ensureTab('order-created', 'Order (Created)');
       activateTab('order-created');
     };
 
     orderViewBtn.onclick = () => {
       document.getElementById('orderSubmenu').style.display = 'none';
       // View requires selecting an order first - go to created panel
-      ensureTab('order-created', 'Order > Created');
+      ensureTab('order-created', 'Order (Created)');
       activateTab('order-created');
     };
 
@@ -21684,8 +21684,8 @@
         const data = await response.json();
         if (data.success) {
           alert(`Order created: ${data.order.orderSeq}`);
-          // Navigate to Order > Created
-          ensureTab('order-created', 'Order > Created');
+          // Navigate to Order (Created)
+          ensureTab('order-created', 'Order (Created)');
           activateTab('order-created');
           displayOrders();
         } else {
@@ -21706,6 +21706,7 @@
         if (!data.success) throw new Error(data.error);
         allOrdersCache = data.orders || [];
 
+        populateOrderColumnDropdowns();
         applyOrderFilters();
       } catch (err) {
         console.error('Error loading orders:', err);
@@ -21714,6 +21715,28 @@
     }
 
     // Apply all filters (status dropdown + column filters)
+    // Populate dropdown filters with distinct values from loaded orders
+    function populateOrderColumnDropdowns() {
+      const dropdownFields = ['productType', 'workshopName', 'country', 'status', 'currentDepartment'];
+      dropdownFields.forEach(field => {
+        const sel = document.querySelector(`.order-col-filter[data-field="${field}"]`);
+        if (!sel || sel.tagName !== 'SELECT') return;
+        const current = sel.value;
+        const values = [];
+        const seen = new Set();
+        allOrdersCache.forEach(o => {
+          const v = o[field];
+          if (v == null || v === '') return;
+          if (!seen.has(String(v))) { seen.add(String(v)); values.push(v); }
+        });
+        values.sort((a, b) => String(a).localeCompare(String(b)));
+        sel.innerHTML = '<option value="">All</option>' +
+          values.map(v => `<option value="${String(v).replace(/"/g, '&quot;')}">${v}</option>`).join('');
+        // Restore selection if still present
+        if (current && seen.has(String(current))) sel.value = current;
+      });
+    }
+
     function applyOrderFilters() {
       const statusFilter = document.getElementById('orderFilterStatus').value;
       let filtered = allOrdersCache;
@@ -21728,10 +21751,12 @@
         const val = input.value.toLowerCase().trim();
         if (!val) return;
         const field = input.dataset.field;
+        const isExact = input.tagName === 'SELECT';
         filtered = filtered.filter(o => {
           const v = o[field];
           if (v == null) return false;
-          return String(v).toLowerCase().includes(val);
+          return isExact ? String(v).toLowerCase() === val
+                         : String(v).toLowerCase().includes(val);
         });
       });
 
@@ -22391,7 +22416,7 @@
       document.getElementById('orderViewPanel').style.display = 'none';
       document.getElementById('orderCreatedPanel').style.display = 'block';
       currentViewOrderId = null;
-      ensureTab('order-created', 'Order > Created');
+      ensureTab('order-created', 'Order (Created)');
       activateTab('order-created');
     };
 
@@ -22433,7 +22458,7 @@
       };
     }
 
-    // Also add scan entry from Order > Created menu
+    // Also add scan entry from Order (Created) menu
     // (reuse the same scanner modal)
 
     async function startWebQrScanner() {
