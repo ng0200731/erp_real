@@ -1014,6 +1014,11 @@
       color: var(--nav-accent, #2563EB);
       font-weight: 600;
     }
+    /* Blue trail connecting the active path (level 1 → 2 → 3) */
+    #sidebar .submenu.menu-path-active,
+    #sidebar .sub-submenu.menu-path-active {
+      border-left-color: var(--nav-accent, #2563EB);
+    }
 
     /* Autocomplete dropdown styling */
     .autocomplete-container {
@@ -4562,6 +4567,7 @@
         'order-view':       { btns: ['orderViewBtn', 'menuOrder'],                               open: ['orderSubmenu'] },
       };
       document.querySelectorAll('#sidebar .menu-active').forEach(el => el.classList.remove('menu-active'));
+      document.querySelectorAll('#sidebar .menu-path-active').forEach(el => el.classList.remove('menu-path-active'));
       document.querySelectorAll('#sidebar .submenu, #sidebar .sub-submenu').forEach(sub => { sub.style.display = 'none'; });
       const cfg = tabHighlight[id];
       if (cfg) {
@@ -4571,7 +4577,10 @@
         });
         cfg.open.forEach(sid => {
           const sub = document.getElementById(sid);
-          if (sub) sub.style.display = 'block';
+          if (sub) {
+            sub.style.display = 'block';
+            sub.classList.add('menu-path-active');
+          }
         });
       }
 
