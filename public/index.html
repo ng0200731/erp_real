@@ -4756,6 +4756,10 @@
     let orderDashboardStatusData = null;  // status breakdown for expand panels
     const ORDER_COLORS = ['#264653', '#2A9D8F', '#E9C46A', '#F4A261', '#E76F51', '#606C38', '#BC6C25', '#457B9D', '#1D3557', '#A8DADC'];
 
+    function prettifyLabel(str) {
+      return String(str).replace(/-/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+    }
+
     function getOrderColor(key, fallbackIndex) {
       var map = {
         'china': '#E63946', 'vietnam': '#FF9F1C', 'bangladesh': '#2EC4B6', 'unassigned': '#6C757D',
@@ -4811,7 +4815,7 @@
         });
         var total = orders.length;
         var segs = Object.keys(counts).sort(function(a, b) { return counts[b] - counts[a]; }).map(function(name) {
-          return { name: prettifyLabel(name), key: name, count: counts[name], percentage: total > 0 ? ((counts[name] / total) * 100).toFixed(1) : 0, color: getOrderStatusColor(name) };
+          return { name: prettifyLabel(name), key: name, count: counts[name], percentage: total > 0 ? ((counts[name] / total) * 100).toFixed(1) : 0, color: getOrderColor(name) };
         });
         return { segments: segs, total: total };
       };
