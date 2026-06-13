@@ -1014,10 +1014,21 @@
       color: var(--nav-accent, #2563EB);
       font-weight: 600;
     }
-    /* Blue trail connecting the active path (level 1 → 2 → 3) */
+    /* Blue trail connecting the active path — stops at active item */
     #sidebar .submenu.menu-path-active,
     #sidebar .sub-submenu.menu-path-active {
-      border-left-color: var(--nav-accent, #2563EB);
+      border-left-color: transparent;
+      position: relative;
+    }
+    #sidebar .submenu.menu-path-active::before,
+    #sidebar .sub-submenu.menu-path-active::before {
+      content: '';
+      position: absolute;
+      left: -1.5px;
+      top: 0;
+      width: 1.5px;
+      height: var(--path-height, 100%);
+      background: var(--nav-accent, #2563EB);
     }
 
     /* Autocomplete dropdown styling */
@@ -4567,7 +4578,10 @@
         'order-view':       { btns: ['orderViewBtn', 'menuOrder'],                               open: ['orderSubmenu'] },
       };
       document.querySelectorAll('#sidebar .menu-active').forEach(el => el.classList.remove('menu-active'));
-      document.querySelectorAll('#sidebar .menu-path-active').forEach(el => el.classList.remove('menu-path-active'));
+      document.querySelectorAll('#sidebar .menu-path-active').forEach(el => {
+        el.classList.remove('menu-path-active');
+        el.style.removeProperty('--path-height');
+      });
       document.querySelectorAll('#sidebar .submenu, #sidebar .sub-submenu').forEach(sub => { sub.style.display = 'none'; });
       const cfg = tabHighlight[id];
       if (cfg) {
@@ -4580,6 +4594,14 @@
           if (sub) {
             sub.style.display = 'block';
             sub.classList.add('menu-path-active');
+            // Compute path height: stop at the active child's center
+            const activeChild = sub.querySelector('.menu-active');
+            if (activeChild) {
+              const subRect = sub.getBoundingClientRect();
+              const childRect = activeChild.getBoundingClientRect();
+              const pathHeight = (childRect.top - subRect.top) + (childRect.height / 2);
+              sub.style.setProperty('--path-height', pathHeight + 'px');
+            }
           }
         });
       }
