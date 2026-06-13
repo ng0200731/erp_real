@@ -414,23 +414,33 @@
     .meta {font-size:13px; opacity:0.6;}
     pre {background:#fff; padding:15px; border:1px solid #000;}
 
-    /* Inputs (monochrome) */
-    input, textarea{
+    /* Inputs (filter-style) */
+    input, textarea, select{
       width:100%;
-      padding:12px;
-      border:1.5px solid #000;
+      padding:4px;
+      border:1px solid #ccc;
       background:#fff;
       color:#000;
+      font-size:12px;
       box-sizing:border-box;
       font-family:inherit;
       transition: all 0.2s;
     }
-    input:focus, textarea:focus {
+    input:focus, textarea:focus, select:focus {
       outline: none;
-      border-color: #000;
-      box-shadow: 0 0 0 3px rgba(0,0,0,0.1);
+      border-color: #999;
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.05);
     }
-    textarea{ min-height:150px; resize:vertical; }
+    textarea{ min-height:80px; resize:vertical; }
+    input[type="checkbox"], input[type="radio"] {
+      width:auto; padding:0; border:none; box-shadow:none;
+    }
+    input[type="checkbox"]:focus, input[type="radio"]:focus {
+      box-shadow:none; border-color:transparent;
+    }
+    input[type="button"], input[type="submit"], input[type="reset"], button {
+      font-size:inherit;
+    }
 
     /* Minimal monochrome modal (no browser alerts/confirms) */
     .modal-overlay{
@@ -805,15 +815,15 @@
     .cf-grid input[type="url"],
     .cf-grid input[type="email"],
     .cf-grid select,
-    .cf-grid textarea{ width:100%; padding:6px 8px; border:1px solid #000; font-size:13px; background:#fff; box-sizing:border-box; }
+    .cf-grid textarea{ width:100%; padding:4px; border:1px solid #ccc; font-size:12px; background:#fff; box-sizing:border-box; }
     .cf-grid textarea{ min-height:48px; resize:vertical; }
     .cf-grid select{ padding:5px 6px; }
     /* Multi-select dropdown */
     .ms-wrap{ position:relative; width:100%; box-sizing:border-box; }
-    .ms-btn{ display:flex; align-items:center; justify-content:space-between; width:100%; padding:6px 28px 6px 8px; border:1px solid #000; background:#fff; font-size:13px; cursor:pointer; min-height:30px; box-sizing:border-box; position:relative; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .ms-btn{ display:flex; align-items:center; justify-content:space-between; width:100%; padding:4px 28px 4px 4px; border:1px solid #ccc; background:#fff; font-size:12px; cursor:pointer; min-height:30px; box-sizing:border-box; position:relative; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .ms-btn:hover{ background:#f5f5f5; }
     .ms-btn::after{ content:'▾'; position:absolute; right:8px; top:50%; transform:translateY(-50%); font-size:11px; color:#555; pointer-events:none; }
-    .ms-dd{ display:none; position:absolute; top:calc(100% + 2px); left:0; right:0; background:#fff; border:1px solid #000; z-index:500; box-shadow:0 4px 8px rgba(0,0,0,0.15); }
+    .ms-dd{ display:none; position:absolute; top:calc(100% + 2px); left:0; right:0; background:#fff; border:1px solid #ccc; z-index:500; box-shadow:0 4px 8px rgba(0,0,0,0.15); }
     .ms-dd.open{ display:block; }
     .ms-dd label{ display:flex; align-items:center; gap:8px; padding:6px 10px; font-size:13px; font-weight:400; text-transform:none; color:#000; cursor:pointer; margin:0; white-space:nowrap; }
     .ms-dd label:hover{ background:#f0f0f0; }
@@ -1012,16 +1022,17 @@
     }
     .autocomplete-input {
       width: 100%;
-      padding: 8px;
-      border: 1px solid #000;
+      padding: 4px;
+      border: 1px solid #ccc;
       background: #fff;
       color: #000;
+      font-size: 12px;
       box-sizing: border-box;
       font-family: inherit;
     }
     .autocomplete-input:focus {
       outline: none;
-      border-color: #666;
+      border-color: #999;
     }
     .autocomplete-dropdown {
       position: absolute;
@@ -1274,9 +1285,9 @@
     }
     .add-type-input {
       flex: 1;
-      padding: 8px 12px;
-      border: 1px solid #000;
-      font-size: 13px;
+      padding: 4px;
+      border: 1px solid #ccc;
+      font-size: 12px;
     }
     .add-type-btn {
       padding: 8px 16px;
@@ -1340,12 +1351,12 @@
     .ws-field-group input[type="date"],
     .ws-field-group textarea,
     .ws-field-group select {
-      width: 100%; border: 1px solid #000; padding: 8px 10px;
-      font-size: 14px; background: #fff; transition: border-color 0.15s;
+      width: 100%; border: 1px solid #ccc; padding: 4px;
+      font-size: 12px; background: #fff; transition: border-color 0.15s;
     }
     .ws-field-group input:focus,
     .ws-field-group textarea:focus,
-    .ws-field-group select:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 2px rgba(0,123,255,0.15); }
+    .ws-field-group select:focus { outline: none; border-color: #999; box-shadow: 0 0 0 2px rgba(0,0,0,0.05); }
     .ws-row { display: flex; gap: 16px; }
     .ws-row > .ws-field-group { flex: 1; }
     .ws-checkbox-grid { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -2552,14 +2563,14 @@
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
             <button id="addSkillBtn" class="page-btn">Create Skill</button>
             <button id="refreshSkillsBtn" class="page-btn">Refresh</button>
-            <select id="skillStatusFilter" class="page-btn" style="background:#fff; color:#000; border:1px solid #000; padding:8px;">
+            <select id="skillStatusFilter" class="page-btn" style="background:#fff; color:#000; border:1px solid #ccc; padding:4px; font-size:12px;">
               <option value="">All Status</option>
               <option value="planned">Planned</option>
               <option value="in-progress">In Progress</option>
               <option value="completed">Completed</option>
               <option value="deprecated">Deprecated</option>
             </select>
-            <select id="skillCategoryFilter" class="page-btn" style="background:#fff; color:#000; border:1px solid #000; padding:8px;">
+            <select id="skillCategoryFilter" class="page-btn" style="background:#fff; color:#000; border:1px solid #ccc; padding:4px; font-size:12px;">
               <option value="">All Categories</option>
               <option value="frontend">Frontend</option>
               <option value="backend">Backend</option>
@@ -2572,7 +2583,7 @@
             </select>
           </div>
           <div style="margin-top:10px;">
-            <input type="text" id="skillSearch" placeholder="Search skills..." style="width:100%; padding:8px; border:1px solid #000; box-sizing:border-box;">
+            <input type="text" id="skillSearch" placeholder="Search skills..." style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; box-sizing:border-box;">
           </div>
         </div>
 
@@ -3127,7 +3138,7 @@
         <div id="workshopListView">
           <div style="display:flex; gap:10px; padding:20px; border-bottom:1px solid #000; position:sticky; top:0; background:#fff; z-index:50;">
             <button id="refreshWorkshopsBtn" class="page-btn">Refresh List</button>
-            <input type="text" id="workshopSearchInput" placeholder="Search workshops..." style="border:1px solid #000; padding:8px 12px; flex:1; font-size:14px;">
+            <input type="text" id="workshopSearchInput" placeholder="Search workshops..." style="border:1px solid #ccc; padding:4px; flex:1; font-size:12px;">
           </div>
           <div style="padding:0 20px 20px 20px;">
             <table id="workshopsTable" style="width:100%; border-collapse:collapse; border:1px solid #000;">
@@ -3183,7 +3194,7 @@
           <button id="orderBulkDeleteBtn" class="page-btn" style="background:#dc3545; color:#fff; display:none;">🗑️ Delete Selected (<span id="orderBulkDeleteCount">0</span>)</button>
           <button id="orderBulkScanBtn" class="page-btn" style="background:#6f42c1; color:#fff; display:none;">📷 Scan & Update Status</button>
           <button id="orderBulkQrBtn" class="page-btn" style="background:#dc3545; color:#fff; display:none;">🔴 Generate Bulk QR</button>
-          <select id="orderFilterStatus" style="border:1px solid #000; padding:8px 12px; font-size:14px;">
+          <select id="orderFilterStatus" style="border:1px solid #ccc; padding:4px; font-size:12px;">
             <option value="">All Status</option>
             <option value="pending">Pending</option>
             <option value="in-production">In Production</option>
@@ -3291,7 +3302,7 @@
         <div style="background:#fff; border:2px solid #000; padding:30px; min-width:400px; max-width:550px;">
           <h3 style="margin:0 0 15px 0; font-weight:700;">Select Factory for PDF</h3>
           <p id="orderFactoryModalCount" style="margin:0 0 15px 0; font-size:13px; color:#666;"></p>
-          <select id="orderFactorySelect" style="width:100%; border:1px solid #000; padding:10px; font-size:14px; margin-bottom:20px;">
+          <select id="orderFactorySelect" style="width:100%; border:1px solid #ccc; padding:4px; font-size:12px; margin-bottom:20px;">
             <option value="">-- Select Factory --</option>
           </select>
           <div style="display:flex; gap:10px; justify-content:flex-end;">
@@ -3309,7 +3320,7 @@
           <p id="qrScanStatus" style="margin:10px 0; font-size:13px; color:#666;">Point camera at the QR code on the order PDF</p>
           <div id="qrScanResult" style="display:none; margin:15px 0; padding:10px; background:#e8f5e9; border:1px solid #28a745;"></div>
           <div style="display:flex; gap:10px; justify-content:center; margin-top:15px;">
-            <select id="qrScanDepartment" style="border:1px solid #000; padding:8px 12px; font-size:14px; width:150px;">
+            <select id="qrScanDepartment" style="border:1px solid #ccc; padding:4px; font-size:12px; width:150px;">
               <option value="">Select Dept</option>
               <option value="CS Team">1. CS Team</option>
               <option value="PMC">2. PMC</option>
@@ -3320,7 +3331,7 @@
               <option value="Shipment">7. Shipment</option>
               <option value="Account">8. Account</option>
             </select>
-            <input type="text" id="qrScanNotes" placeholder="Notes (optional)" style="border:1px solid #000; padding:8px 12px; font-size:14px; width:150px;">
+            <input type="text" id="qrScanNotes" placeholder="Notes (optional)" style="border:1px solid #ccc; padding:4px; font-size:12px; width:150px;">
           </div>
           <div style="display:flex; gap:10px; justify-content:center; margin-top:15px;">
             <button id="qrScanSubmitBtn" class="page-btn" style="background:#28a745; color:#fff; padding:8px 20px;">Submit Scan</button>
@@ -3554,19 +3565,19 @@
               </tr>
               <tr style="background:#fff;">
                 <th style="padding:8px;">
-                  <input type="text" id="dateSearch" placeholder="Search date..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
+                  <input type="text" id="dateSearch" placeholder="Search date..." style="width:100%; border:1px solid #ccc; padding:4px; font-size:12px; box-sizing:border-box;">
                 </th>
                 <th style="padding:8px;">
-                  <input type="text" id="senderSearch" placeholder="Search sender..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
+                  <input type="text" id="senderSearch" placeholder="Search sender..." style="width:100%; border:1px solid #ccc; padding:4px; font-size:12px; box-sizing:border-box;">
                 </th>
                 <th style="padding:8px;">
-                  <input type="text" id="subjectSearch" placeholder="Search subject..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
+                  <input type="text" id="subjectSearch" placeholder="Search subject..." style="width:100%; border:1px solid #ccc; padding:4px; font-size:12px; box-sizing:border-box;">
                 </th>
                 <th style="padding:8px;">
-                  <input type="text" id="contextSearch" placeholder="Search content..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
+                  <input type="text" id="contextSearch" placeholder="Search content..." style="width:100%; border:1px solid #ccc; padding:4px; font-size:12px; box-sizing:border-box;">
                 </th>
                 <th style="padding:8px;">
-                  <input type="text" id="attachmentSearch" placeholder="Search attachments..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
+                  <input type="text" id="attachmentSearch" placeholder="Search attachments..." style="width:100%; border:1px solid #ccc; padding:4px; font-size:12px; box-sizing:border-box;">
                 </th>
               </tr>
             </thead>
@@ -3662,35 +3673,35 @@
           <table id="sentEmailsTable" style="width:100%; border-collapse:collapse;">
             <thead style="position:sticky; top:0; background:#fff; z-index:1;">
               <tr style="background:#fff;">
-                <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Date Sent</th>
-                <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">From</th>
-                <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">To</th>
-                <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Subject</th>
-                <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Status</th>
-                <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Details</th>
+                <th style="padding:4px; font-size:12px; border:1px solid #ccc; text-align:left; font-weight:bold;">Date Sent</th>
+                <th style="padding:4px; font-size:12px; border:1px solid #ccc; text-align:left; font-weight:bold;">From</th>
+                <th style="padding:4px; font-size:12px; border:1px solid #ccc; text-align:left; font-weight:bold;">To</th>
+                <th style="padding:4px; font-size:12px; border:1px solid #ccc; text-align:left; font-weight:bold;">Subject</th>
+                <th style="padding:4px; font-size:12px; border:1px solid #ccc; text-align:left; font-weight:bold;">Status</th>
+                <th style="padding:4px; font-size:12px; border:1px solid #ccc; text-align:left; font-weight:bold;">Details</th>
               </tr>
               <tr style="background:#fff;">
-                <th style="padding:8px; border:1px solid #000;">
-                  <input type="text" id="sentDateSearch" placeholder="Search date..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
+                <th style="padding:4px; font-size:12px; border:1px solid #ccc;">
+                  <input type="text" id="sentDateSearch" placeholder="Search date..." style="width:100%; border:1px solid #ccc; padding:4px; font-size:12px; box-sizing:border-box;">
                 </th>
-                <th style="padding:8px; border:1px solid #000;">
-                  <input type="text" id="sentFromSearch" placeholder="Search sender..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
+                <th style="padding:4px; font-size:12px; border:1px solid #ccc;">
+                  <input type="text" id="sentFromSearch" placeholder="Search sender..." style="width:100%; border:1px solid #ccc; padding:4px; font-size:12px; box-sizing:border-box;">
                 </th>
-                <th style="padding:8px; border:1px solid #000;">
-                  <input type="text" id="sentToSearch" placeholder="Search recipient..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
+                <th style="padding:4px; font-size:12px; border:1px solid #ccc;">
+                  <input type="text" id="sentToSearch" placeholder="Search recipient..." style="width:100%; border:1px solid #ccc; padding:4px; font-size:12px; box-sizing:border-box;">
                 </th>
-                <th style="padding:8px; border:1px solid #000;">
-                  <input type="text" id="sentSubjectSearch" placeholder="Search subject..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
+                <th style="padding:4px; font-size:12px; border:1px solid #ccc;">
+                  <input type="text" id="sentSubjectSearch" placeholder="Search subject..." style="width:100%; border:1px solid #ccc; padding:4px; font-size:12px; box-sizing:border-box;">
                 </th>
-                <th style="padding:8px; border:1px solid #000;">
-                  <select id="sentStatusFilter" style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
+                <th style="padding:4px; font-size:12px; border:1px solid #ccc;">
+                  <select id="sentStatusFilter" style="width:100%; border:1px solid #ccc; padding:4px; font-size:12px; box-sizing:border-box;">
                     <option value="">All Status</option>
                     <option value="sent">Sent</option>
                     <option value="failed">Failed</option>
                   </select>
                 </th>
-                <th style="padding:8px; border:1px solid #000;">
-                  <input type="text" id="sentDetailsSearch" placeholder="Search content..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
+                <th style="padding:4px; font-size:12px; border:1px solid #ccc;">
+                  <input type="text" id="sentDetailsSearch" placeholder="Search content..." style="width:100%; border:1px solid #ccc; padding:4px; font-size:12px; box-sizing:border-box;">
                 </th>
               </tr>
             </thead>
@@ -3709,11 +3720,11 @@
           <div style="max-width:500px;">
             <div style="margin-bottom:15px;">
               <label style="display:block; font-weight:bold; margin-bottom:5px;">Brand Name</label>
-              <input type="text" id="brandName" placeholder="Enter brand name" style="width:100%; padding:8px; border:1px solid #000;">
+              <input type="text" id="brandName" placeholder="Enter brand name" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
             </div>
             <div style="margin-bottom:15px;">
               <label style="display:block; font-weight:bold; margin-bottom:5px;">Brand Address</label>
-              <textarea id="brandAddress" placeholder="Enter brand address" rows="3" style="width:100%; padding:8px; border:1px solid #000; resize:vertical;"></textarea>
+              <textarea id="brandAddress" placeholder="Enter brand address" rows="3" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; resize:vertical;"></textarea>
             </div>
             <div style="margin-bottom:15px;">
               <label style="display:block; font-weight:bold; margin-bottom:5px;">Logo</label>
@@ -9743,7 +9754,7 @@
       let customerHtml = '';
       if (currentCustomerData) {
         customerHtml = `
-          <div style="margin-top:8px; padding:8px; border:1px solid #000; background:#f0f0f0;">
+          <div style="margin-top:8px; padding:4px; font-size:12px; border:1px solid #ccc; background:#f0f0f0;">
             <div style="font-weight:bold; margin-bottom:4px;">Customer Information</div>
             <div style="font-size:13px;">${currentCustomerData.companyName || ''} | ${currentCustomerData.emailDomain || ''}</div>
           </div>`;
@@ -10284,7 +10295,7 @@
       setTimeout(() => {
         // Initialize customer autocomplete
         if (document.getElementById('quotationCustomerName')) {
-          window.customerAutocomplete = new CustomerAutocomplete('quotationCustomerName', 'customerAutocompleteDropdown');
+          window.customerAutocomplete = new CustomerAutocomplete('quotationCustomerName', 'customerAutocompleteDropdown', content);
         }
 
         // Pre-populate customer data if available
@@ -10360,12 +10371,12 @@
         initializeFileUploads(quotationType);
 
         // Add event listener for contact person selection
-        const contactPersonField = document.getElementById('quotationContactPerson');
+        const contactPersonField = content.querySelector('#quotationContactPerson') || document.getElementById('quotationContactPerson');
         if (contactPersonField) {
           contactPersonField.addEventListener('change', function() {
             const selectedOption = this.options[this.selectedIndex];
-            const emailField = document.getElementById('quotationEmail');
-            const phoneField = document.getElementById('quotationPhone');
+            const emailField = content.querySelector('#quotationEmail') || document.getElementById('quotationEmail');
+            const phoneField = content.querySelector('#quotationPhone') || document.getElementById('quotationPhone');
 
             if (selectedOption && selectedOption.value && selectedOption.dataset.memberData) {
               const memberData = JSON.parse(selectedOption.dataset.memberData);
@@ -11763,15 +11774,15 @@
         content.innerHTML = `
           <div style="display:grid; gap:8px;">
             <label style="font-weight:700;">Company Name</label>
-            <input id="editCompanyName" type="text" value="${escapeHtml(customer.companyName || '')}" style="width:100%; padding:8px; border:1px solid #000;">
+            <input id="editCompanyName" type="text" value="${escapeHtml(customer.companyName || '')}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
             <label style="font-weight:700;">Company Type</label>
-            <input id="editCompanyType" type="text" value="${escapeHtml(customer.companyType || '')}" style="width:100%; padding:8px; border:1px solid #000;">
+            <input id="editCompanyType" type="text" value="${escapeHtml(customer.companyType || '')}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
             <label style="font-weight:700;">Email Domain</label>
-            <input id="editEmailDomain" type="text" value="${escapeHtml(customer.emailDomain || '')}" style="width:100%; padding:8px; border:1px solid #000;">
+            <input id="editEmailDomain" type="text" value="${escapeHtml(customer.emailDomain || '')}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
             <label style="font-weight:700;">Telephone</label>
-            <input id="editCompanyTel" type="text" value="${escapeHtml(customer.companyTel || '')}" style="width:100%; padding:8px; border:1px solid #000;">
+            <input id="editCompanyTel" type="text" value="${escapeHtml(customer.companyTel || '')}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
             <label style="font-weight:700;">Website</label>
-            <input id="editCompanyWebsite" type="text" value="${escapeHtml(customer.companyWebsite || '')}" style="width:100%; padding:8px; border:1px solid #000;">
+            <input id="editCompanyWebsite" type="text" value="${escapeHtml(customer.companyWebsite || '')}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
           </div>
         `;
 
@@ -11897,13 +11908,13 @@
         content.innerHTML = `
           <div style="display:grid; gap:8px;">
             <label style="font-weight:700;">Full Name</label>
-            <input id="editMemberName" type="text" value="${escapeHtml(member.name || '')}" style="width:100%; padding:8px; border:1px solid #000;">
+            <input id="editMemberName" type="text" value="${escapeHtml(member.name || '')}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
             <label style="font-weight:700;">Email Prefix</label>
-            <input id="editMemberEmail" type="text" value="${escapeHtml(member.emailPrefix || '')}" style="width:100%; padding:8px; border:1px solid #000;">
+            <input id="editMemberEmail" type="text" value="${escapeHtml(member.emailPrefix || '')}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
             <label style="font-weight:700;">Title</label>
-            <input id="editMemberTitle" type="text" value="${escapeHtml(member.title || '')}" style="width:100%; padding:8px; border:1px solid #000;">
+            <input id="editMemberTitle" type="text" value="${escapeHtml(member.title || '')}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
             <label style="font-weight:700;">Telephone</label>
-            <input id="editMemberTel" type="text" value="${escapeHtml(member.tel || '')}" style="width:100%; padding:8px; border:1px solid #000;">
+            <input id="editMemberTel" type="text" value="${escapeHtml(member.tel || '')}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
           </div>
         `;
 
@@ -13054,7 +13065,7 @@
         content.innerHTML = `
           <div style="display:grid; gap:8px;">
             <label style="font-weight:700;">Company Name</label>
-            <input id="editSupplierCompanyName" type="text" value="${escapeHtml(supplier.companyName || '')}" style="width:100%; padding:8px; border:1px solid #000;">
+            <input id="editSupplierCompanyName" type="text" value="${escapeHtml(supplier.companyName || '')}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
             <label style="font-weight:700;">Company Type</label>
             <div class="ms-wrap" id="editSupplierTypeMs">
               <div class="ms-btn" onclick="this.nextElementSibling.classList.toggle('open')">
@@ -13069,11 +13080,11 @@
               </div>
             </div>
             <label style="font-weight:700;">Email Domain</label>
-            <input id="editSupplierEmailDomain" type="text" value="${escapeHtml(supplier.emailDomain || '')}" style="width:100%; padding:8px; border:1px solid #000;">
+            <input id="editSupplierEmailDomain" type="text" value="${escapeHtml(supplier.emailDomain || '')}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
             <label style="font-weight:700;">Telephone</label>
-            <input id="editSupplierCompanyTel" type="text" value="${escapeHtml(supplier.companyTel || '')}" style="width:100%; padding:8px; border:1px solid #000;">
+            <input id="editSupplierCompanyTel" type="text" value="${escapeHtml(supplier.companyTel || '')}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
             <label style="font-weight:700;">Website</label>
-            <input id="editSupplierCompanyWebsite" type="text" value="${escapeHtml(supplier.companyWebsite || '')}" style="width:100%; padding:8px; border:1px solid #000;">
+            <input id="editSupplierCompanyWebsite" type="text" value="${escapeHtml(supplier.companyWebsite || '')}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
           </div>
         `;
 
@@ -13222,13 +13233,13 @@
         content.innerHTML = `
           <div style="display:grid; gap:8px;">
             <label style="font-weight:700;">Full Name</label>
-            <input id="editSupplierMemberName" type="text" value="${escapeHtml(member.name || '')}" style="width:100%; padding:8px; border:1px solid #000;">
+            <input id="editSupplierMemberName" type="text" value="${escapeHtml(member.name || '')}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
             <label style="font-weight:700;">Email Prefix</label>
-            <input id="editSupplierMemberEmail" type="text" value="${escapeHtml(member.emailPrefix || '')}" style="width:100%; padding:8px; border:1px solid #000;">
+            <input id="editSupplierMemberEmail" type="text" value="${escapeHtml(member.emailPrefix || '')}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
             <label style="font-weight:700;">Title</label>
-            <input id="editSupplierMemberTitle" type="text" value="${escapeHtml(member.title || '')}" style="width:100%; padding:8px; border:1px solid #000;">
+            <input id="editSupplierMemberTitle" type="text" value="${escapeHtml(member.title || '')}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
             <label style="font-weight:700;">Telephone</label>
-            <input id="editSupplierMemberTel" type="text" value="${escapeHtml(member.tel || '')}" style="width:100%; padding:8px; border:1px solid #000;">
+            <input id="editSupplierMemberTel" type="text" value="${escapeHtml(member.tel || '')}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
           </div>
         `;
 
@@ -14082,7 +14093,7 @@
                   body: `<p>Email sent to <strong>${supplierEmail}</strong></p>
                     <p style="margin-top:10px; font-size:13px;">Copy the link below to share manually:</p>
                     <div style="display:flex; gap:6px; margin-top:6px;">
-                      <input type="text" value="${samplingLink}" id="samplingLinkCopy" readonly style="flex:1; padding:8px; border:1px solid #000; font-size:12px; font-family:monospace;">
+                      <input type="text" value="${samplingLink}" id="samplingLinkCopy" readonly style="flex:1; padding:4px; font-size:12px; border:1px solid #ccc; font-size:12px; font-family:monospace;">
                       <button onclick="document.getElementById('samplingLinkCopy').select(); document.execCommand('copy'); this.textContent='Copied!';" style="padding:8px 16px; background:#000; color:#fff; border:none; cursor:pointer; font-size:12px;">Copy</button>
                     </div>`
                 });
@@ -14249,7 +14260,7 @@
                   body: `<p>Follow-up email sent to <strong>${supplierEmail}</strong></p>
                     ${samplingLink ? `<p style="margin-top:10px; font-size:13px;">Copy the link below to share manually:</p>
                     <div style="display:flex; gap:6px; margin-top:6px;">
-                      <input type="text" value="${samplingLink}" id="chaseLinkCopy" readonly style="flex:1; padding:8px; border:1px solid #000; font-size:12px; font-family:monospace;">
+                      <input type="text" value="${samplingLink}" id="chaseLinkCopy" readonly style="flex:1; padding:4px; font-size:12px; border:1px solid #ccc; font-size:12px; font-family:monospace;">
                       <button onclick="document.getElementById('chaseLinkCopy').select(); document.execCommand('copy'); this.textContent='Copied!';" style="padding:8px 16px; background:#000; color:#fff; border:none; cursor:pointer; font-size:12px;">Copy</button>
                     </div>` : ''}`
                 });
@@ -14763,7 +14774,7 @@
                 <p>Enter the markup percentage to add to the supplier quotation before sending to customer:</p>
                 <div style="margin-top:10px;">
                   <label style="font-weight:600;">Markup %</label>
-                  <input type="number" id="markupPercentInput" min="0" step="0.1" value="15" style="width:100%; padding:10px; border:1px solid #000; font-size:16px; margin-top:4px;" placeholder="e.g. 15 for 15%">
+                  <input type="number" id="markupPercentInput" min="0" step="0.1" value="15" style="width:100%; padding:4px; border:1px solid #ccc; font-size:12px; margin-top:4px;" placeholder="e.g. 15 for 15%">
                 </div>
                 <p style="font-size:12px; color:#666; margin-top:8px;">The unit price and total will be multiplied by (1 + markup%).</p>
                 <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
@@ -16519,6 +16530,13 @@
       const subBoardTitle = document.getElementById('quotationSubBoardTitle');
       const subBoardContent = document.getElementById('quotationSubBoardContent');
 
+      // Clear the outsourcing sub-board so the two panels never hold duplicate IDs
+      // (quotation and outsourcing forms share field IDs like quotationCustomerName).
+      const outsourcingSubBoard = document.getElementById('outsourcingSubBoard');
+      const outsourcingSubBoardContent = document.getElementById('outsourcingSubBoardContent');
+      if (outsourcingSubBoard) outsourcingSubBoard.style.display = 'none';
+      if (outsourcingSubBoardContent) outsourcingSubBoardContent.innerHTML = '';
+
       // Update title
       subBoardTitle.textContent = `${tagName} Quotation`;
 
@@ -16526,7 +16544,6 @@
       const actionsEl = document.getElementById('quotationSubBoardActions');
       actionsEl.innerHTML =
         '<button type="button" class="page-btn" onclick="fillDummyInput()">Dummy Input</button>' +
-        '<button type="button" class="page-btn" onclick="clearQuotationForm()">Clear</button>' +
         '<button type="button" class="page-btn" onclick="clearQuotationForm()">Clear</button>' +
         '<button type="button" class="page-btn" onclick="saveQuotationWithConfirmation(\'' + tagType + '\', \'non email\')">SAVE</button>' +
         '<button type="button" class="page-btn primary" onclick="generateQuotation(\'' + tagType + '\')">Generate PDF</button>';
@@ -16539,7 +16556,7 @@
       // Initialize autocomplete for customer field and file upload functionality
       setTimeout(() => {
         if (document.getElementById('quotationCustomerName')) {
-          window.customerAutocomplete = new CustomerAutocomplete('quotationCustomerName', 'customerAutocompleteDropdown');
+          window.customerAutocomplete = new CustomerAutocomplete('quotationCustomerName', 'customerAutocompleteDropdown', subBoardContent);
         }
 
         // Initialize file upload functionality
@@ -16625,7 +16642,7 @@
           saveBtn.onclick = () => {
             showModal({
               title: 'Save as Profile',
-              body: '<label style="display:block;margin-bottom:5px;font-weight:600;">Profile Name</label><input type="text" id="profileNameInput" style="width:100%;padding:8px;border:1px solid #000;" placeholder="e.g., Standard Hang Tag">',
+              body: '<label style="display:block;margin-bottom:5px;font-weight:600;">Profile Name</label><input type="text" id="profileNameInput" style="width:100%;padding:4px;font-size:12px;border:1px solid #ccc;" placeholder="e.g., Standard Hang Tag">',
               okText: 'Save',
               cancelText: 'Cancel'
             }).then(confirmed => {
@@ -16646,12 +16663,12 @@
         })();
 
         // Add event listener for contact person selection
-        const contactPersonField = document.getElementById('quotationContactPerson');
+        const contactPersonField = subBoardContent.querySelector('#quotationContactPerson') || document.getElementById('quotationContactPerson');
         if (contactPersonField) {
           contactPersonField.addEventListener('change', function() {
             const selectedOption = this.options[this.selectedIndex];
-            const emailField = document.getElementById('quotationEmail');
-            const phoneField = document.getElementById('quotationPhone');
+            const emailField = subBoardContent.querySelector('#quotationEmail') || document.getElementById('quotationEmail');
+            const phoneField = subBoardContent.querySelector('#quotationPhone') || document.getElementById('quotationPhone');
 
             if (selectedOption && selectedOption.value && selectedOption.dataset.memberData) {
               const memberData = JSON.parse(selectedOption.dataset.memberData);
@@ -16718,6 +16735,13 @@
       const subBoardTitle = document.getElementById('outsourcingSubBoardTitle');
       const subBoardContent = document.getElementById('outsourcingSubBoardContent');
 
+      // Clear the quotation sub-board so the two panels never hold duplicate IDs
+      // (quotation and outsourcing forms share field IDs like quotationCustomerName).
+      const quotationSubBoard = document.getElementById('quotationSubBoard');
+      const quotationSubBoardContent = document.getElementById('quotationSubBoardContent');
+      if (quotationSubBoard) quotationSubBoard.style.display = 'none';
+      if (quotationSubBoardContent) quotationSubBoardContent.innerHTML = '';
+
       // Update title
       subBoardTitle.textContent = `${tagName} Outsourcing`;
 
@@ -16725,7 +16749,6 @@
       const actionsEl = document.getElementById('outsourcingSubBoardActions');
       actionsEl.innerHTML =
         '<button type="button" class="page-btn" onclick="fillDummyInput()">Dummy Input</button>' +
-        '<button type="button" class="page-btn" onclick="clearQuotationForm()">Clear</button>' +
         '<button type="button" class="page-btn" onclick="clearQuotationForm()">Clear</button>' +
         '<button type="button" class="page-btn" onclick="saveQuotationWithConfirmation(\'' + tagType + '\', \'non email\')">SAVE</button>' +
         '<button type="button" class="page-btn primary" onclick="generateQuotation(\'' + tagType + '\')">Generate PDF</button>';
@@ -16740,7 +16763,7 @@
         const getField = (id) => subBoardContent.querySelector('#' + id) || document.getElementById(id);
 
         if (getField('quotationCustomerName')) {
-          window.customerAutocomplete = new CustomerAutocomplete('quotationCustomerName', 'customerAutocompleteDropdown');
+          window.customerAutocomplete = new CustomerAutocomplete('quotationCustomerName', 'customerAutocompleteDropdown', subBoardContent);
         }
         initializeFileUploads(tagType);
         initSizeRatioPreview('quotationSize', 'sizeRatioPreview');
@@ -17343,7 +17366,7 @@
         '<option value="' + b.id + '"' + (String(b.id) === String(selectedValue) ? ' selected' : '') + '>' + escapeHtml(b.name) + '</option>'
       ).join('');
       return '<div style="display:flex; gap:10px; align-items:center;">' +
-        '<select id="quotationBrandId" style="flex:1; padding:8px; border:1px solid #000; background:#fff;">' +
+        '<select id="quotationBrandId" style="flex:1; padding:4px; font-size:12px; border:1px solid #ccc; background:#fff;">' +
         '<option value="">Select brand...</option>' + options +
         '</select>' +
         '<div id="quotationBrandPreview" style="display:none;">' +
@@ -17364,7 +17387,7 @@
         const key = t.toLowerCase().replace(/ /g, '-').replace(/_/g, '-');
         return '<option value="' + key + '"' + (key === tagType ? ' selected' : '') + '>' + escapeHtml(t) + '</option>';
       }).join('');
-      return '<select id="quotationProductType" style="width:100%; padding:8px; border:1px solid #000; background:#f5f5f5; color:#666; cursor:not-allowed;" disabled>' + options + '</select>';
+      return '<select id="quotationProductType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:#f5f5f5; color:#666; cursor:not-allowed;" disabled>' + options + '</select>';
     }
 
     // Generate a sample submission card in A4 format
@@ -17570,11 +17593,11 @@
               '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Product Type *</label>' +
-                  '<input type="text" style="width:100%; padding:8px; border:1px solid #000; background:#f5f5f5;" value="' + displayProductType + '" readonly>' +
+                  '<input type="text" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:#f5f5f5;" value="' + displayProductType + '" readonly>' +
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;"># Submit</label>' +
-                  '<input type="text" style="width:100%; padding:8px; border:1px solid #000; background:#f5f5f5;" value="' + submitCount + '" readonly>' +
+                  '<input type="text" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:#f5f5f5;" value="' + submitCount + '" readonly>' +
                 '</div>' +
               '</div>' +
             '</div>' +
@@ -17591,7 +17614,7 @@
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Contact Person</label>' +
-                  '<select id="quotationContactPerson" style="width:100%; padding:8px; border:1px solid #000; background:#fff;">' +
+                  '<select id="quotationContactPerson" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:#fff;">' +
                     '<option value="">Select Contact Person</option>' +
                     (quotation.contactPerson ? '<option value="' + quotation.contactPerson + '" selected>' + quotation.contactPerson + '</option>' : '') +
                   '</select>' +
@@ -17600,11 +17623,11 @@
               '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Email</label>' +
-                  '<input type="email" id="quotationEmail" style="width:100%; padding:8px; border:1px solid #000;" placeholder="customer@email.com" value="' + (quotation.email || '') + '">' +
+                  '<input type="email" id="quotationEmail" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="customer@email.com" value="' + (quotation.email || '') + '">' +
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Phone</label>' +
-                  '<input type="tel" id="quotationPhone" style="width:100%; padding:8px; border:1px solid #000;" placeholder="+852 1234 5678" value="' + (quotation.phone || '') + '">' +
+                  '<input type="tel" id="quotationPhone" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="+852 1234 5678" value="' + (quotation.phone || '') + '">' +
                 '</div>' +
               '</div>' +
             '</div>' +
@@ -17621,16 +17644,16 @@
               '<h4>Product Specifications</h4>' +
               '<div style="margin-bottom:15px;">' +
                 '<label style="display:block; margin-bottom:5px; font-weight:600;">Customer Item Name</label>' +
-                '<input type="text" id="quotationCustomerItemName" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., SKU-12345 or Item Name" value="' + (quotation.customerItemName || '') + '">' +
+                '<input type="text" id="quotationCustomerItemName" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="e.g., SKU-12345 or Item Name" value="' + (quotation.customerItemName || '') + '">' +
               '</div>' +
               '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Height (mm)</label>' +
-                  '<input type="number" id="quotationHeightMm" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., 50" step="0.1" min="0" value="' + (quotation.height_mm || '') + '">' +
+                  '<input type="number" id="quotationHeightMm" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="e.g., 50" step="0.1" min="0" value="' + (quotation.height_mm || '') + '">' +
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Width (mm)</label>' +
-                  '<input type="number" id="quotationWidthMm" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., 30" step="0.1" min="0" value="' + (quotation.width_mm || '') + '">' +
+                  '<input type="number" id="quotationWidthMm" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="e.g., 30" step="0.1" min="0" value="' + (quotation.width_mm || '') + '">' +
                 '</div>' +
               '</div>' +
               '<div id="productSpecificFields">' + getProductSpecificFieldsForView(tagType, quotation.productDetails || {}) + '</div>' +
@@ -17641,22 +17664,22 @@
               '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px;">' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Quantity *</label>' +
-                  '<input type="number" id="quotationQuantity" style="width:100%; padding:8px; border:1px solid #000;" placeholder="1000" min="1" value="' + (quotation.quantity || '') + '">' +
+                  '<input type="number" id="quotationQuantity" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="1000" min="1" value="' + (quotation.quantity || '') + '">' +
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Unit Price (HKD)</label>' +
-                  '<input type="number" id="quotationUnitPrice" style="width:100%; padding:8px; border:1px solid #000;" placeholder="0.50" step="0.01" min="0" value="' + (quotation.unitPrice ? quotation.unitPrice.toFixed(2) : '') + '">' +
+                  '<input type="number" id="quotationUnitPrice" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="0.50" step="0.01" min="0" value="' + (quotation.unitPrice ? quotation.unitPrice.toFixed(2) : '') + '">' +
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Total (Auto)</label>' +
-                  '<input type="text" id="quotationTotal" style="width:100%; padding:8px; border:1px solid #000; background:#f5f5f5;" readonly value="' + (quotation.total ? quotation.total.toFixed(2) : '') + '">' +
+                  '<input type="text" id="quotationTotal" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:#f5f5f5;" readonly value="' + (quotation.total ? quotation.total.toFixed(2) : '') + '">' +
                 '</div>' +
               '</div>' +
             '</div>' +
 
             '<div style="margin-bottom:20px;">' +
               '<h4>Additional Notes</h4>' +
-              '<textarea id="quotationNotes" style="width:100%; min-height:80px; padding:8px; border:1px solid #000;" placeholder="Special requirements, delivery instructions, etc.">' + (quotation.notes || '') + '</textarea>' +
+              '<textarea id="quotationNotes" style="width:100%; min-height:80px; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="Special requirements, delivery instructions, etc.">' + (quotation.notes || '') + '</textarea>' +
             '</div>' +
           '</form>' +
         '</div>' +
@@ -17740,13 +17763,13 @@
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Customer Name *</label>' +
                   '<div class="autocomplete-container">' +
-                    '<input type="text" id="quotationCustomerName" class="autocomplete-input" placeholder="Enter customer name" autocomplete="off" ' + disabledAttr + ' style="width:100%; padding:8px; border:1px solid #000; ' + disabledStyle + '">' +
+                    '<input type="text" id="quotationCustomerName" class="autocomplete-input" placeholder="Enter customer name" autocomplete="off" ' + disabledAttr + ' style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; ' + disabledStyle + '">' +
                     '<div id="customerAutocompleteDropdown" class="autocomplete-dropdown"></div>' +
                   '</div>' +
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Contact Person</label>' +
-                  '<select id="quotationContactPerson" disabled style="width:100%; padding:8px; border:1px solid #000; background:#f5f5f5; color:#999; cursor:not-allowed; ' + disabledStyle + '" ' + disabledAttr + '>' +
+                  '<select id="quotationContactPerson" disabled style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:#f5f5f5; color:#999; cursor:not-allowed; ' + disabledStyle + '" ' + disabledAttr + '>' +
                     '<option value="">Select Contact Person</option>' +
                   '</select>' +
                 '</div>' +
@@ -17754,11 +17777,11 @@
               '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Email</label>' +
-                  '<input type="email" id="quotationEmail" disabled style="width:100%; padding:8px; border:1px solid #000; background:#f5f5f5; color:#999; cursor:not-allowed; ' + disabledStyle + '" placeholder="customer@email.com" ' + disabledAttr + '>' +
+                  '<input type="email" id="quotationEmail" disabled style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:#f5f5f5; color:#999; cursor:not-allowed; ' + disabledStyle + '" placeholder="customer@email.com" ' + disabledAttr + '>' +
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Phone</label>' +
-                  '<input type="tel" id="quotationPhone" disabled style="width:100%; padding:8px; border:1px solid #000; background:#f5f5f5; color:#999; cursor:not-allowed; ' + disabledStyle + '" placeholder="+852 1234 5678" ' + disabledAttr + '>' +
+                  '<input type="tel" id="quotationPhone" disabled style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:#f5f5f5; color:#999; cursor:not-allowed; ' + disabledStyle + '" placeholder="+852 1234 5678" ' + disabledAttr + '>' +
                 '</div>' +
               '</div>' +
             '</div>' +
@@ -17779,16 +17802,16 @@
               '</div>' +
               '<div style="margin-bottom:15px;">' +
                 '<label style="display:block; margin-bottom:5px; font-weight:600;">Customer Item Name</label>' +
-                '<input type="text" id="quotationCustomerItemName" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., SKU-12345 or Item Name">' +
+                '<input type="text" id="quotationCustomerItemName" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="e.g., SKU-12345 or Item Name">' +
               '</div>' +
               '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Height (mm)</label>' +
-                  '<input type="number" id="quotationHeightMm" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., 50" step="0.1" min="0">' +
+                  '<input type="number" id="quotationHeightMm" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="e.g., 50" step="0.1" min="0">' +
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Width (mm)</label>' +
-                  '<input type="number" id="quotationWidthMm" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., 30" step="0.1" min="0">' +
+                  '<input type="number" id="quotationWidthMm" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="e.g., 30" step="0.1" min="0">' +
                 '</div>' +
               '</div>' +
               '<div id="productSpecificFields">' + getProductSpecificFields(tagType) + '</div>' +
@@ -17799,7 +17822,7 @@
               '<div style="margin-bottom:10px;">' +
                 '<label style="display:block; margin-bottom:5px; font-weight:600;">Select Suppliers</label>' +
                 '<div class="autocomplete-container">' +
-                  '<input type="text" id="quotationSupplierSearch" class="autocomplete-input" placeholder="Search and add suppliers..." autocomplete="off" style="width:100%; padding:8px; border:1px solid #000;">' +
+                  '<input type="text" id="quotationSupplierSearch" class="autocomplete-input" placeholder="Search and add suppliers..." autocomplete="off" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">' +
                   '<div id="supplierAutocompleteDropdown" class="autocomplete-dropdown"></div>' +
                 '</div>' +
               '</div>' +
@@ -17813,22 +17836,22 @@
               '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px;">' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Quantity *</label>' +
-                  '<input type="number" id="quotationQuantity" style="width:100%; padding:8px; border:1px solid #000;" placeholder="1000" min="1">' +
+                  '<input type="number" id="quotationQuantity" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="1000" min="1">' +
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Unit Price (HKD)</label>' +
-                  '<input type="number" id="quotationUnitPrice" style="width:100%; padding:8px; border:1px solid #000;" placeholder="0.50" step="0.01" min="0">' +
+                  '<input type="number" id="quotationUnitPrice" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="0.50" step="0.01" min="0">' +
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Total (Auto)</label>' +
-                  '<input type="text" id="quotationTotal" style="width:100%; padding:8px; border:1px solid #000; background:#f5f5f5;" readonly>' +
+                  '<input type="text" id="quotationTotal" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:#f5f5f5;" readonly>' +
                 '</div>' +
               '</div>' +
             '</div>' +
 
             '<div style="margin-bottom:20px;">' +
               '<h4>Additional Notes</h4>' +
-              '<textarea id="quotationNotes" style="width:100%; min-height:80px; padding:8px; border:1px solid #000;" placeholder="Special requirements, delivery instructions, etc."></textarea>' +
+              '<textarea id="quotationNotes" style="width:100%; min-height:80px; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="Special requirements, delivery instructions, etc."></textarea>' +
             '</div>' +
           '</form>' +
         '</div>' +
@@ -17935,7 +17958,7 @@
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Material</label>
-              <select id="quotationMaterial" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationMaterial" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Material</option>
                 <option value="paper">Paper</option>
                 <option value="cardboard">Cardboard</option>
@@ -17946,14 +17969,14 @@
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Size</label>
               <div style="display:flex; gap:8px; align-items:center;">
-                <input type="text" id="quotationSize" style="flex:1; padding:8px; border:1px solid #000;" placeholder="2x3 inches">
+                <input type="text" id="quotationSize" style="flex:1; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="2x3 inches">
                 <div id="sizeRatioPreview" style="width:44px; height:44px; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; background:#fafafa;"></div>
               </div>
             </div>
           </div>
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px; font-weight:600;">Printing Method</label>
-            <select id="quotationPrintingMethod" style="width:100%; padding:8px; border:1px solid #000;">
+            <select id="quotationPrintingMethod" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
               <option value="">Select Printing Method</option>
               <option value="screen-printing">Screen Printing</option>
               <option value="digital-printing">Digital Printing</option>
@@ -17966,7 +17989,7 @@
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Color Count</label>
-              <select id="quotationColorCount" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationColorCount" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="1">1 Color</option>
                 <option value="2">2 Colors</option>
                 <option value="3">3 Colors</option>
@@ -17975,7 +17998,7 @@
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Edge Finish</label>
-              <select id="quotationEdgeFinish" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationEdgeFinish" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="cut">Cut Edge</option>
                 <option value="hemmed">Hemmed Edge</option>
                 <option value="overlocked">Overlocked</option>
@@ -17989,7 +18012,7 @@
         'printed-label': `
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px; font-weight:600;">Material Type</label>
-            <select id="quotationMaterialType" style="width:100%; padding:8px; border:1px solid #000;">
+            <select id="quotationMaterialType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
               <option value="">Select Material</option>
               <option value="satin">Satin Tape</option>
               <option value="cotton">Cotton Tape</option>
@@ -18000,11 +18023,11 @@
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Front Color</label>
-              <input type="number" id="quotationFrontColor" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., 4" min="0">
+              <input type="number" id="quotationFrontColor" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="e.g., 4" min="0">
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Back Color</label>
-              <input type="number" id="quotationBackColor" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., 2" min="0">
+              <input type="number" id="quotationBackColor" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="e.g., 2" min="0">
             </div>
           </div>
         `,
@@ -18012,7 +18035,7 @@
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Transfer Type</label>
-              <select id="quotationTransferType" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationTransferType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Type</option>
                 <option value="screen-print">Screen Print Transfer</option>
                 <option value="digital-print">Digital Print Transfer</option>
@@ -18022,7 +18045,7 @@
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Application Method</label>
-              <select id="quotationApplication" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationApplication" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="heat-press">Heat Press</option>
                 <option value="iron">Household Iron</option>
                 <option value="commercial">Commercial Press</option>
@@ -18033,16 +18056,16 @@
         'others': `
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px; font-weight:600;">Product Description *</label>
-            <textarea id="quotationProductDescription" style="width:100%; min-height:60px; padding:8px; border:1px solid #000;" placeholder="Describe the custom product or service..."></textarea>
+            <textarea id="quotationProductDescription" style="width:100%; min-height:60px; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="Describe the custom product or service..."></textarea>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Category</label>
-              <input type="text" id="quotationCategory" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., Packaging, Stickers">
+              <input type="text" id="quotationCategory" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="e.g., Packaging, Stickers">
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Complexity</label>
-              <select id="quotationComplexity" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationComplexity" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="simple">Simple</option>
                 <option value="medium">Medium</option>
                 <option value="complex">Complex</option>
@@ -18054,7 +18077,7 @@
         'silicon-patch': `
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px; font-weight:600;">Thickness</label>
-            <select id="quotationThickness" style="width:100%; padding:8px; border:1px solid #000;">
+            <select id="quotationThickness" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
               <option value="">Select Thickness</option>
               <option value="0.5mm">0.5mm</option>
               <option value="1mm">1mm</option>
@@ -18066,7 +18089,7 @@
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Color Mode</label>
-              <select id="quotationColorMode" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationColorMode" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Color Mode</option>
                 <option value="single-color">Single Color</option>
                 <option value="multi-color">Multi-Color</option>
@@ -18075,7 +18098,7 @@
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Backing Type</label>
-              <select id="quotationBackingType" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationBackingType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Backing</option>
                 <option value="adhesive">Adhesive</option>
                 <option value="sew-on">Sew-on</option>
@@ -18086,7 +18109,7 @@
           </div>
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px; font-weight:600;">Design Complexity</label>
-            <select id="quotationDesignComplexity" style="width:100%; padding:8px; border:1px solid #000;">
+            <select id="quotationDesignComplexity" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
               <option value="">Select Complexity</option>
               <option value="simple">Simple</option>
               <option value="medium">Medium</option>
@@ -18100,13 +18123,13 @@
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Size</label>
               <div style="display:flex; gap:8px; align-items:center;">
-                <input type="text" id="quotationSize" style="flex:1; padding:8px; border:1px solid #000;" placeholder="2x3 inches">
+                <input type="text" id="quotationSize" style="flex:1; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="2x3 inches">
                 <div id="sizeRatioPreview" style="width:44px; height:44px; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; background:#fafafa;"></div>
               </div>
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Stitch Type</label>
-              <select id="quotationStitchType" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationStitchType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Stitch Type</option>
                 <option value="flat-stitch">Flat Stitch</option>
                 <option value="3d-puff">3D Puff</option>
@@ -18118,7 +18141,7 @@
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Border Type</label>
-              <select id="quotationBorderType" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationBorderType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Border</option>
                 <option value="merrow">Merrow Border</option>
                 <option value="heat-cut">Heat Cut Border</option>
@@ -18127,7 +18150,7 @@
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Backing Type</label>
-              <select id="quotationBackingType" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationBackingType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Backing</option>
                 <option value="iron-on">Iron-on</option>
                 <option value="sew-on">Sew-on</option>
@@ -18139,7 +18162,7 @@
           </div>
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px; font-weight:600;">Thread Color Count</label>
-            <select id="quotationThreadColorCount" style="width:100%; padding:8px; border:1px solid #000;">
+            <select id="quotationThreadColorCount" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
               <option value="">Select Colors</option>
               <option value="1-3">1-3 Colors</option>
               <option value="4-6">4-6 Colors</option>
@@ -18159,7 +18182,7 @@
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Material</label>
-              <select id="quotationMaterial" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationMaterial" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Material</option>
                 <option value="paper" ${productDetails.material === 'paper' ? 'selected' : ''}>Paper</option>
                 <option value="cardboard" ${productDetails.material === 'cardboard' ? 'selected' : ''}>Cardboard</option>
@@ -18170,14 +18193,14 @@
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Size</label>
               <div style="display:flex; gap:8px; align-items:center;">
-                <input type="text" id="quotationSize" style="flex:1; padding:8px; border:1px solid #000;" placeholder="2x3 inches" value="${productDetails.size || ''}">
+                <input type="text" id="quotationSize" style="flex:1; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="2x3 inches" value="${productDetails.size || ''}">
                 <div id="sizeRatioPreview" style="width:44px; height:44px; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; background:#fafafa;"></div>
               </div>
             </div>
           </div>
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px; font-weight:600;">Printing Method</label>
-            <select id="quotationPrintingMethod" style="width:100%; padding:8px; border:1px solid #000;">
+            <select id="quotationPrintingMethod" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
               <option value="">Select Printing Method</option>
               <option value="screen-printing" ${productDetails.printingMethod === 'screen-printing' ? 'selected' : ''}>Screen Printing</option>
               <option value="digital-printing" ${productDetails.printingMethod === 'digital-printing' ? 'selected' : ''}>Digital Printing</option>
@@ -18190,7 +18213,7 @@
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Color Count</label>
-              <select id="quotationColorCount" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationColorCount" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="1" ${productDetails.colorCount === '1' ? 'selected' : ''}>1 Color</option>
                 <option value="2" ${productDetails.colorCount === '2' ? 'selected' : ''}>2 Colors</option>
                 <option value="3" ${productDetails.colorCount === '3' ? 'selected' : ''}>3 Colors</option>
@@ -18199,7 +18222,7 @@
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Edge Finish</label>
-              <select id="quotationEdgeFinish" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationEdgeFinish" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="cut" ${productDetails.edgeFinish === 'cut' ? 'selected' : ''}>Cut Edge</option>
                 <option value="hemmed" ${productDetails.edgeFinish === 'hemmed' ? 'selected' : ''}>Hemmed Edge</option>
                 <option value="overlocked" ${productDetails.edgeFinish === 'overlocked' ? 'selected' : ''}>Overlocked</option>
@@ -18213,7 +18236,7 @@
         'printed-label': `
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px; font-weight:600;">Material Type</label>
-            <select id="quotationMaterialType" style="width:100%; padding:8px; border:1px solid #000;">
+            <select id="quotationMaterialType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
               <option value="">Select Material</option>
               <option value="satin" ${productDetails.materialType === 'satin' ? 'selected' : ''}>Satin Tape</option>
               <option value="cotton" ${productDetails.materialType === 'cotton' ? 'selected' : ''}>Cotton Tape</option>
@@ -18224,11 +18247,11 @@
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Front Color</label>
-              <input type="number" id="quotationFrontColor" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., 4" min="0" value="${productDetails.frontColor || ''}">
+              <input type="number" id="quotationFrontColor" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="e.g., 4" min="0" value="${productDetails.frontColor || ''}">
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Back Color</label>
-              <input type="number" id="quotationBackColor" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., 2" min="0" value="${productDetails.backColor || ''}">
+              <input type="number" id="quotationBackColor" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="e.g., 2" min="0" value="${productDetails.backColor || ''}">
             </div>
           </div>
         `,
@@ -18236,7 +18259,7 @@
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Transfer Type</label>
-              <select id="quotationTransferType" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationTransferType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Type</option>
                 <option value="screen-print" ${productDetails.transferType === 'screen-print' ? 'selected' : ''}>Screen Print Transfer</option>
                 <option value="digital-print" ${productDetails.transferType === 'digital-print' ? 'selected' : ''}>Digital Print Transfer</option>
@@ -18246,7 +18269,7 @@
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Application Method</label>
-              <select id="quotationApplication" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationApplication" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="heat-press" ${productDetails.application === 'heat-press' ? 'selected' : ''}>Heat Press</option>
                 <option value="iron" ${productDetails.application === 'iron' ? 'selected' : ''}>Household Iron</option>
                 <option value="commercial" ${productDetails.application === 'commercial' ? 'selected' : ''}>Commercial Press</option>
@@ -18257,16 +18280,16 @@
         'others': `
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px; font-weight:600;">Product Description *</label>
-            <textarea id="quotationProductDescription" style="width:100%; min-height:60px; padding:8px; border:1px solid #000;" placeholder="Describe the custom product or service...">${productDetails.productDescription || ''}</textarea>
+            <textarea id="quotationProductDescription" style="width:100%; min-height:60px; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="Describe the custom product or service...">${productDetails.productDescription || ''}</textarea>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Category</label>
-              <input type="text" id="quotationCategory" style="width:100%; padding:8px; border:1px solid #000;" placeholder="e.g., Packaging, Stickers" value="${productDetails.category || ''}">
+              <input type="text" id="quotationCategory" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="e.g., Packaging, Stickers" value="${productDetails.category || ''}">
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Complexity</label>
-              <select id="quotationComplexity" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationComplexity" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="simple" ${productDetails.complexity === 'simple' ? 'selected' : ''}>Simple</option>
                 <option value="medium" ${productDetails.complexity === 'medium' ? 'selected' : ''}>Medium</option>
                 <option value="complex" ${productDetails.complexity === 'complex' ? 'selected' : ''}>Complex</option>
@@ -18279,7 +18302,7 @@
           <div style="display:grid; grid-template-columns:1fr; gap:15px; margin-bottom:15px;">
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Thickness</label>
-              <select id="quotationThickness" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationThickness" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Thickness</option>
                 <option value="0.5mm" ${productDetails.thickness === '0.5mm' ? 'selected' : ''}>0.5mm</option>
                 <option value="1mm" ${productDetails.thickness === '1mm' ? 'selected' : ''}>1mm</option>
@@ -18292,7 +18315,7 @@
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Color Mode</label>
-              <select id="quotationColorMode" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationColorMode" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Color Mode</option>
                 <option value="single-color" ${productDetails.colorMode === 'single-color' ? 'selected' : ''}>Single Color</option>
                 <option value="multi-color" ${productDetails.colorMode === 'multi-color' ? 'selected' : ''}>Multi-Color</option>
@@ -18301,7 +18324,7 @@
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Backing Type</label>
-              <select id="quotationBackingType" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationBackingType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Backing</option>
                 <option value="adhesive" ${productDetails.backingType === 'adhesive' ? 'selected' : ''}>Adhesive</option>
                 <option value="sew-on" ${productDetails.backingType === 'sew-on' ? 'selected' : ''}>Sew-on</option>
@@ -18312,7 +18335,7 @@
           </div>
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px; font-weight:600;">Design Complexity</label>
-            <select id="quotationDesignComplexity" style="width:100%; padding:8px; border:1px solid #000;">
+            <select id="quotationDesignComplexity" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
               <option value="">Select Complexity</option>
               <option value="simple" ${productDetails.designComplexity === 'simple' ? 'selected' : ''}>Simple</option>
               <option value="medium" ${productDetails.designComplexity === 'medium' ? 'selected' : ''}>Medium</option>
@@ -18326,13 +18349,13 @@
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Size</label>
               <div style="display:flex; gap:8px; align-items:center;">
-                <input type="text" id="quotationSize" style="flex:1; padding:8px; border:1px solid #000;" placeholder="2x3 inches" value="${productDetails.size || ''}">
+                <input type="text" id="quotationSize" style="flex:1; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="2x3 inches" value="${productDetails.size || ''}">
                 <div id="sizeRatioPreview" style="width:44px; height:44px; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; background:#fafafa;"></div>
               </div>
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Stitch Type</label>
-              <select id="quotationStitchType" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationStitchType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Stitch Type</option>
                 <option value="flat-stitch" ${productDetails.stitchType === 'flat-stitch' ? 'selected' : ''}>Flat Stitch</option>
                 <option value="3d-puff" ${productDetails.stitchType === '3d-puff' ? 'selected' : ''}>3D Puff</option>
@@ -18344,7 +18367,7 @@
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Border Type</label>
-              <select id="quotationBorderType" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationBorderType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Border</option>
                 <option value="merrow" ${productDetails.borderType === 'merrow' ? 'selected' : ''}>Merrow Border</option>
                 <option value="heat-cut" ${productDetails.borderType === 'heat-cut' ? 'selected' : ''}>Heat Cut Border</option>
@@ -18353,7 +18376,7 @@
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Backing Type</label>
-              <select id="quotationBackingType" style="width:100%; padding:8px; border:1px solid #000;">
+              <select id="quotationBackingType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Backing</option>
                 <option value="iron-on" ${productDetails.backingType === 'iron-on' ? 'selected' : ''}>Iron-on</option>
                 <option value="sew-on" ${productDetails.backingType === 'sew-on' ? 'selected' : ''}>Sew-on</option>
@@ -18365,7 +18388,7 @@
           </div>
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px; font-weight:600;">Thread Color Count</label>
-            <select id="quotationThreadColorCount" style="width:100%; padding:8px; border:1px solid #000;">
+            <select id="quotationThreadColorCount" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
               <option value="">Select Colors</option>
               <option value="1-3" ${productDetails.threadColorCount === '1-3' ? 'selected' : ''}>1-3 Colors</option>
               <option value="4-6" ${productDetails.threadColorCount === '4-6' ? 'selected' : ''}>4-6 Colors</option>
@@ -19653,15 +19676,27 @@
 
     // Autocomplete class for customer search
     class CustomerAutocomplete {
-      constructor(inputId, dropdownId) {
-        this.input = document.getElementById(inputId);
-        this.dropdown = document.getElementById(dropdownId);
+      constructor(inputId, dropdownId, scope = document) {
+        this.input = (scope.querySelector ? scope.querySelector('#' + inputId) : null) || document.getElementById(inputId);
+        this.dropdown = (scope.querySelector ? scope.querySelector('#' + dropdownId) : null) || document.getElementById(dropdownId);
+        this.scope = scope;
         this.customers = [];
         this.currentIndex = -1;
         this.selectedCustomer = null;
         this.loaded = false;
 
         this.init();
+      }
+
+      // Resolve a field by ID within the autocomplete's scope first, then global.
+      // This avoids the duplicate-ID conflict when both quotation and outsourcing
+      // panels are in the DOM at the same time.
+      getField(id) {
+        if (this.scope && this.scope.querySelector) {
+          const el = this.scope.querySelector('#' + id);
+          if (el) return el;
+        }
+        return document.getElementById(id);
       }
 
       async init() {
@@ -19694,9 +19729,9 @@
         this.selectedCustomer = null;
 
         // Reset contact person, email, phone when user types a new customer
-        const contactField = document.getElementById('quotationContactPerson');
-        const emailField = document.getElementById('quotationEmail');
-        const phoneField = document.getElementById('quotationPhone');
+        const contactField = this.getField('quotationContactPerson');
+        const emailField = this.getField('quotationEmail');
+        const phoneField = this.getField('quotationPhone');
 
         if (contactField) {
           contactField.innerHTML = '<option value="">Select Contact Person</option>';
@@ -19860,7 +19895,7 @@
 
       populateRelatedFields(customer) {
         // Populate contact person dropdown with all members
-        const contactField = document.getElementById('quotationContactPerson');
+        const contactField = this.getField('quotationContactPerson');
         if (contactField) {
           // Clear existing options except the default
           contactField.innerHTML = '<option value="">Select Contact Person</option>';
@@ -20063,11 +20098,11 @@
         body: `
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px;">Skill Name * <small>(kebab-case, e.g., email-integration)</small></label>
-            <input type="text" id="skillNameInput" style="width:100%; padding:8px; border:1px solid #000;" placeholder="email-system-integration">
+            <input type="text" id="skillNameInput" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="email-system-integration">
           </div>
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px;">Primary Tag *</label>
-            <select id="skillCategoryInput" style="width:100%; padding:8px; border:1px solid #000; background:#fff;">
+            <select id="skillCategoryInput" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:#fff;">
               <option value="">Select Category</option>
               <option value="frontend">Frontend</option>
               <option value="backend">Backend</option>
@@ -20081,7 +20116,7 @@
           </div>
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px;">Status *</label>
-            <select id="skillStatusInput" style="width:100%; padding:8px; border:1px solid #000; background:#fff;">
+            <select id="skillStatusInput" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:#fff;">
               <option value="planned">Planned</option>
               <option value="in-progress">In Progress</option>
               <option value="completed">Completed</option>
@@ -20090,15 +20125,15 @@
           </div>
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px;">Version *</label>
-            <input type="text" id="skillVersionInput" value="1.0.0" style="width:100%; padding:8px; border:1px solid #000;" placeholder="1.0.0">
+            <input type="text" id="skillVersionInput" value="1.0.0" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="1.0.0">
           </div>
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px;">Description *</label>
-            <textarea id="skillDescriptionInput" style="width:100%; min-height:80px; padding:8px; border:1px solid #000;" placeholder="Brief description of what this skill accomplishes"></textarea>
+            <textarea id="skillDescriptionInput" style="width:100%; min-height:80px; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="Brief description of what this skill accomplishes"></textarea>
           </div>
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px;">Tags <small>(comma-separated)</small></label>
-            <input type="text" id="skillTagsInput" style="width:100%; padding:8px; border:1px solid #000;" placeholder="ui, email, integration">
+            <input type="text" id="skillTagsInput" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="ui, email, integration">
           </div>
         `,
         buttons: [
@@ -20254,12 +20289,12 @@
         body: `
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px;">Skill Name *</label>
-                  <input type="text" id="editSkillNameInput" value="${skill.name}" style="width:100%; padding:8px; border:1px solid #000;" readonly>
+                  <input type="text" id="editSkillNameInput" value="${skill.name}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" readonly>
                   <small style="color:#666;">Skill name cannot be changed</small>
           </div>
           <div style="margin-bottom:15px;">
             <label style="display:block; margin-bottom:5px;">Primary Tag *</label>
-                  <select id="editSkillCategoryInput" style="width:100%; padding:8px; border:1px solid #000; background:#fff;">
+                  <select id="editSkillCategoryInput" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:#fff;">
                     <option value="frontend" ${skill.tags && skill.tags.length > 0 && skill.tags[0] === 'frontend' ? 'selected' : ''}>Frontend</option>
                     <option value="backend" ${skill.tags && skill.tags.length > 0 && skill.tags[0] === 'backend' ? 'selected' : ''}>Backend</option>
                     <option value="database" ${skill.tags && skill.tags.length > 0 && skill.tags[0] === 'database' ? 'selected' : ''}>Database</option>
@@ -20272,7 +20307,7 @@
           </div>
           <div style="margin-bottom:15px;">
                   <label style="display:block; margin-bottom:5px;">Status *</label>
-                  <select id="editSkillStatusInput" style="width:100%; padding:8px; border:1px solid #000; background:#fff;">
+                  <select id="editSkillStatusInput" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:#fff;">
                     <option value="planned" ${skill.status === 'planned' ? 'selected' : ''}>Planned</option>
                     <option value="in-progress" ${skill.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
                     <option value="completed" ${skill.status === 'completed' ? 'selected' : ''}>Completed</option>
@@ -20281,15 +20316,15 @@
           </div>
           <div style="margin-bottom:15px;">
                   <label style="display:block; margin-bottom:5px;">Version *</label>
-                  <input type="text" id="editSkillVersionInput" value="${skill.version}" style="width:100%; padding:8px; border:1px solid #000;">
+                  <input type="text" id="editSkillVersionInput" value="${skill.version}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 </div>
                 <div style="margin-bottom:15px;">
                   <label style="display:block; margin-bottom:5px;">Description *</label>
-                  <textarea id="editSkillDescriptionInput" style="width:100%; min-height:80px; padding:8px; border:1px solid #000;">${skill.description}</textarea>
+                  <textarea id="editSkillDescriptionInput" style="width:100%; min-height:80px; padding:4px; font-size:12px; border:1px solid #ccc;">${skill.description}</textarea>
                 </div>
                 <div style="margin-bottom:15px;">
                   <label style="display:block; margin-bottom:5px;">Tags <small>(comma-separated)</small></label>
-                  <input type="text" id="editSkillTagsInput" value="${skill.tags ? skill.tags.join(', ') : ''}" style="width:100%; padding:8px; border:1px solid #000;">
+                  <input type="text" id="editSkillTagsInput" value="${skill.tags ? skill.tags.join(', ') : ''}" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
           </div>
         `,
         buttons: [
