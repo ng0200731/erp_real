@@ -3542,30 +3542,30 @@
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
             <h3>Inbox Emails</h3>
           </div>
-          <div style="max-height:calc(100vh - 280px); overflow-y:auto; border:1px solid #000; margin-bottom:15px;">
+          <div style="max-height:calc(100vh - 280px); overflow-y:auto; margin-bottom:15px;">
           <table id="emailTable" style="width:100%; border-collapse:collapse;">
             <thead style="position:sticky; top:0; background:#fff; z-index:1;">
               <tr style="background:#fff;">
-                <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Date</th>
-                <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Sender</th>
-                <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Subject</th>
-                <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Context</th>
-                <th style="padding:8px; border:1px solid #000; text-align:left; font-weight:bold;">Attachment</th>
+                <th style="padding:8px; text-align:left; font-weight:bold;">Date</th>
+                <th style="padding:8px; text-align:left; font-weight:bold;">Sender</th>
+                <th style="padding:8px; text-align:left; font-weight:bold;">Subject</th>
+                <th style="padding:8px; text-align:left; font-weight:bold;">Context</th>
+                <th style="padding:8px; text-align:left; font-weight:bold;">Attachment</th>
               </tr>
               <tr style="background:#fff;">
-                <th style="padding:8px; border:1px solid #000;">
+                <th style="padding:8px;">
                   <input type="text" id="dateSearch" placeholder="Search date..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
                 </th>
-                <th style="padding:8px; border:1px solid #000;">
+                <th style="padding:8px;">
                   <input type="text" id="senderSearch" placeholder="Search sender..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
                 </th>
-                <th style="padding:8px; border:1px solid #000;">
+                <th style="padding:8px;">
                   <input type="text" id="subjectSearch" placeholder="Search subject..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
                 </th>
-                <th style="padding:8px; border:1px solid #000;">
+                <th style="padding:8px;">
                   <input type="text" id="contextSearch" placeholder="Search content..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
                 </th>
-                <th style="padding:8px; border:1px solid #000;">
+                <th style="padding:8px;">
                   <input type="text" id="attachmentSearch" placeholder="Search attachments..." style="width:100%; border:1px solid #000; padding:4px; box-sizing:border-box;">
                 </th>
               </tr>
@@ -3658,7 +3658,7 @@
             <h3>Sent Emails from m.yau.01@longriverlabel.com</h3>
             <button id="refreshSentEmailsBtn" class="page-btn">Refresh</button>
           </div>
-          <div style="max-height:500px; overflow-y:auto; border:1px solid #000; margin-bottom:15px;">
+          <div style="max-height:500px; overflow-y:auto; margin-bottom:15px;">
           <table id="sentEmailsTable" style="width:100%; border-collapse:collapse;">
             <thead style="position:sticky; top:0; background:#fff; z-index:1;">
               <tr style="background:#fff;">
@@ -8665,7 +8665,7 @@
         
         if (showLoading) {
           const tableBody = document.getElementById('emailTableBody');
-          tableBody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center; border:1px solid #000;">Loading emails...</td></tr>';
+          tableBody.innerHTML = '<tr><td colspan="5" style="padding:20px; text-align:center;">Loading emails...</td></tr>';
         } else {
           
         }
@@ -8728,7 +8728,7 @@
         
         if (!data.success) {
           const tableBody = document.getElementById('emailTableBody');
-          tableBody.innerHTML = `<tr><td colspan="5" style="padding:20px; border:1px solid #000; text-align:center;">Error: ${data.error || 'Failed to load emails'}</td></tr>`;
+          tableBody.innerHTML = `<tr><td colspan="5" style="padding:20px; text-align:center;">Error: ${data.error || 'Failed to load emails'}</td></tr>`;
           console.error('API error:', data);
           return;
         }
@@ -9806,7 +9806,7 @@
       
       if (emails.length === 0) {
         const noEmailsRow = document.createElement('tr');
-        noEmailsRow.innerHTML = '<td colspan="5" style="padding:20px; text-align:center; border:1px solid #000;">No emails found in inbox</td>';
+        noEmailsRow.innerHTML = '<td colspan="5" style="padding:20px; text-align:center;">No emails found in inbox</td>';
         tableBody.appendChild(noEmailsRow);
         return;
       }
@@ -9814,7 +9814,6 @@
       emails.forEach(e=>{
         const row = document.createElement('tr');
         row.style.cursor = 'pointer';
-        row.style.border = '1px solid #000';
         const isSeen = (e.flags || []).includes('\\Seen');
         const boldStyle = !isSeen ? 'font-weight:bold;' : 'font-weight:normal;';
 
@@ -9836,11 +9835,11 @@
         const attachment = 'N/A';
 
         row.innerHTML = `
-          <td style="padding:12px; border:1px solid #000; vertical-align:top; ${boldStyle}">${formattedDate}</td>
-          <td style="padding:12px; border:1px solid #000; vertical-align:top; ${boldStyle}">${senderEmail}</td>
-          <td style="padding:12px; border:1px solid #000; vertical-align:top; ${boldStyle}">${e.envelope?.subject||'No subject'}</td>
-          <td class="email-view-cell" style="padding:12px; border:1px solid #000; vertical-align:top; ${boldStyle}">${context}</td>
-          <td style="padding:12px; border:1px solid #000; vertical-align:top; ${boldStyle}">${attachment}</td>
+          <td style="padding:12px; vertical-align:top; ${boldStyle}">${formattedDate}</td>
+          <td style="padding:12px; vertical-align:top; ${boldStyle}">${senderEmail}</td>
+          <td style="padding:12px; vertical-align:top; ${boldStyle}">${e.envelope?.subject||'No subject'}</td>
+          <td class="email-view-cell" style="padding:12px; vertical-align:top; ${boldStyle}">${context}</td>
+          <td style="padding:12px; vertical-align:top; ${boldStyle}">${attachment}</td>
         `;
 
         tableBody.appendChild(row);
