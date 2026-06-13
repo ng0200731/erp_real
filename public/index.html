@@ -317,56 +317,6 @@
       text-transform: uppercase;
     }
 
-    /* ── Order dashboard (separate view, shown via TYPE ▸ Order) ── */
-    .order-dashboard-wrapper {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      width: 100%;
-      background: #000;
-    }
-
-    #orderDashboardGrid {
-      flex: 1 1 0;
-      min-height: 0;
-      height: auto;
-    }
-
-    .order-toggle-pills {
-      display: flex;
-      gap: 1px;
-      background: #000;
-      flex-shrink: 0;
-    }
-
-    .order-pill {
-      flex: 1;
-      padding: 9px 10px;
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      border: none;
-      background: #e8e8e8;
-      color: #999;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      font-family: inherit;
-    }
-
-    .order-pill.active {
-      background: #fff;
-      color: #000;
-    }
-
-    .order-pill:hover {
-      background: #f5f5f5;
-    }
-
-    .order-pill.active:hover {
-      background: #fff;
-    }
-
     .placeholder-content {
       display: flex;
       align-items: center;
@@ -1600,7 +1550,7 @@
                   <label class="dtype-opt"><span>Brand Distribution</span><input type="checkbox" data-quadrant="brandDistributionColumn" checked></label>
                   <label class="dtype-opt"><span>Brand VS Total</span><input type="checkbox" data-quadrant="brandValueColumn" checked></label>
                   <div style="height:1px; background:rgba(255,255,255,0.3); margin:6px 0;"></div>
-                  <label class="dtype-opt"><span>Order</span><input type="checkbox" data-quadrant="orderDashboardColumn"></label>
+                  <label class="dtype-opt"><span>Order</span><input type="checkbox" data-quadrant="orderDistributionColumn"></label>
                 </div>
               </div>
               <button id="viewModePie" class="view-toggle active" title="Pie Chart">PIE</button>
@@ -1919,72 +1869,86 @@
               </div>
             </div>
 
-          </div>
-
-          <!-- Order dashboard (separate view, shown when Order checkbox in TYPE is checked) -->
-          <div id="orderDashboardColumn" class="order-dashboard-wrapper quadrant-filtered-out">
-            <div class="order-toggle-pills" id="orderTogglePills">
-              <button type="button" class="order-pill active" data-order-chart="productType">Product Type</button>
-              <button type="button" class="order-pill active" data-order-chart="status">Status</button>
-              <button type="button" class="order-pill active" data-order-chart="country">Country</button>
-              <button type="button" class="order-pill active" data-order-chart="department">Department</button>
+            <!-- Order Distribution Status Column (hidden by default) -->
+            <div id="orderStatusColumn" class="dashboard-quadrant hidden-quadrant">
+              <div class="quadrant-header">
+                <span class="quadrant-number">—</span>
+                <h2 class="quadrant-title">Status Breakdown</h2>
+              </div>
+              <div class="quadrant-content">
+                <div id="orderDashboardLegend" class="legend-container"></div>
+              </div>
             </div>
-            <div id="orderDashboardGrid" class="dashboard-grid">
-              <!-- Order Quadrant 1: Product Type Distribution -->
-              <div id="orderProductTypeColumn" class="dashboard-quadrant placeholder-quadrant" style="cursor:default;">
-                <div class="quadrant-header">
-                  <span class="quadrant-number">01</span>
-                  <h2 class="quadrant-title">Product Type</h2>
-                </div>
-                <div class="quadrant-content">
-                  <div class="chart-container">
-                    <canvas id="orderProductTypeCanvas"></canvas>
-                    <div id="orderProductTypeLoading" class="chart-loading">Loading...</div>
-                  </div>
-                </div>
+
+            <!-- Order Distribution Metrics Column (hidden by default) -->
+            <div id="orderMetricsColumn" class="dashboard-quadrant hidden-quadrant">
+              <div class="quadrant-header">
+                <span class="quadrant-number">—</span>
+                <h2 class="quadrant-title">Key Metrics</h2>
               </div>
-              <!-- Order Quadrant 2: Status Distribution -->
-              <div id="orderStatusColumn" class="dashboard-quadrant placeholder-quadrant" style="cursor:default;">
-                <div class="quadrant-header">
-                  <span class="quadrant-number">02</span>
-                  <h2 class="quadrant-title">Status</h2>
-                </div>
-                <div class="quadrant-content">
-                  <div class="chart-container">
-                    <canvas id="orderStatusCanvas"></canvas>
-                    <div id="orderStatusLoading" class="chart-loading">Loading...</div>
+              <div class="quadrant-content">
+                <div id="orderDashboardMetrics" class="metrics-container">
+                  <div class="metric-item">
+                    <div class="metric-value" id="orderTotalCount">—</div>
+                    <div class="metric-label">Total Orders</div>
                   </div>
-                </div>
-              </div>
-              <!-- Order Quadrant 3: Country Distribution -->
-              <div id="orderCountryColumn" class="dashboard-quadrant placeholder-quadrant" style="cursor:default;">
-                <div class="quadrant-header">
-                  <span class="quadrant-number">03</span>
-                  <h2 class="quadrant-title">Country</h2>
-                </div>
-                <div class="quadrant-content">
-                  <div class="chart-container">
-                    <canvas id="orderCountryCanvas"></canvas>
-                    <div id="orderCountryLoading" class="chart-loading">Loading...</div>
+                  <div class="metric-item">
+                    <div class="metric-value secondary" id="orderActiveCount">—</div>
+                    <div class="metric-label">Active</div>
                   </div>
-                </div>
-              </div>
-              <!-- Order Quadrant 4: Department Distribution -->
-              <div id="orderDepartmentColumn" class="dashboard-quadrant placeholder-quadrant" style="cursor:default;">
-                <div class="quadrant-header">
-                  <span class="quadrant-number">04</span>
-                  <h2 class="quadrant-title">Department</h2>
-                </div>
-                <div class="quadrant-content">
-                  <div class="chart-container">
-                    <canvas id="orderDepartmentCanvas"></canvas>
-                    <div id="orderDepartmentLoading" class="chart-loading">Loading...</div>
+                  <div class="metric-item">
+                    <div class="metric-value secondary" id="orderCompletedCount">—</div>
+                    <div class="metric-label">Completed</div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
 
+            <!-- Order Distribution Insights Column (hidden by default) -->
+            <div id="orderInsightsColumn" class="dashboard-quadrant hidden-quadrant">
+              <div class="quadrant-header">
+                <span class="quadrant-number">—</span>
+                <h2 class="quadrant-title">Insights</h2>
+              </div>
+              <div class="quadrant-content">
+                <div id="orderDashboardInsights" class="insights-container">
+                  <div class="insight-card">
+                    <div class="insight-label">Top Country</div>
+                    <div id="orderTopCountry" class="insight-value">—</div>
+                  </div>
+                  <div class="insight-card alt">
+                    <div class="insight-label">Completion Rate</div>
+                    <div id="orderCompletionRate" class="insight-value">—</div>
+                  </div>
+                  <div class="insight-card">
+                    <div class="insight-label">In Production</div>
+                    <div id="orderInProduction" class="insight-value">—</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quadrant 5: Order Distribution -->
+            <div id="orderDistributionColumn" class="dashboard-quadrant quadrant-filtered-out" onclick="toggleOrderDashboardExpansion()">
+              <div class="quadrant-header">
+                <span class="quadrant-number">05</span>
+                <h2 class="quadrant-title">Order Distribution</h2>
+                <span id="orderExpandHint" class="quadrant-action">Click to expand →</span>
+              </div>
+              <div class="quadrant-content" style="position:relative;">
+                <div style="position:absolute; top:8px; right:12px; z-index:10; background:#fff; border:1px solid #000; padding:3px 8px;">
+                  <select id="orderCountryFilter" onclick="event.stopPropagation()" style="padding:3px 6px; font-size:11px; border:none; font-family:inherit; cursor:pointer; outline:none; background:transparent;">
+                    <option value="">All Countries</option>
+                  </select>
+                </div>
+                <div id="orderDashboardChart" class="chart-container">
+                  <canvas id="orderChartCanvas"></canvas>
+                  <div id="orderChartLoading" class="chart-loading">Loading...</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
         </div>
       </div>
 
@@ -4664,8 +4628,6 @@
             loadDashboardOutsourcing().catch(() => {});
             loadDashboardBrand().catch(() => {});
             loadDashboardBrandValue().catch(() => {});
-            loadDashboardOrders().catch(() => {});
-            setupOrderTogglePills();
           }).catch(() => {});
         }
       }
@@ -4714,14 +4676,22 @@
       menu.querySelectorAll('input[type="checkbox"]').forEach(cb => {
         cb.addEventListener('change', () => {
           const checked = menu.querySelectorAll('input[type="checkbox"]:checked');
-          // Prevent unchecking the last one
+          // Prevent unchecking the last one (min 1)
           if (checked.length === 0) {
             cb.checked = true;
             return;
           }
           applyDashboardTypeFilter();
+          // Enforce max 4: disable unchecked checkboxes when 4 are selected
+          const unchecked = menu.querySelectorAll('input[type="checkbox"]:not(:checked)');
+          unchecked.forEach(u => { u.disabled = (checked.length >= 4); });
         });
       });
+
+      // Initialize disabled state based on current checked count
+      const initChecked = menu.querySelectorAll('input[type="checkbox"]:checked');
+      const initUnchecked = menu.querySelectorAll('input[type="checkbox"]:not(:checked)');
+      initUnchecked.forEach(u => { u.disabled = (initChecked.length >= 4); });
     }
 
     function applyDashboardTypeFilter() {
@@ -4729,45 +4699,32 @@
       const grid = document.getElementById('dashboardGrid');
       if (!menu || !grid) return;
 
-      const orderBox = menu.querySelector('input[data-quadrant="orderDashboardColumn"]');
-      const orderActive = !!(orderBox && orderBox.checked);
-
       const boxes = menu.querySelectorAll('input[type="checkbox"]');
-      let visibleQuotationCount = 0;
+      let visibleCount = 0;
+      const orderChecked = menu.querySelector('input[data-quadrant="orderDistributionColumn"]')?.checked;
 
       boxes.forEach(cb => {
         const el = document.getElementById(cb.dataset.quadrant);
         if (!el) return;
-        const isOrder = cb.dataset.quadrant === 'orderDashboardColumn';
         if (cb.checked) {
           el.classList.remove('quadrant-filtered-out');
-          if (!isOrder) visibleQuotationCount++;
+          visibleCount++;
         } else {
           el.classList.add('quadrant-filtered-out');
         }
       });
 
-      if (orderActive) {
-        // Order mode: hide quotation grid, show order grid (already un-hidden above)
-        grid.style.display = 'none';
-        applyOrderChartLayout();
-        // Load data if needed, then render
-        if (!orderDashboardData) {
-          loadDashboardOrders().catch(function() {});
-        } else {
-          requestAnimationFrame(function() { setTimeout(function() { resizeOrderCharts(); renderOrderDashboard(); }, 300); });
-        }
-        return;
+      // Lazy load Order data if Order checkbox is checked and not yet loaded
+      if (orderChecked && !orderDashboardData) {
+        loadDashboardOrder().catch(() => {});
       }
 
-      // Normal mode: show quotation grid, hide order grid (already re-hidden above)
-      grid.style.display = '';
-
-      // Adjust quotation grid layout so visible quadrants fill space nicely
-      if (visibleQuotationCount === 1) {
+      // Adjust grid layout so visible quadrants fill space nicely
+      // CSS grid auto-placement flows visible items into the 2x2 grid
+      if (visibleCount === 1) {
         grid.style.gridTemplateColumns = '1fr';
         grid.style.gridTemplateRows = '1fr';
-      } else if (visibleQuotationCount === 2) {
+      } else if (visibleCount === 2) {
         grid.style.gridTemplateColumns = '1fr 1fr';
         grid.style.gridTemplateRows = '1fr';
       } else {
@@ -4782,6 +4739,7 @@
           if (typeof outsourcingChartInstance !== 'undefined' && outsourcingChartInstance) outsourcingChartInstance.resize();
           if (typeof brandChartInstance !== 'undefined' && brandChartInstance) brandChartInstance.resize();
           if (typeof brandValueChartInstance !== 'undefined' && brandValueChartInstance) brandValueChartInstance.resize();
+          if (typeof orderChartInstance !== 'undefined' && orderChartInstance) orderChartInstance.resize();
         }, 300);
       });
     }
@@ -4790,75 +4748,108 @@
     let dashboardQuotations = null; // Store quotations for drill-down
     let dashboardExpanded = false; // Track expansion state
 
-    // ── Order dashboard data + helpers ──────────────────────────────────
-    let orderDashboardData = null;
-    const orderChartInstances = { productType: null, status: null, country: null, department: null };
-    const orderChartVisibility = { productType: true, status: true, country: true, department: true };
-    const ORDER_BW_COLORS = ['#000000', '#333333', '#4d4d4d', '#666666', '#808080', '#999999', '#b3b3b3', '#cccccc', '#e0e0e0', '#f0f0f0'];
-    const ORDER_CANVAS = {
-      productType:  { col: 'orderProductTypeColumn',  canvas: 'orderProductTypeCanvas',  loading: 'orderProductTypeLoading',  title: 'Product Type' },
-      status:       { col: 'orderStatusColumn',        canvas: 'orderStatusCanvas',       loading: 'orderStatusLoading',       title: 'Status' },
-      country:      { col: 'orderCountryColumn',       canvas: 'orderCountryCanvas',      loading: 'orderCountryLoading',      title: 'Country' },
-      department:   { col: 'orderDepartmentColumn',    canvas: 'orderDepartmentCanvas',   loading: 'orderDepartmentLoading',   title: 'Department' }
-    };
+    // ── Order dashboard (single quadrant, mirrors Brand Distribution) ───
+    let orderDashboardData = null;        // raw orders array from API
+    let orderChartInstance = null;        // single chart instance
+    let orderDashboardExpanded = false;   // expansion state
+    let orderDashboardChartData = null;   // aggregated segments for the chart
+    let orderDashboardStatusData = null;  // status breakdown for expand panels
+    const ORDER_COLORS = ['#264653', '#2A9D8F', '#E9C46A', '#F4A261', '#E76F51', '#606C38', '#BC6C25', '#457B9D', '#1D3557', '#A8DADC'];
 
-    function prettifyLabel(s) {
-      return String(s).replace(/[-_]/g, ' ').replace(/\w\S*/g, function(t) { return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase(); });
+    function getOrderColor(key, fallbackIndex) {
+      var map = {
+        'china': '#E63946', 'vietnam': '#FF9F1C', 'bangladesh': '#2EC4B6', 'unassigned': '#6C757D',
+        'pending': '#F4A261', 'in production': '#E76F51', 'in-production': '#E76F51',
+        'completed': '#2A9D8F', 'shipped': '#264653', 'cancelled': '#E63946', 'canceled': '#E63946', 'on hold': '#E9C46A'
+      };
+      return map[String(key).toLowerCase()] || ORDER_COLORS[(fallbackIndex || 0) % ORDER_COLORS.length];
     }
 
-    async function loadDashboardOrders() {
+    async function loadDashboardOrder() {
       try {
-        const response = await fetch('/api/orders');
-        const data = await response.json();
-        const orders = (data && data.success && data.orders) ? data.orders : [];
+        var response = await fetch('/api/orders');
+        var data = await response.json();
+        orderDashboardData = (data && data.success && data.orders) ? data.orders : [];
 
-        var bucket = function(key) {
-          var counts = {};
-          orders.forEach(function(o) {
-            var v = (o[key] == null || o[key] === '' || o[key] === '-') ? 'Unassigned' : String(o[key]);
-            counts[v] = (counts[v] || 0) + 1;
+        // Populate country dropdown dynamically from orders
+        var filterEl = document.getElementById('orderCountryFilter');
+        if (filterEl) {
+          var countries = [];
+          orderDashboardData.forEach(function(o) { if (o.country && countries.indexOf(o.country) === -1) countries.push(o.country); });
+          countries.sort();
+          var currentVal = filterEl.value;
+          filterEl.innerHTML = '<option value="">All Countries</option>';
+          countries.forEach(function(country) {
+            var opt = document.createElement('option');
+            opt.value = country;
+            opt.textContent = prettifyLabel(country);
+            filterEl.appendChild(opt);
           });
-          var total = Object.values(counts).reduce(function(s, c) { return s + c; }, 0);
-          var segs = Object.keys(counts)
-            .sort(function(a, b) { return counts[b] - counts[a]; })
-            .map(function(name) {
-              return { name: prettifyLabel(name), key: name, count: counts[name], percentage: total > 0 ? ((counts[name] / total) * 100).toFixed(1) : 0 };
-            });
-          return { segments: segs, total: total };
-        };
-
-        orderDashboardData = {
-          productType: bucket('productType'),
-          status:      bucket('status'),
-          country:     bucket('country'),
-          department:  bucket('currentDepartment')
-        };
-
-        renderOrderDashboard();
+          if (currentVal && countries.indexOf(currentVal) !== -1) filterEl.value = currentVal;
+          filterEl.onchange = updateOrderChart;
+        }
+        updateOrderChart();
       } catch (error) {
         console.error('Error loading order dashboard:', error);
+        var chartContainer = document.getElementById('orderDashboardChart');
+        if (chartContainer) chartContainer.innerHTML = '<div style="text-align:center; padding:50px; color:#dc3545;">Error loading order data</div>';
       }
     }
 
-    function renderOrderDashboard() {
+    function updateOrderChart() {
       if (!orderDashboardData) return;
-      ['productType', 'status', 'country', 'department'].forEach(function(key) {
-        if (currentDashboardView === 'pie') {
-          drawOrderPieChart(key);
-        } else {
-          drawOrderBarChart(key);
-        }
-      });
+
+      var filterEl = document.getElementById('orderCountryFilter');
+      var countryFilter = filterEl ? filterEl.value : '';
+      var chartSegments = [], statusBreakdown = [];
+
+      var aggregate = function(orders, field) {
+        var counts = {};
+        orders.forEach(function(o) {
+          var v = (o[field] == null || o[field] === '' || o[field] === '-') ? 'Unassigned' : String(o[field]);
+          counts[v] = (counts[v] || 0) + 1;
+        });
+        var total = orders.length;
+        var segs = Object.keys(counts).sort(function(a, b) { return counts[b] - counts[a]; }).map(function(name) {
+          return { name: prettifyLabel(name), key: name, count: counts[name], percentage: total > 0 ? ((counts[name] / total) * 100).toFixed(1) : 0, color: getOrderStatusColor(name) };
+        });
+        return { segments: segs, total: total };
+      };
+
+      // Chart data: by-country default; by-status when a country is selected
+      if (!countryFilter) {
+        var byCountry = aggregate(orderDashboardData, 'country');
+        chartSegments = byCountry.segments;
+      } else {
+        var filtered = orderDashboardData.filter(function(o) { return o.country === countryFilter; });
+        var byStatus = aggregate(filtered, 'status');
+        chartSegments = byStatus.segments;
+      }
+
+      // Status breakdown for expand panels
+      var statusSource = countryFilter ? orderDashboardData.filter(function(o) { return o.country === countryFilter; }) : orderDashboardData;
+      statusBreakdown = aggregate(statusSource, 'status').segments;
+
+      orderDashboardChartData = { segments: chartSegments, total: chartSegments.reduce(function(s, seg) { return s + seg.count; }, 0), mode: countryFilter ? 'status' : 'country' };
+      orderDashboardStatusData = { statuses: statusBreakdown, total: statusSource.length };
+
+      renderOrderDashboard();
+      renderOrderLegend();
+      updateOrderDashboardMetrics();
     }
 
-    function drawOrderPieChart(key) {
-      var cfg = ORDER_CANVAS[key];
-      var canvas = document.getElementById(cfg.canvas);
-      var loading = document.getElementById(cfg.loading);
+    function renderOrderDashboard() {
+      if (!orderDashboardChartData) return;
+      if (currentDashboardView === 'pie') renderOrderPieChart();
+      else renderOrderBarChart();
+    }
+
+    function renderOrderPieChart() {
+      var canvas = document.getElementById('orderChartCanvas');
+      var loading = document.getElementById('orderChartLoading');
       if (!canvas) return;
-      var info = orderDashboardData[key];
-      var segments = info.segments;
-      var total = info.total;
+      var segments = orderDashboardChartData.segments;
+      var total = orderDashboardChartData.total;
 
       if (!segments.length || total === 0) {
         canvas.style.display = 'none';
@@ -4867,23 +4858,19 @@
       }
       canvas.style.display = 'block';
       if (loading) loading.style.display = 'none';
-      if (orderChartInstances[key]) orderChartInstances[key].destroy();
+      if (orderChartInstance) orderChartInstance.destroy();
 
       var labels = segments.map(function(s) { return s.name; });
       var data = segments.map(function(s) { return s.count; });
-      var colors = ORDER_BW_COLORS.slice(0, data.length);
+      var colors = segments.map(function(s, i) { return s.color || ORDER_COLORS[i % ORDER_COLORS.length]; });
 
       var ctx = canvas.getContext('2d');
-      orderChartInstances[key] = new Chart(ctx, {
+      orderChartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderColor: '#fff', borderWidth: 3, hoverBorderWidth: 4, hoverBorderColor: '#000' }] },
-        options: {
-          responsive: true, maintainAspectRatio: true, aspectRatio: 1, cutout: '55%',
-          layout: { padding: 50 },
-          plugins: { legend: { display: false }, tooltip: { enabled: false } }
-        },
+        options: { responsive: true, maintainAspectRatio: true, aspectRatio: 1, cutout: '55%', layout: { padding: 50 }, plugins: { legend: { display: false }, tooltip: { enabled: false } } },
         plugins: [{
-          id: 'orderSliceLabels_' + key,
+          id: 'orderSliceLabels',
           afterDraw: function(chart) {
             var ctx2 = chart.ctx;
             var meta = chart.getDatasetMeta(0);
@@ -4892,7 +4879,6 @@
             var activeEls = chart.getActiveElements();
             var hoveredIndex = activeEls.length > 0 ? activeEls[0].index : -1;
 
-            // Pass 1: non-hovered slice labels
             meta.data.forEach(function(arc, i) {
               var value = chart.data.datasets[0].data[i];
               if (value === 0) return;
@@ -4932,7 +4918,6 @@
               ctx2.restore();
             });
 
-            // Pass 2: hovered tooltip
             if (hoveredIndex >= 0) {
               var arc = meta.data[hoveredIndex];
               var value = chart.data.datasets[0].data[hoveredIndex];
@@ -4995,14 +4980,12 @@
       });
     }
 
-    function drawOrderBarChart(key) {
-      var cfg = ORDER_CANVAS[key];
-      var canvas = document.getElementById(cfg.canvas);
-      var loading = document.getElementById(cfg.loading);
+    function renderOrderBarChart() {
+      var canvas = document.getElementById('orderChartCanvas');
+      var loading = document.getElementById('orderChartLoading');
       if (!canvas) return;
-      var info = orderDashboardData[key];
-      var segments = info.segments;
-      var total = info.total;
+      var segments = orderDashboardChartData.segments;
+      var total = orderDashboardChartData.total;
 
       if (!segments.length || total === 0) {
         canvas.style.display = 'none';
@@ -5011,27 +4994,21 @@
       }
       canvas.style.display = 'block';
       if (loading) loading.style.display = 'none';
-      if (orderChartInstances[key]) orderChartInstances[key].destroy();
+      if (orderChartInstance) orderChartInstance.destroy();
 
       var labels = segments.map(function(s) { return s.name; });
       var data = segments.map(function(s) { return s.count; });
-      var colors = ORDER_BW_COLORS.slice(0, data.length);
+      var colors = segments.map(function(s, i) { return s.color || ORDER_COLORS[i % ORDER_COLORS.length]; });
+      var title = orderDashboardChartData.mode === 'country' ? 'Orders by Country' : 'Orders by Status';
 
       var ctx = canvas.getContext('2d');
-      orderChartInstances[key] = new Chart(ctx, {
+      orderChartInstance = new Chart(ctx, {
         type: 'bar',
-        data: { labels: labels, datasets: [{ label: cfg.title, data: data, backgroundColor: colors, borderColor: '#000', borderWidth: 1 }] },
+        data: { labels: labels, datasets: [{ label: title, data: data, backgroundColor: colors, borderColor: '#000', borderWidth: 1 }] },
         options: {
           indexAxis: 'y', responsive: true, maintainAspectRatio: true, aspectRatio: 1.8,
           layout: { padding: { top: 20, bottom: 20, left: 20, right: 20 } },
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              backgroundColor: '#000', titleColor: '#fff', bodyColor: '#fff',
-              borderColor: '#000', borderWidth: 1, padding: 12,
-              callbacks: { label: function(context) { var value = context.parsed.x || 0; var percentage = ((value / total) * 100).toFixed(1); return (context.dataset.label || '') + ': ' + value + ' (' + percentage + '%)'; } }
-            }
-          },
+          plugins: { legend: { display: false }, tooltip: { backgroundColor: '#000', titleColor: '#fff', bodyColor: '#fff', borderColor: '#000', borderWidth: 1, padding: 12, callbacks: { label: function(context) { var value = context.parsed.x || 0; var percentage = ((value / total) * 100).toFixed(1); return (context.dataset.label || '') + ': ' + value + ' (' + percentage + '%)'; } } } },
           scales: {
             x: { beginAtZero: true, ticks: { color: '#000', font: { size: 12, family: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' } }, grid: { color: '#e0e0e0', drawBorder: true, borderColor: '#000' } },
             y: { ticks: { color: '#000', font: { size: 13, family: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' } }, grid: { display: false, drawBorder: true, borderColor: '#000' } }
@@ -5040,39 +5017,195 @@
       });
     }
 
-    function applyOrderChartLayout() {
-      var grid = document.getElementById('orderDashboardGrid');
-      if (!grid) return;
-      ['productType', 'status', 'country', 'department'].forEach(function(key) {
-        var col = document.getElementById(ORDER_CANVAS[key].col);
-        if (!col) return;
-        if (orderChartVisibility[key]) col.classList.remove('quadrant-filtered-out');
-        else col.classList.add('quadrant-filtered-out');
-      });
-      var visibleCount = Object.values(orderChartVisibility).filter(Boolean).length;
-      if (visibleCount === 1) { grid.style.gridTemplateColumns = '1fr'; grid.style.gridTemplateRows = '1fr'; }
-      else if (visibleCount === 2) { grid.style.gridTemplateColumns = '1fr 1fr'; grid.style.gridTemplateRows = '1fr'; }
-      else { grid.style.gridTemplateColumns = '1fr 1fr'; grid.style.gridTemplateRows = '1fr 1fr'; }
-    }
+    function toggleOrderDashboardExpansion() {
+      orderDashboardExpanded = !orderDashboardExpanded;
 
-    function resizeOrderCharts() {
-      Object.values(orderChartInstances).forEach(function(inst) { if (inst) inst.resize(); });
-    }
+      // Collapse other expanded quadrants
+      if (orderDashboardExpanded && dashboardExpanded) {
+        dashboardExpanded = false;
+        document.getElementById('expandHint').textContent = 'Click to expand →';
+        document.getElementById('statusColumn').classList.add('hidden-quadrant');
+        document.getElementById('metricsColumn').classList.add('hidden-quadrant');
+        document.getElementById('insightsColumn').classList.add('hidden-quadrant');
+      }
+      if (orderDashboardExpanded && outsourcingDashboardExpanded) {
+        outsourcingDashboardExpanded = false;
+        document.getElementById('outsourcingExpandHint').textContent = 'Click to expand →';
+        document.getElementById('outsourcingStatusColumn').classList.add('hidden-quadrant');
+        document.getElementById('outsourcingMetricsColumn').classList.add('hidden-quadrant');
+        document.getElementById('outsourcingInsightsColumn').classList.add('hidden-quadrant');
+      }
+      if (orderDashboardExpanded && brandDashboardExpanded) {
+        brandDashboardExpanded = false;
+        document.getElementById('brandExpandHint').textContent = 'Click to expand →';
+        document.getElementById('brandStatusColumn').classList.add('hidden-quadrant');
+        document.getElementById('brandMetricsColumn').classList.add('hidden-quadrant');
+        document.getElementById('brandInsightsColumn').classList.add('hidden-quadrant');
+      }
+      if (orderDashboardExpanded && brandValueDashboardExpanded) {
+        brandValueDashboardExpanded = false;
+        document.getElementById('brandValueExpandHint').textContent = 'Click to expand →';
+        document.getElementById('brandValueStatusColumn').classList.add('hidden-quadrant');
+        document.getElementById('brandValueMetricsColumn').classList.add('hidden-quadrant');
+        document.getElementById('brandValueInsightsColumn').classList.add('hidden-quadrant');
+      }
 
-    function setupOrderTogglePills() {
-      var pills = document.querySelectorAll('#orderTogglePills .order-pill');
-      pills.forEach(function(pill) {
-        pill.addEventListener('click', function(e) {
-          e.stopPropagation();
-          var key = pill.dataset.orderChart;
-          var activeCount = document.querySelectorAll('#orderTogglePills .order-pill.active').length;
-          if (pill.classList.contains('active') && activeCount === 1) return;
-          pill.classList.toggle('active');
-          orderChartVisibility[key] = pill.classList.contains('active');
-          applyOrderChartLayout();
-          requestAnimationFrame(function() { setTimeout(function() { resizeOrderCharts(); renderOrderDashboard(); }, 300); });
+      var grid = document.getElementById('dashboardGrid');
+      var orderDistribution = document.getElementById('orderDistributionColumn');
+      var others = ['quotationDistributionColumn', 'outsourcingDistributionColumn', 'brandDistributionColumn', 'brandValueColumn'];
+      var orderStatusCol = document.getElementById('orderStatusColumn');
+      var orderMetricsCol = document.getElementById('orderMetricsColumn');
+      var orderInsightsCol = document.getElementById('orderInsightsColumn');
+      var expandHint = document.getElementById('orderExpandHint');
+
+      if (orderDashboardExpanded) {
+        var chartContainer = document.getElementById('orderDashboardChart');
+        var savedW = chartContainer ? chartContainer.offsetWidth : 0;
+        var savedH = chartContainer ? chartContainer.offsetHeight : 0;
+
+        others.forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) el.classList.add('fade-out');
         });
-      });
+
+        setTimeout(function() {
+          others.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) { el.classList.add('hidden-quadrant'); el.classList.remove('fade-out'); }
+          });
+
+          grid.style.gridTemplateColumns = '1.5fr 1fr 1fr 1fr';
+          grid.style.gridTemplateRows = '1fr';
+          orderDistribution.style.gridColumn = '';
+          orderDistribution.style.gridRow = '';
+
+          if (chartContainer) { chartContainer.style.maxWidth = savedW + 'px'; chartContainer.style.maxHeight = savedH + 'px'; }
+
+          orderStatusCol.classList.remove('hidden-quadrant');
+          orderMetricsCol.classList.remove('hidden-quadrant');
+          orderInsightsCol.classList.remove('hidden-quadrant');
+
+          setTimeout(function() {
+            orderStatusCol.classList.add('fade-in');
+            orderMetricsCol.classList.add('fade-in');
+            orderInsightsCol.classList.add('fade-in');
+          }, 50);
+        }, 200);
+
+        expandHint.textContent = '← Click to collapse';
+      } else {
+        orderStatusCol.classList.add('fade-out');
+        orderMetricsCol.classList.add('fade-out');
+        orderInsightsCol.classList.add('fade-out');
+        orderDistribution.style.gridColumn = '';
+        orderDistribution.style.gridRow = '';
+        orderDistribution.classList.remove('fade-in');
+
+        setTimeout(function() {
+          orderStatusCol.classList.add('hidden-quadrant');
+          orderMetricsCol.classList.add('hidden-quadrant');
+          orderInsightsCol.classList.add('hidden-quadrant');
+          orderStatusCol.classList.remove('fade-out', 'fade-in');
+          orderMetricsCol.classList.remove('fade-out', 'fade-in');
+          orderInsightsCol.classList.remove('fade-out', 'fade-in');
+
+          grid.style.gridTemplateColumns = '1fr 1fr';
+          grid.style.gridTemplateRows = '';
+
+          others.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.classList.remove('hidden-quadrant');
+          });
+
+          var chartContainer = document.getElementById('orderDashboardChart');
+          if (chartContainer) { chartContainer.style.maxWidth = ''; chartContainer.style.maxHeight = ''; }
+
+          // Re-apply TYPE filter
+          applyDashboardTypeFilter();
+
+          setTimeout(function() {
+            others.forEach(function(id) {
+              var el = document.getElementById(id);
+              if (el) el.classList.add('fade-in');
+            });
+          }, 50);
+        }, 200);
+
+        expandHint.textContent = 'Click to expand →';
+      }
+
+      if (orderDashboardData) {
+        if (orderDashboardExpanded) {
+          renderOrderDashboard();
+          updateOrderDashboardMetrics();
+        } else {
+          setTimeout(function() {
+            renderOrderDashboard();
+            if (chartInstance) chartInstance.resize();
+            if (outsourcingChartInstance) outsourcingChartInstance.resize();
+            if (brandChartInstance) brandChartInstance.resize();
+            if (brandValueChartInstance) brandValueChartInstance.resize();
+            if (orderChartInstance) orderChartInstance.resize();
+          }, 300);
+        }
+      }
+    }
+
+    function renderOrderLegend() {
+      var legendContainer = document.getElementById('orderDashboardLegend');
+      if (!legendContainer || !orderDashboardStatusData) return;
+
+      var legendItems = orderDashboardStatusData.statuses.map(function(status) {
+        return '<div style="display:flex; align-items:flex-start; gap:8px; padding:6px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; transition:background 0.15s;"' +
+          ' onmouseover="this.style.background=\'#f0f0f0\'" onmouseout="this.style.background=\'transparent\'">' +
+          '<div style="width:50px; height:50px; background:' + (status.color || '#6c757d') + '; border:1px solid #000; flex-shrink:0; margin-top:1px;"></div>' +
+          '<div style="flex:1;">' +
+          '<div style="font-size:19px; letter-spacing:0.1em; text-transform:uppercase; font-weight:600; margin-bottom:2px;">' + status.name + '</div>' +
+          '<div style="font-size:38px; font-weight:300; letter-spacing:-0.02em; line-height:1; margin-bottom:2px;">' + status.count + '</div>' +
+          '<div style="font-size:21px; opacity:0.6;">' + status.percentage + '%</div>' +
+          '</div></div>';
+      }).join('');
+
+      legendContainer.innerHTML = legendItems;
+    }
+
+    function updateOrderDashboardMetrics() {
+      if (!orderDashboardStatusData) return;
+
+      var totalCountEl = document.getElementById('orderTotalCount');
+      if (totalCountEl) totalCountEl.textContent = orderDashboardStatusData.total;
+
+      var activeCountEl = document.getElementById('orderActiveCount');
+      if (activeCountEl) {
+        var pending = orderDashboardStatusData.statuses.find(function(s) { return s.key.toLowerCase() === 'pending'; });
+        var inProd = orderDashboardStatusData.statuses.find(function(s) { return s.key.toLowerCase() === 'in-production' || s.key.toLowerCase() === 'in production'; });
+        activeCountEl.textContent = (pending ? pending.count : 0) + (inProd ? inProd.count : 0);
+      }
+
+      var completedCountEl = document.getElementById('orderCompletedCount');
+      if (completedCountEl) {
+        var completed = orderDashboardStatusData.statuses.find(function(s) { return s.key.toLowerCase() === 'completed'; });
+        completedCountEl.textContent = completed ? completed.count : 0;
+      }
+
+      var topCountryEl = document.getElementById('orderTopCountry');
+      if (topCountryEl && orderDashboardChartData) {
+        var top = orderDashboardChartData.segments[0];
+        topCountryEl.textContent = top ? top.name + ' (' + top.count + ')' : '—';
+      }
+
+      var completionRateEl = document.getElementById('orderCompletionRate');
+      if (completionRateEl) {
+        var completed = orderDashboardStatusData.statuses.find(function(s) { return s.key.toLowerCase() === 'completed'; });
+        var rate = orderDashboardStatusData.total > 0 ? (((completed ? completed.count : 0) / orderDashboardStatusData.total) * 100).toFixed(1) : '0.0';
+        completionRateEl.textContent = rate + '%';
+      }
+
+      var inProductionEl = document.getElementById('orderInProduction');
+      if (inProductionEl) {
+        var inProd = orderDashboardStatusData.statuses.find(function(s) { return s.key.toLowerCase() === 'in-production' || s.key.toLowerCase() === 'in production'; });
+        inProductionEl.textContent = inProd ? inProd.count : 0;
+      }
     }
 
     // ── End Order dashboard helpers ─────────────────────────────────────
@@ -5132,6 +5265,15 @@
         document.getElementById('brandValueStatusColumn').classList.add('hidden-quadrant');
         document.getElementById('brandValueMetricsColumn').classList.add('hidden-quadrant');
         document.getElementById('brandValueInsightsColumn').classList.add('hidden-quadrant');
+      }
+
+      // Reset order expansion when toggling quotation
+      if (dashboardExpanded && orderDashboardExpanded) {
+        orderDashboardExpanded = false;
+        document.getElementById('orderExpandHint').textContent = 'Click to expand →';
+        document.getElementById('orderStatusColumn').classList.add('hidden-quadrant');
+        document.getElementById('orderMetricsColumn').classList.add('hidden-quadrant');
+        document.getElementById('orderInsightsColumn').classList.add('hidden-quadrant');
       }
 
       const grid = document.getElementById('dashboardGrid');
@@ -5766,6 +5908,15 @@
         document.getElementById('brandValueInsightsColumn').classList.add('hidden-quadrant');
       }
 
+      // Reset order expansion when toggling outsourcing
+      if (outsourcingDashboardExpanded && orderDashboardExpanded) {
+        orderDashboardExpanded = false;
+        document.getElementById('orderExpandHint').textContent = 'Click to expand →';
+        document.getElementById('orderStatusColumn').classList.add('hidden-quadrant');
+        document.getElementById('orderMetricsColumn').classList.add('hidden-quadrant');
+        document.getElementById('orderInsightsColumn').classList.add('hidden-quadrant');
+      }
+
       const grid = document.getElementById('dashboardGrid');
       const outsourcingDistribution = document.getElementById('outsourcingDistributionColumn');
       const statusColumn = document.getElementById('outsourcingStatusColumn');
@@ -6363,6 +6514,14 @@
         bvStatusCol.classList.add('hidden-quadrant');
         bvMetricsCol.classList.add('hidden-quadrant');
         bvInsightsCol.classList.add('hidden-quadrant');
+      }
+
+      if (brandDashboardExpanded && orderDashboardExpanded) {
+        orderDashboardExpanded = false;
+        document.getElementById('orderExpandHint').textContent = 'Click to expand →';
+        document.getElementById('orderStatusColumn').classList.add('hidden-quadrant');
+        document.getElementById('orderMetricsColumn').classList.add('hidden-quadrant');
+        document.getElementById('orderInsightsColumn').classList.add('hidden-quadrant');
       }
 
       const grid = document.getElementById('dashboardGrid');
@@ -7085,6 +7244,14 @@
         document.getElementById('brandStatusColumn').classList.add('hidden-quadrant');
         document.getElementById('brandMetricsColumn').classList.add('hidden-quadrant');
         document.getElementById('brandInsightsColumn').classList.add('hidden-quadrant');
+      }
+
+      if (brandValueDashboardExpanded && orderDashboardExpanded) {
+        orderDashboardExpanded = false;
+        document.getElementById('orderExpandHint').textContent = 'Click to expand →';
+        document.getElementById('orderStatusColumn').classList.add('hidden-quadrant');
+        document.getElementById('orderMetricsColumn').classList.add('hidden-quadrant');
+        document.getElementById('orderInsightsColumn').classList.add('hidden-quadrant');
       }
 
       const grid = document.getElementById('dashboardGrid');
@@ -22462,9 +22629,9 @@
         applyOrderFilters();
 
         // Refresh order dashboard charts if the Order view is currently shown
-        const _orderCol = document.getElementById('orderDashboardColumn');
+        const _orderCol = document.getElementById('orderDistributionColumn');
         if (_orderCol && !_orderCol.classList.contains('quadrant-filtered-out')) {
-          loadDashboardOrders().catch(() => {});
+          loadDashboardOrder().catch(() => {});
         }
       } catch (err) {
         console.error('Error loading orders:', err);
