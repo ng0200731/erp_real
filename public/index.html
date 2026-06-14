@@ -15622,7 +15622,7 @@
 
       // Create a custom modal overlay for the quotation form
       const overlay = document.createElement('div');
-      overlay.className = 'modal-overlay';
+      overlay.className = 'modal-overlay quotation-view-overlay';
       overlay.style.zIndex = '11000';
 
       const modal = document.createElement('div');
@@ -15667,9 +15667,15 @@
         populateQuotationViewForm(quotation, viewContainer);
       }, 100);
 
-      // Global function to close the modal
+      // Global function to close the modal.
+      // Bulletproof: remove every quotation-view overlay in the DOM (handles stale,
+      // duplicate, or closure-mismatched overlays so Cancel/Close always dismisses).
       window.closeQuotationViewModal = function() {
-        document.body.removeChild(overlay);
+        document.querySelectorAll('.quotation-view-overlay').forEach(o => {
+          try { if (o.parentNode) o.parentNode.removeChild(o); } catch (e) {
+            console.warn('closeQuotationViewModal: failed to remove overlay', e);
+          }
+        });
         document.body.classList.remove('modal-open');
       };
 
@@ -15819,8 +15825,11 @@
         btn.style.display = 'inline-block';
       });
 
-      // Update modal actions to show Save and Cancel buttons
-      const actionsDiv = document.querySelector('.modal-actions');
+      // Update modal actions to show Save and Cancel buttons.
+      // Scope to THIS view modal so we don't accidentally target a stray .modal-actions
+      // from another modal in the DOM.
+      const viewModal = formContainer.closest('.modal');
+      const actionsDiv = viewModal ? viewModal.querySelector('.modal-actions') : document.querySelector('.modal-actions');
       if (actionsDiv) {
         actionsDiv.innerHTML = `
           <button class="btn" onclick="cancelInlineEdit(${quotationId})">Cancel</button>
@@ -15990,11 +15999,8 @@
     }
 
     window.cancelInlineEdit = async function(quotationId) {
-      // Restore original data and close modal
+      // Discard any edits and exit the view entirely (return to the list).
       closeQuotationViewModal();
-
-      // Reopen the view with original data
-      await viewQuotationDetails(quotationId);
     };
 
     window.saveInlineQuotationEdit = async function(quotationId) {
@@ -16134,10 +16140,19 @@
           body: 'Quotation updated successfully!'
         });
 
-        // Close modal and refresh quotations list
-        closeQuotationViewModal();
-        await displayQuotations();
-        await displayOutsourcingQuotations();
+        // Refresh lists + reopen the detail view so the user sees the update immediately.
+        // Wrapped in its own try/catch so a refresh/reopen failure can never surface as a
+        // false "save failed" — the PUT + image upload above already succeeded.
+        try {
+          closeQuotationViewModal();
+          await displayQuotations();
+          await displayOutsourcingQuotations();
+          // Auto-refresh: reopen the detail view with the freshly saved data (e.g. the new
+          // profile image, via the bumped ?v= cache version).
+          await viewQuotationDetails(quotationId);
+        } catch (refreshError) {
+          console.error('Post-save refresh failed (the save itself succeeded):', refreshError);
+        }
 
       } catch (error) {
         console.error('Error saving quotation:', error);
