@@ -6,6 +6,7 @@ import nodemailer from 'nodemailer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import multer from 'multer';
 import {
   createTask, getTaskById, listTasks, TASK_STATUS, updateTaskStatus,
@@ -71,6 +72,34 @@ await fs.mkdir(attachmentsDir, { recursive: true });
 await fs.mkdir(brandsDir, { recursive: true });
 
 // Multer configuration
+// Preserve the user-facing filename (file.originalname) on disk instead of a random
+// timestamp. originalname already reflects any rename done in the create form (rename
+// edits File.name, which becomes originalname). This makes the views show the real /
+// renamed name. A collision-safe counter handles duplicate names across requests and
+// within a single multi-file upload.
+const recentlyClaimedNames = new Map(); // dir -> Set<name> claimed in the current upload burst
+function claimUploadName(dir, name) {
+  if (!recentlyClaimedNames.has(dir)) recentlyClaimedNames.set(dir, new Set());
+  recentlyClaimedNames.get(dir).add(name);
+  setTimeout(() => {
+    const set = recentlyClaimedNames.get(dir);
+    if (set) set.delete(name);
+  }, 5000);
+}
+function resolveUploadName(dir, originalname) {
+  const ext = path.extname(originalname) || '';
+  let base = path.basename(originalname, ext).replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 100) || 'file';
+  const claimed = recentlyClaimedNames.get(dir);
+  let candidate = base + ext;
+  let n = 1;
+  while (fsSync.existsSync(path.join(dir, candidate)) || (claimed && claimed.has(candidate))) {
+    candidate = `${base}-${n}${ext}`;
+    n++;
+  }
+  claimUploadName(dir, candidate);
+  return candidate;
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (file.fieldname === 'profileImage') {
@@ -82,8 +111,8 @@ const storage = multer.diskStorage({
     }
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+    const dir = file.fieldname === 'profileImage' ? profileImagesDir : attachmentsDir;
+    cb(null, resolveUploadName(dir, file.originalname));
   }
 });
 

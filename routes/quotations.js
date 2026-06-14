@@ -177,7 +177,7 @@ export function createQuotationRoutes(deps) {
       // Try serving from database BLOB first
       if (imageData && imageData.profileImageBlob) {
         res.setHeader('Content-Type', imageData.profileImageMime || 'image/jpeg');
-        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.setHeader('Cache-Control', 'no-cache');
         return res.send(Buffer.from(imageData.profileImageBlob));
       }
 
@@ -192,7 +192,7 @@ export function createQuotationRoutes(deps) {
           const ext = path.extname(filePath).toLowerCase();
           const mimeMap = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp' };
           res.setHeader('Content-Type', mimeMap[ext] || 'image/jpeg');
-          res.setHeader('Cache-Control', 'public, max-age=86400');
+          res.setHeader('Cache-Control', 'no-cache');
           const fileBuffer = await fs.readFile(filePath);
           return res.send(fileBuffer);
         } catch {
@@ -416,6 +416,66 @@ export function createQuotationRoutes(deps) {
     } catch (error) {
       console.error('Error deleting attachment:', error);
       res.status(500).json({ success: false, error: 'Failed to delete attachment' });
+    }
+  });
+
+  // Rename an attachment: renames the disk file and updates attachmentPaths so the
+  // quotation/outsourcing views show the renamed name. Works on existing attachments.
+  router.patch('/:id/attachments/rename', async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const { oldPath, newName } = req.body;
+      if (!oldPath || !newName) {
+        return res.status(400).json({ success: false, error: 'oldPath and newName are required' });
+      }
+
+      const quotation = await getQuotationById(id);
+      if (!quotation) return res.status(404).json({ success: false, error: 'Quotation not found' });
+
+      const index = quotation.attachmentPaths.findIndex(p => p === oldPath);
+      if (index === -1) return res.status(404).json({ success: false, error: 'Attachment not found' });
+
+      const currentRelPath = quotation.attachmentPaths[index];
+      const currentFullPath = path.join(__dirname, '..', currentRelPath);
+      const dir = path.dirname(currentFullPath);
+      const oldExt = path.extname(currentFullPath);
+
+      // Sanitize the new name; keep the original extension if the new name lacks one
+      const cleanName = String(newName).replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 100);
+      if (!cleanName) return res.status(400).json({ success: false, error: 'Invalid name' });
+      const providedExt = path.extname(cleanName);
+      const baseName = providedExt ? cleanName.slice(0, cleanName.length - providedExt.length) : cleanName;
+      const finalExt = providedExt || oldExt;
+
+      // Resolve a unique filename within the directory
+      let candidate = baseName + finalExt;
+      let n = 1;
+      while (true) {
+        const candidateFull = path.join(dir, candidate);
+        if (candidateFull === currentFullPath) break;
+        let exists = true;
+        try { await fs.access(candidateFull); } catch { exists = false; }
+        if (!exists) break;
+        candidate = `${baseName}-${n}${finalExt}`;
+        n++;
+      }
+      const newFullPath = path.join(dir, candidate);
+
+      try {
+        await fs.rename(currentFullPath, newFullPath);
+      } catch (e) {
+        console.warn('Rename disk file failed (continuing to update DB):', e);
+      }
+
+      const newRelPath = getNormalizedRelativePath(path.join(__dirname, '..'), newFullPath);
+      const updatedPaths = [...quotation.attachmentPaths];
+      updatedPaths[index] = newRelPath;
+      await updateQuotation(id, { ...quotation, attachmentPaths: updatedPaths });
+
+      res.json({ success: true, newPath: newRelPath, displayName: candidate });
+    } catch (error) {
+      console.error('Error renaming attachment:', error);
+      res.status(500).json({ success: false, error: 'Failed to rename attachment' });
     }
   });
 

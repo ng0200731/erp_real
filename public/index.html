@@ -5299,7 +5299,7 @@
         filtered.forEach(function(o, i) {
           var bg = i % 2 === 0 ? '#fff' : '#fafafa';
           var statusColor = ORDER_STATUS_COLORS[o.status] || '#666';
-          var imgHtml = '<img src="/api/quotations/' + o.quotationId + '/profile-image" style="width:36px;height:36px;object-fit:cover;border:1px solid #ddd;" onerror="this.style.display=\'none\';this.insertAdjacentHTML(\'afterend\',\'<span style=&quot;color:#ccc;&quot;>-</span>\')">';
+          var imgHtml = '<img src="/api/quotations/' + o.quotationId + '/profile-image?v=' + (window.profileImageVersion||0) + '" style="width:36px;height:36px;object-fit:cover;border:1px solid #ddd;" onerror="this.style.display=\'none\';this.insertAdjacentHTML(\'afterend\',\'<span style=&quot;color:#ccc;&quot;>-</span>\')">';
           html += '<tr style="background:' + bg + ';border-bottom:1px solid #eee;cursor:pointer;" onclick="viewOrder(' + o.id + ')">';
           html += '<td style="padding:6px 8px;border-right:1px solid #eee;font-weight:600;color:#007bff;">' + escapeHtml(o.orderSeq || '-') + '</td>';
           html += '<td style="padding:6px 8px;border-right:1px solid #eee;">' + escapeHtml(o.quotationSeq || '-') + '</td>';
@@ -13765,7 +13765,7 @@
               </td>
               <td class="sticky-col" style="border:1px solid #000; padding:8px;">${quotation.outsourcingSeq || '-'}</td>
               <td style="border:1px solid #000; padding:8px;">${quotation.customerName}</td>
-              <td style="border:1px solid #000; padding:4px; text-align:center;">${quotation.hasProfileImage ? '<img src="/api/quotations/' + quotation.id + '/profile-image" style="width:40px; height:40px; object-fit:cover; border:1px solid #ddd; cursor:pointer;" onclick="event.stopPropagation(); showImagePreview(this.src)">' : '<span style="color:#ccc;">-</span>'}</td>
+              <td style="border:1px solid #000; padding:4px; text-align:center;">${quotation.hasProfileImage ? '<img src="/api/quotations/' + quotation.id + '/profile-image?v=' + (window.profileImageVersion||0) + '" style="width:40px; height:40px; object-fit:cover; border:1px solid #ddd; cursor:pointer;" onclick="event.stopPropagation(); showImagePreview(this.src)">' : '<span style="color:#ccc;">-</span>'}</td>
               <td style="border:1px solid #000; padding:8px;">${quotation.customerItemName || '<span style="color:#ccc;">-</span>'}</td>
               <td style="border:1px solid #000; padding:8px;">${quotation.contactPerson || 'N/A'}</td>
               <td style="border:1px solid #000; padding:8px;">${quotation.email || 'N/A'}</td>
@@ -13811,7 +13811,7 @@
                   </td>
                   <td class="sticky-col" style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.outsourcingSeq || '-'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.customerName}</td>
-                  <td style="border:1px solid #000; padding:4px; text-align:center;" rowspan="${suppliers.length}">${quotation.hasProfileImage ? '<img src="/api/quotations/' + quotation.id + '/profile-image" style="width:40px; height:40px; object-fit:cover; border:1px solid #ddd; cursor:pointer;" onclick="event.stopPropagation(); showImagePreview(this.src)">' : '<span style="color:#ccc;">-</span>'}</td>
+                  <td style="border:1px solid #000; padding:4px; text-align:center;" rowspan="${suppliers.length}">${quotation.hasProfileImage ? '<img src="/api/quotations/' + quotation.id + '/profile-image?v=' + (window.profileImageVersion||0) + '" style="width:40px; height:40px; object-fit:cover; border:1px solid #ddd; cursor:pointer;" onclick="event.stopPropagation(); showImagePreview(this.src)">' : '<span style="color:#ccc;">-</span>'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.customerItemName || '<span style="color:#ccc;">-</span>'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.contactPerson || 'N/A'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.email || 'N/A'}</td>
@@ -14700,7 +14700,7 @@
         const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
         let tableHtml = `
           <div style="margin-bottom:20px;">
-            ${quotation.hasProfileImage ? '<div style="text-align:center; margin-bottom:15px;"><img src="/api/quotations/' + quotation.id + '/profile-image" style="max-width:150px; max-height:150px; object-fit:contain; border:1px solid #ddd; padding:3px;"></div>' : ''}
+            ${quotation.hasProfileImage ? '<div style="text-align:center; margin-bottom:15px;"><img src="/api/quotations/' + quotation.id + '/profile-image?v=' + (window.profileImageVersion||0) + '" style="max-width:150px; max-height:150px; object-fit:contain; border:1px solid #ddd; padding:3px;"></div>' : ''}
             <h3 style="margin:0 0 10px 0;">Quotation Details</h3>
             <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
               <tr><td style="padding:6px; border:1px solid #ccc; font-weight:bold; width:150px;">Customer</td><td style="padding:6px; border:1px solid #ccc;">${quotation.customerName}</td></tr>
@@ -15321,7 +15321,7 @@
           </td>
           <td class="sticky-col" style="border:1px solid #000; padding:8px; font-weight:600; color:#007bff;">${quotation.quotationSeq || '-'}</td>
           <td style="border:1px solid #000; padding:8px;">${quotation.customerName}</td>
-          <td style="border:1px solid #000; padding:4px; text-align:center;">${quotation.hasProfileImage ? '<img src="/api/quotations/' + quotation.id + '/profile-image" style="width:40px; height:40px; object-fit:cover; border:1px solid #ddd; cursor:pointer;" onclick="event.stopPropagation(); showImagePreview(this.src)">' : '<span style="color:#ccc;">-</span>'}</td>
+          <td style="border:1px solid #000; padding:4px; text-align:center;">${quotation.hasProfileImage ? '<img src="/api/quotations/' + quotation.id + '/profile-image?v=' + (window.profileImageVersion||0) + '" style="width:40px; height:40px; object-fit:cover; border:1px solid #ddd; cursor:pointer;" onclick="event.stopPropagation(); showImagePreview(this.src)">' : '<span style="color:#ccc;">-</span>'}</td>
           <td style="border:1px solid #000; padding:8px;">${quotation.customerItemName || '<span style="color:#ccc;">-</span>'}</td>
           <td style="border:1px solid #000; padding:8px;">${quotation.contactPerson || 'N/A'}</td>
           <td style="border:1px solid #000; padding:8px;">${quotation.email || 'N/A'}</td>
@@ -15584,7 +15584,7 @@
         <div style="max-width: 1200px; max-height: 85vh; overflow-y: auto;">
           <div style="margin-bottom: 15px; padding: 10px; background: #f8f8f8; border: 1px solid #000;">
             <div style="display:flex; align-items:center; gap:12px;">
-              ${quotation.hasProfileImage ? '<img src="/api/quotations/' + quotation.id + '/profile-image" style="width:60px; height:60px; object-fit:cover; border:1px solid #ddd; flex-shrink:0; cursor:pointer;" onclick="showImagePreview(this.src)">' : ''}
+              ${quotation.hasProfileImage ? '<img src="/api/quotations/' + quotation.id + '/profile-image?v=' + (window.profileImageVersion||0) + '" style="width:60px; height:60px; object-fit:cover; border:1px solid #ddd; flex-shrink:0; cursor:pointer;" onclick="showImagePreview(this.src)">' : ''}
               <div style="flex:1;">
                 <strong>${(quotation.quotationSeq || quotation.outsourcingSeq) ? (quotation.quotationSeq || quotation.outsourcingSeq) + ' — ' : ''}Quotation Details</strong> - Created: ${new Date(quotation.dateCreated).toLocaleString()}
                 ${quotation.customerItemName ? '<div style="margin-top:4px; font-size:13px; color:#555;"><strong>Item:</strong> ' + quotation.customerItemName + '</div>' : ''}
@@ -15717,7 +15717,7 @@
       if (profileImagePreview && profileImagePlaceholder && profileImageDropZone) {
         let imageUrl = null;
         if (quotation.hasProfileImage) {
-          imageUrl = `/api/quotations/${quotation.id}/profile-image`;
+          imageUrl = `/api/quotations/${quotation.id}/profile-image?v=${window.profileImageVersion||0}`;
         } else if (quotation.profileImagePath) {
           imageUrl = `/${quotation.profileImagePath}`;
         }
@@ -15814,8 +15814,8 @@
       // Initialize attachments add/remove (click, drag-drop, paste) in edit mode
       initializeViewModeAttachments(quotationId, formContainer);
 
-      // Reveal remove (×) buttons on existing attachments (hidden while in view mode)
-      formContainer.querySelectorAll('.view-attachment-remove').forEach(btn => {
+      // Reveal rename/remove buttons on existing attachments (hidden while in view mode)
+      formContainer.querySelectorAll('.view-attachment-remove, .view-attachment-rename').forEach(btn => {
         btn.style.display = 'inline-block';
       });
 
@@ -15927,6 +15927,8 @@
         const tag = document.activeElement?.tagName?.toLowerCase();
         if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
         if (!getField('profileImageDropZone')) return;
+        // If the pointer is over the attachments zone, let the attachment handler take it
+        if (window._attachmentsHovered) return;
 
         const items = e.clipboardData?.items;
         if (!items) return;
@@ -16112,6 +16114,8 @@
             if (profileResponse.ok) {
               const profileResult = await profileResponse.json();
               console.log('Profile image upload result:', profileResult);
+              // Bump the cache version so re-displayed profile images are fetched fresh
+              window.profileImageVersion = (window.profileImageVersion || 0) + 1;
             } else {
               console.error('Profile image upload failed:', profileResponse.status);
             }
@@ -16227,7 +16231,7 @@
         // Try DB-served image first, fallback to file path
         let imageUrl = null;
         if (quotation.hasProfileImage) {
-          imageUrl = `/api/quotations/${quotation.id}/profile-image`;
+          imageUrl = `/api/quotations/${quotation.id}/profile-image?v=${window.profileImageVersion||0}`;
         } else if (quotation.profileImagePath) {
           imageUrl = `/${quotation.profileImagePath}`;
         }
@@ -16352,6 +16356,50 @@
       }
     };
 
+    // View/edit modal: rename an existing attachment (renames the disk file + updates path).
+    // Works on attachments uploaded before the multer fix as well — the new name is what
+    // the view will display from now on.
+    window.renameViewAttachment = async function(quotationId, btnEl) {
+      const row = btnEl && btnEl.closest('.view-attachment-item');
+      if (!row) return;
+      const oldPath = row.getAttribute('data-path') || '';
+      const currentName = oldPath.split('/').pop() || oldPath;
+      const newName = prompt('Enter new filename:', currentName);
+      if (!newName || newName === currentName) return;
+      try {
+        const response = await fetch(`/api/quotations/${quotationId}/attachments/rename`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ oldPath, newName })
+        });
+        const result = await response.json();
+        if (response.ok && result.success) {
+          // Update the row in place
+          row.setAttribute('data-path', result.newPath);
+          const nameEl = row.querySelector('.view-attachment-name');
+          if (nameEl) {
+            nameEl.textContent = result.displayName;
+            nameEl.setAttribute('onclick', `previewAttachment('${result.newPath}')`);
+          }
+          const dl = row.querySelector('.view-attachment-download');
+          if (dl) {
+            dl.href = '/' + result.newPath;
+            dl.download = result.displayName;
+          }
+          // Re-bind buttons so they use the new path on subsequent clicks
+          const renameBtn = row.querySelector('.view-attachment-rename');
+          if (renameBtn) renameBtn.setAttribute('onclick', `renameViewAttachment(${quotationId}, this)`);
+          const removeBtn = row.querySelector('.view-attachment-remove');
+          if (removeBtn) removeBtn.setAttribute('onclick', `removeViewAttachment(${quotationId}, this)`);
+        } else {
+          showModal({ title: 'Error', body: 'Failed to rename: ' + (result.error || 'Unknown error'), buttons: [{ text: 'OK', action: 'close' }] });
+        }
+      } catch (error) {
+        console.error('Error renaming attachment:', error);
+        showModal({ title: 'Error', body: 'Failed to rename attachment: ' + error.message, buttons: [{ text: 'OK', action: 'close' }] });
+      }
+    };
+
     // View/edit modal: wire up attachments add-more (click / drag-drop / paste)
     function initializeViewModeAttachments(quotationId, scopeContainer) {
       const getField = (id) => scopeContainer ? scopeContainer.querySelector('#' + id) : document.getElementById(id);
@@ -16386,8 +16434,9 @@
         row.style.cssText = 'display:flex; align-items:center; gap:10px; padding:5px; border-bottom:1px solid #ddd;';
         row.innerHTML =
           '<span style="font-size:16px;">' + fileIcon + '</span>' +
-          '<span style="flex:1; font-size:12px; cursor:pointer;" onclick="previewAttachment(\'' + serverPath + '\')">' + fileName + '</span>' +
-          '<a href="/' + serverPath + '" download="' + fileName + '" style="font-size:12px; color:#000; text-decoration:none;">📥</a>' +
+          '<span class="view-attachment-name" style="flex:1; font-size:12px; cursor:pointer;" onclick="previewAttachment(\'' + serverPath + '\')">' + fileName + '</span>' +
+          '<a class="view-attachment-download" href="/' + serverPath + '" download="' + fileName + '" style="font-size:12px; color:#000; text-decoration:none;">📥</a>' +
+          '<button type="button" class="btn view-attachment-rename" style="display:inline-block; font-size:11px; padding:2px 6px;" onclick="renameViewAttachment(' + quotationId + ', this)">✎</button>' +
           '<button type="button" class="btn view-attachment-remove" style="display:inline-block; font-size:12px; padding:2px 6px; background:#ff6b6b; color:white;" onclick="removeViewAttachment(' + quotationId + ', this)">×</button>';
         list.appendChild(row);
       }
@@ -16430,7 +16479,16 @@
         Array.from(e.dataTransfer.files).forEach(handleFile);
       });
 
-      // Paste support (ignored while typing in a field)
+      // Hover tracking: a paste is directed at attachments when the pointer is over the
+      // attachments zone. (Without this, an image paste would always be grabbed by the
+      // profile-image handler instead.)
+      window._attachmentsHovered = false;
+      dz.addEventListener('mouseenter', () => { window._attachmentsHovered = true; });
+      dz.addEventListener('mouseleave', () => { window._attachmentsHovered = false; });
+
+      // Paste support (Ctrl+V): take file items when hovering the attachments zone, or any
+      // non-image file (the profile-image handler only takes images, so non-images would
+      // otherwise be silently dropped).
       const pasteHandler = (e) => {
         const tag = document.activeElement && document.activeElement.tagName && document.activeElement.tagName.toLowerCase();
         if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
@@ -16439,8 +16497,12 @@
         if (!items) return;
         for (let i = 0; i < items.length; i++) {
           if (items[i].kind === 'file') {
-            e.preventDefault();
-            handleFile(items[i].getAsFile());
+            const file = items[i].getAsFile();
+            const isImage = file && file.type && file.type.startsWith('image/');
+            if (window._attachmentsHovered || !isImage) {
+              e.preventDefault();
+              handleFile(file);
+            }
           }
         }
       };
@@ -17376,7 +17438,7 @@
             // Check for DB-stored image first, then file path
             let imageUrl = null;
             if (result.quotation.hasProfileImage) {
-              imageUrl = `/api/quotations/${quotationId}/profile-image`;
+              imageUrl = `/api/quotations/${quotationId}/profile-image?v=${window.profileImageVersion||0}`;
             } else if (result.quotation.profileImagePath) {
               imageUrl = `/${result.quotation.profileImagePath}`;
             }
@@ -17883,14 +17945,16 @@
                     const fileIcon = getFileIconFromPath(attachmentPath);
                     return '<div class="view-attachment-item" data-path="' + attachmentPath + '" style="display: flex; align-items: center; gap: 10px; padding: 5px; border-bottom: 1px solid #ddd;">' +
                       '<span style="font-size: 16px;">' + fileIcon + '</span>' +
-                      '<span style="flex: 1; font-size: 12px; cursor: pointer;" onclick="previewAttachment(\'' + attachmentPath + '\')">' + fileName + '</span>' +
-                      '<a href="/' + attachmentPath + '" download="' + fileName + '" style="font-size: 12px; color: #000; text-decoration: none;">📥</a>' +
+                      '<span class="view-attachment-name" style="flex: 1; font-size: 12px; cursor: pointer;" onclick="previewAttachment(\'' + attachmentPath + '\')">' + fileName + '</span>' +
+                      '<a class="view-attachment-download" href="/' + attachmentPath + '" download="' + fileName + '" style="font-size: 12px; color: #000; text-decoration: none;">📥</a>' +
+                      '<button type="button" class="btn view-attachment-rename" style="display:none; font-size:11px; padding:2px 6px;" onclick="renameViewAttachment(' + quotation.id + ', this)">✎</button>' +
                       '<button type="button" class="btn view-attachment-remove" style="display:none; font-size:12px; padding:2px 6px; background:#ff6b6b; color:white;" onclick="removeViewAttachment(' + quotation.id + ', this)">×</button>' +
                     '</div>';
                   }).join('') :
                   '<div class="view-attachment-placeholder" style="text-align:center; color:#666; font-size:12px;">' +
                     '<div style="font-size:20px; margin-bottom:5px;">📎</div>' +
                     '<div>Drop files here or click to browse</div>' +
+                    '<div style="font-size:10px; margin-top:5px;">(Hover here & Ctrl+V to paste as attachment)</div>' +
                   '</div>'
                 ) +
               '</div>' +
@@ -19263,6 +19327,7 @@
             if (profileResult.success) {
               profileImageUploaded = true;
               console.log('Profile image uploaded successfully to DB');
+              window.profileImageVersion = (window.profileImageVersion || 0) + 1;
             } else {
               console.error('Profile upload failed:', profileResult.error || 'No path returned');
             }
@@ -19604,7 +19669,7 @@
       let profileImageBase64 = null;
       if (quotation.hasProfileImage || quotation.id) {
         try {
-          const imgResponse = await fetch(`/api/quotations/${quotation.id}/profile-image`);
+          const imgResponse = await fetch(`/api/quotations/${quotation.id}/profile-image?v=${window.profileImageVersion||0}`);
           if (imgResponse.ok) {
             const contentType = imgResponse.headers.get('content-type') || 'image/png';
             const blob = await imgResponse.blob();
@@ -20777,7 +20842,7 @@
               total: q.total,
               status: q.status || '-',
               date: q.dateCreated,
-              imgUrl: q.hasProfileImage ? `/api/quotations/${q.id}/profile-image` : null
+              imgUrl: q.hasProfileImage ? `/api/quotations/${q.id}/profile-image?v=${window.profileImageVersion||0}` : null
             });
           }
         });
@@ -20795,7 +20860,7 @@
               total: q.total,
               status: q.status || '-',
               date: q.dateCreated,
-              imgUrl: q.hasProfileImage ? `/api/quotations/${q.id}/profile-image` : null
+              imgUrl: q.hasProfileImage ? `/api/quotations/${q.id}/profile-image?v=${window.profileImageVersion||0}` : null
             });
           }
         });
@@ -20815,7 +20880,7 @@
               total: o.total,
               status: o.status || '-',
               date: o.dateCreated || o.createdAt,
-              imgUrl: hasImg ? `/api/quotations/${quoteId}/profile-image` : null
+              imgUrl: hasImg ? `/api/quotations/${quoteId}/profile-image?v=${window.profileImageVersion||0}` : null
             });
           }
         });
@@ -21044,7 +21109,7 @@
           const seqLabel = quotation.quotationSeq || quotation.outsourcingSeq || '';
           html += '<div style="display:flex; align-items:center; gap:12px; padding-bottom:12px; margin-bottom:12px; border-bottom:1px solid #eee;">';
           if (quotation.hasProfileImage) {
-            html += '<img src="/api/quotations/' + quotation.id + '/profile-image" style="width:48px; height:48px; object-fit:cover; border:1px solid #ddd; border-radius:4px; flex-shrink:0; cursor:pointer;" onclick="showImagePreview(this.src)">';
+            html += '<img src="/api/quotations/' + quotation.id + '/profile-image?v=' + (window.profileImageVersion||0) + '" style="width:48px; height:48px; object-fit:cover; border:1px solid #ddd; border-radius:4px; flex-shrink:0; cursor:pointer;" onclick="showImagePreview(this.src)">';
           }
           html += '<div style="flex:1;">';
           if (seqLabel) html += '<div style="font-size:13px; font-weight:700; color:#333;">' + seqLabel + '</div>';
@@ -21436,7 +21501,7 @@
 
     async function fetchProfileImageBase64(quotationId) {
       try {
-        const res = await fetch(`/api/quotations/${quotationId}/profile-image`);
+        const res = await fetch(`/api/quotations/${quotationId}/profile-image?v=${window.profileImageVersion||0}`);
         if (!res.ok) return null;
         const blob = await res.blob();
         return new Promise(resolve => {
@@ -21947,7 +22012,7 @@
           if (isOutsourcing) html += '<td style="padding:6px 8px;border-right:1px solid #eee;">' + escapeHtml(q.outsourcingSeq || '-') + '</td>';
           // Image
           const imgHtml = q.hasProfileImage
-            ? '<img src="/api/quotations/' + q.id + '/profile-image" style="width:36px;height:36px;object-fit:cover;border:1px solid #ddd;cursor:pointer;" onclick="event.stopPropagation();showImagePreview(this.src)">'
+            ? '<img src="/api/quotations/' + q.id + '/profile-image?v=' + (window.profileImageVersion||0) + '" style="width:36px;height:36px;object-fit:cover;border:1px solid #ddd;cursor:pointer;" onclick="event.stopPropagation();showImagePreview(this.src)">'
             : '<span style="color:#ccc;">-</span>';
           html += '<td style="padding:6px 8px;border-right:1px solid #eee;">' + imgHtml + '</td>';
           html += '<td style="padding:6px 8px;border-right:1px solid #eee;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(q.customerName) + '</td>';
