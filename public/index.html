@@ -1493,20 +1493,44 @@
       </div>
       <hr class="menu-divider">
       <div class="menu-group">
+        <button id="menuBrand" class="page-btn">Brand Database</button>
+        <div id="brandSubmenu" class="submenu" style="display:none;">
+          <button id="brandCreateBtn" class="submenu-btn">Create New</button>
+          <button id="brandViewBtn" class="submenu-btn">View Existing</button>
+        </div>
+      </div>
+      <hr class="menu-divider">
+      <div class="menu-group">
+        <button id="menuCustomer" class="page-btn">Garment Factory Database</button>
+        <div id="customerSubmenu" class="submenu" style="display:none;">
+          <button id="customerCreateBtn" class="submenu-btn">Create New</button>
+          <button id="customerViewBtn" class="submenu-btn">View Existing</button>
+        </div>
+      </div>
+      <hr class="menu-divider">
+      <div class="menu-group">
+        <button id="menuSupplier" class="page-btn">Agent Database</button>
+        <div id="supplierSubmenu" class="submenu" style="display:none;">
+          <button id="supplierCreateBtn" class="submenu-btn">Create New</button>
+          <button id="supplierViewBtn" class="submenu-btn">View Existing</button>
+        </div>
+      </div>
+      <hr class="menu-divider">
+      <div class="menu-group">
         <button id="menuSampling" class="page-btn">Pre Production</button>
         <div id="samplingSubmenu" class="submenu" style="display:none;">
           <div class="menu-group">
             <button id="menuQuotation" class="submenu-btn" data-testid="menu-quotation">In-house production</button>
             <div id="quotationSubmenu" class="sub-submenu" style="display:none;">
-              <button id="quotationCreateBtn" class="submenu-btn" data-testid="quotation-create-btn">Create</button>
-              <button id="quotationViewBtn" class="submenu-btn" data-testid="quotation-view-btn">View</button>
+              <button id="quotationCreateBtn" class="submenu-btn" data-testid="quotation-create-btn">Create New</button>
+              <button id="quotationViewBtn" class="submenu-btn" data-testid="quotation-view-btn">View Existing</button>
             </div>
           </div>
           <div class="menu-group">
             <button id="menuOutsourcing" class="submenu-btn">Outsourcing</button>
             <div id="outsourcingSubmenu" class="sub-submenu" style="display:none;">
-              <button id="outsourcingCreateBtn" class="submenu-btn">Create</button>
-              <button id="outsourcingViewBtn" class="submenu-btn">View</button>
+              <button id="outsourcingCreateBtn" class="submenu-btn">Create New</button>
+              <button id="outsourcingViewBtn" class="submenu-btn">View Existing</button>
             </div>
           </div>
         </div>
@@ -1515,8 +1539,8 @@
       <div class="menu-group">
         <button id="menuOrder" class="page-btn" data-short="R" data-full="Bulk Production">Bulk Production</button>
         <div id="orderSubmenu" class="submenu" style="display:none;">
-          <button id="orderCreatedBtn" class="submenu-btn">Created</button>
-          <button id="orderViewBtn" class="submenu-btn">View</button>
+          <button id="orderCreatedBtn" class="submenu-btn">Created New</button>
+          <button id="orderViewBtn" class="submenu-btn">View Existing</button>
         </div>
       </div>
       <hr class="menu-divider">
@@ -1524,31 +1548,10 @@
         <button id="menuSettings" class="page-btn">Setting</button>
         <div id="settingSubmenu" class="submenu" style="display:none;">
           <div class="menu-group">
-            <button id="menuBrand" class="submenu-btn">Brand Database</button>
-            <div id="brandSubmenu" class="sub-submenu" style="display:none;">
-              <button id="brandCreateBtn" class="submenu-btn">Create</button>
-              <button id="brandViewBtn" class="submenu-btn">View</button>
-            </div>
-          </div>
-          <div class="menu-group">
-            <button id="menuCustomer" class="submenu-btn">Garment Factory Database</button>
-            <div id="customerSubmenu" class="sub-submenu" style="display:none;">
-              <button id="customerCreateBtn" class="submenu-btn">Create</button>
-              <button id="customerViewBtn" class="submenu-btn">View</button>
-            </div>
-          </div>
-          <div class="menu-group">
-            <button id="menuSupplier" class="submenu-btn">Agent Database</button>
-            <div id="supplierSubmenu" class="sub-submenu" style="display:none;">
-              <button id="supplierCreateBtn" class="submenu-btn">Create</button>
-              <button id="supplierViewBtn" class="submenu-btn">View</button>
-            </div>
-          </div>
-          <div class="menu-group">
             <button id="menuWorkshop" class="submenu-btn">Workshop</button>
             <div id="workshopSubmenu" class="sub-submenu" style="display:none;">
-              <button id="workshopCreateBtn" class="submenu-btn">Create</button>
-              <button id="workshopViewBtn" class="submenu-btn">View</button>
+              <button id="workshopCreateBtn" class="submenu-btn">Create New</button>
+              <button id="workshopViewBtn" class="submenu-btn">View Existing</button>
             </div>
           </div>
           <button id="menuProfilesBtn" class="submenu-btn">Profiles / Config</button>
@@ -4562,12 +4565,12 @@
         'emails':           { btns: ['emailReceiveBtn', 'menuEmail'],                            open: ['emailSubmenu'] },
         'email-send':       { btns: ['emailSendBtn', 'menuEmail'],                               open: ['emailSubmenu'] },
         'profiles':         { btns: ['menuProfilesBtn', 'menuSettings'],                         open: ['settingSubmenu'] },
-        'brand-create':     { btns: ['brandCreateBtn', 'menuBrand', 'menuSettings'],             open: ['settingSubmenu', 'brandSubmenu'] },
-        'brand-view':       { btns: ['brandViewBtn', 'menuBrand', 'menuSettings'],               open: ['settingSubmenu', 'brandSubmenu'] },
-        'customer':         { btns: ['customerCreateBtn', 'menuCustomer', 'menuSettings'],       open: ['settingSubmenu', 'customerSubmenu'] },
-        'customer-view':    { btns: ['customerViewBtn', 'menuCustomer', 'menuSettings'],         open: ['settingSubmenu', 'customerSubmenu'] },
-        'supplier':         { btns: ['supplierCreateBtn', 'menuSupplier', 'menuSettings'],       open: ['settingSubmenu', 'supplierSubmenu'] },
-        'supplier-view':    { btns: ['supplierViewBtn', 'menuSupplier', 'menuSettings'],         open: ['settingSubmenu', 'supplierSubmenu'] },
+        'brand-create':     { btns: ['brandCreateBtn', 'menuBrand'],                             open: ['brandSubmenu'] },
+        'brand-view':       { btns: ['brandViewBtn', 'menuBrand'],                               open: ['brandSubmenu'] },
+        'customer':         { btns: ['customerCreateBtn', 'menuCustomer'],                       open: ['customerSubmenu'] },
+        'customer-view':    { btns: ['customerViewBtn', 'menuCustomer'],                         open: ['customerSubmenu'] },
+        'supplier':         { btns: ['supplierCreateBtn', 'menuSupplier'],                       open: ['supplierSubmenu'] },
+        'supplier-view':    { btns: ['supplierViewBtn', 'menuSupplier'],                         open: ['supplierSubmenu'] },
         'quotation':        { btns: ['quotationCreateBtn', 'menuQuotation', 'menuSampling'],     open: ['samplingSubmenu', 'quotationSubmenu'] },
         'quotation-view':   { btns: ['quotationViewBtn', 'menuQuotation', 'menuSampling'],       open: ['samplingSubmenu', 'quotationSubmenu'] },
         'outsourcing':      { btns: ['outsourcingCreateBtn', 'menuOutsourcing', 'menuSampling'], open: ['samplingSubmenu', 'outsourcingSubmenu'] },
@@ -8203,17 +8206,17 @@
       submenu.style.display = isVisible ? 'none' : 'block';
     };
 
-    // Menu click: toggle Customer sub-submenu (inside Setting)
+    // Menu click: toggle Customer submenu
     menuCustomerBtn.onclick = () => {
       const submenu = document.getElementById('customerSubmenu');
       const isVisible = submenu.style.display !== 'none';
 
-      // Hide sibling sub-submenus only (keep parent Setting open)
-      document.querySelectorAll('.sub-submenu').forEach(sub => {
+      // Hide all other submenus first
+      document.querySelectorAll('.submenu').forEach(sub => {
         sub.style.display = 'none';
       });
 
-      // Toggle this sub-submenu
+      // Toggle this submenu
       submenu.style.display = isVisible ? 'none' : 'block';
     };
 
@@ -8477,18 +8480,18 @@
       initializeCustomerViewPanel();
     };
 
-    // Menu click: toggle Supplier sub-submenu (inside Setting)
+    // Menu click: toggle Supplier submenu
     const menuSupplierBtn = document.getElementById('menuSupplier');
     menuSupplierBtn.onclick = () => {
       const submenu = document.getElementById('supplierSubmenu');
       const isVisible = submenu.style.display !== 'none';
 
-      // Hide sibling sub-submenus only (keep parent Setting open)
-      document.querySelectorAll('.sub-submenu').forEach(sub => {
+      // Hide all other submenus first
+      document.querySelectorAll('.submenu').forEach(sub => {
         sub.style.display = 'none';
       });
 
-      // Toggle this sub-submenu
+      // Toggle this submenu
       submenu.style.display = isVisible ? 'none' : 'block';
     };
 
@@ -8586,12 +8589,12 @@
       }
     };
 
-    // Menu click: toggle Brand sub-submenu (inside Setting)
+    // Menu click: toggle Brand submenu
     menuBrandBtn.onclick = () => {
       const submenu = document.getElementById('brandSubmenu');
       const isVisible = submenu.style.display !== 'none';
-      // Hide sibling sub-submenus only (keep parent Setting open)
-      document.querySelectorAll('.sub-submenu').forEach(sub => {
+      // Hide all other submenus first
+      document.querySelectorAll('.submenu').forEach(sub => {
         sub.style.display = 'none';
       });
       submenu.style.display = isVisible ? 'none' : 'block';
@@ -12199,28 +12202,28 @@
       ];
 
       const dummyImages = [
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172339_127.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172356_184.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172421_543.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172445_063.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172501_563.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172518_390.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172638_157.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172652_458.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172703_705.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172712_175.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172722_004.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172738_692.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172747_939.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172848_834.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172859_250.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172925_226.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173054_638.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173118_588.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173133_961.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173202_765.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173320_677.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173350_577.png'
+        'dummy image/ScreenShot_2026-05-31_172339_127.png',
+        'dummy image/ScreenShot_2026-05-31_172356_184.png',
+        'dummy image/ScreenShot_2026-05-31_172421_543.png',
+        'dummy image/ScreenShot_2026-05-31_172445_063.png',
+        'dummy image/ScreenShot_2026-05-31_172501_563.png',
+        'dummy image/ScreenShot_2026-05-31_172518_390.png',
+        'dummy image/ScreenShot_2026-05-31_172638_157.png',
+        'dummy image/ScreenShot_2026-05-31_172652_458.png',
+        'dummy image/ScreenShot_2026-05-31_172703_705.png',
+        'dummy image/ScreenShot_2026-05-31_172712_175.png',
+        'dummy image/ScreenShot_2026-05-31_172722_004.png',
+        'dummy image/ScreenShot_2026-05-31_172738_692.png',
+        'dummy image/ScreenShot_2026-05-31_172747_939.png',
+        'dummy image/ScreenShot_2026-05-31_172848_834.png',
+        'dummy image/ScreenShot_2026-05-31_172859_250.png',
+        'dummy image/ScreenShot_2026-05-31_172925_226.png',
+        'dummy image/ScreenShot_2026-05-31_173054_638.png',
+        'dummy image/ScreenShot_2026-05-31_173118_588.png',
+        'dummy image/ScreenShot_2026-05-31_173133_961.png',
+        'dummy image/ScreenShot_2026-05-31_173202_765.png',
+        'dummy image/ScreenShot_2026-05-31_173320_677.png',
+        'dummy image/ScreenShot_2026-05-31_173350_577.png'
       ];
 
       try {
@@ -12350,28 +12353,28 @@
       ];
 
       const dummyImages = [
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172339_127.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172356_184.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172421_543.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172445_063.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172501_563.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172518_390.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172638_157.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172652_458.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172703_705.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172712_175.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172722_004.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172738_692.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172747_939.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172848_834.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172859_250.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172925_226.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173054_638.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173118_588.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173133_961.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173202_765.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173320_677.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173350_577.png'
+        'dummy image/ScreenShot_2026-05-31_172339_127.png',
+        'dummy image/ScreenShot_2026-05-31_172356_184.png',
+        'dummy image/ScreenShot_2026-05-31_172421_543.png',
+        'dummy image/ScreenShot_2026-05-31_172445_063.png',
+        'dummy image/ScreenShot_2026-05-31_172501_563.png',
+        'dummy image/ScreenShot_2026-05-31_172518_390.png',
+        'dummy image/ScreenShot_2026-05-31_172638_157.png',
+        'dummy image/ScreenShot_2026-05-31_172652_458.png',
+        'dummy image/ScreenShot_2026-05-31_172703_705.png',
+        'dummy image/ScreenShot_2026-05-31_172712_175.png',
+        'dummy image/ScreenShot_2026-05-31_172722_004.png',
+        'dummy image/ScreenShot_2026-05-31_172738_692.png',
+        'dummy image/ScreenShot_2026-05-31_172747_939.png',
+        'dummy image/ScreenShot_2026-05-31_172848_834.png',
+        'dummy image/ScreenShot_2026-05-31_172859_250.png',
+        'dummy image/ScreenShot_2026-05-31_172925_226.png',
+        'dummy image/ScreenShot_2026-05-31_173054_638.png',
+        'dummy image/ScreenShot_2026-05-31_173118_588.png',
+        'dummy image/ScreenShot_2026-05-31_173133_961.png',
+        'dummy image/ScreenShot_2026-05-31_173202_765.png',
+        'dummy image/ScreenShot_2026-05-31_173320_677.png',
+        'dummy image/ScreenShot_2026-05-31_173350_577.png'
       ];
 
       try {
@@ -15808,6 +15811,14 @@
       // Initialize drag-and-drop for profile image in edit mode
       initializeViewModeProfileImageDrop(quotationId, formContainer);
 
+      // Initialize attachments add/remove (click, drag-drop, paste) in edit mode
+      initializeViewModeAttachments(quotationId, formContainer);
+
+      // Reveal remove (×) buttons on existing attachments (hidden while in view mode)
+      formContainer.querySelectorAll('.view-attachment-remove').forEach(btn => {
+        btn.style.display = 'inline-block';
+      });
+
       // Update modal actions to show Save and Cancel buttons
       const actionsDiv = document.querySelector('.modal-actions');
       if (actionsDiv) {
@@ -16313,6 +16324,127 @@
       } catch (error) {
         console.error('Error removing attachment:', error);
       }
+    }
+
+    // View/edit modal: remove an existing attachment (DELETE + remove row)
+    window.removeViewAttachment = async function(quotationId, btnEl) {
+      const row = btnEl && btnEl.closest('.view-attachment-item');
+      if (!row) return;
+      const attachmentPath = row.getAttribute('data-path') || '';
+      const fileName = attachmentPath.split('/').pop();
+      try {
+        const response = await fetch(`/api/quotations/${quotationId}/attachments/${encodeURIComponent(fileName)}`, { method: 'DELETE' });
+        if (response.ok) {
+          row.remove();
+          const list = document.getElementById('attachmentsList');
+          if (list && list.querySelectorAll('.view-attachment-item').length === 0) {
+            list.innerHTML = '<div class="view-attachment-placeholder" style="text-align:center; color:#666; font-size:12px;">' +
+              '<div style="font-size:20px; margin-bottom:5px;">📎</div>' +
+              '<div>No attachments uploaded</div>' +
+            '</div>';
+          }
+        } else {
+          showModal({ title: 'Error', body: 'Failed to remove attachment. Please try again.', buttons: [{ text: 'OK', action: 'close' }] });
+        }
+      } catch (error) {
+        console.error('Error removing attachment:', error);
+        showModal({ title: 'Error', body: 'Failed to remove attachment: ' + error.message, buttons: [{ text: 'OK', action: 'close' }] });
+      }
+    };
+
+    // View/edit modal: wire up attachments add-more (click / drag-drop / paste)
+    function initializeViewModeAttachments(quotationId, scopeContainer) {
+      const getField = (id) => scopeContainer ? scopeContainer.querySelector('#' + id) : document.getElementById(id);
+      const dropZone = getField('attachmentsDropZone');
+      const input = getField('attachmentsInput');
+      let list = getField('attachmentsList');
+      if (!dropZone || !input || !list) {
+        console.warn('Attachments elements not found, skipping attachments init');
+        return;
+      }
+
+      // Clean old listeners by cloning the drop zone (same approach as profile image init)
+      const newDropZone = dropZone.cloneNode(true);
+      dropZone.parentNode.replaceChild(newDropZone, dropZone);
+      const dz = getField('attachmentsDropZone');
+      const inp = getField('attachmentsInput');
+      // Re-query the list after the clone — the old reference is now detached
+      list = getField('attachmentsList');
+      dz.style.cursor = 'pointer';
+
+      const allowedTypes = ['image/', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/'];
+      const isAllowed = (file) => allowedTypes.some(t => file.type.startsWith(t)) || /\.(pdf|doc|docx|txt)$/i.test(file.name);
+
+      function addRow(serverPath) {
+        const ph = list.querySelector('.view-attachment-placeholder');
+        if (ph) ph.remove();
+        const fileName = serverPath.split('/').pop();
+        const fileIcon = getFileIconFromPath(serverPath);
+        const row = document.createElement('div');
+        row.className = 'view-attachment-item';
+        row.setAttribute('data-path', serverPath);
+        row.style.cssText = 'display:flex; align-items:center; gap:10px; padding:5px; border-bottom:1px solid #ddd;';
+        row.innerHTML =
+          '<span style="font-size:16px;">' + fileIcon + '</span>' +
+          '<span style="flex:1; font-size:12px; cursor:pointer;" onclick="previewAttachment(\'' + serverPath + '\')">' + fileName + '</span>' +
+          '<a href="/' + serverPath + '" download="' + fileName + '" style="font-size:12px; color:#000; text-decoration:none;">📥</a>' +
+          '<button type="button" class="btn view-attachment-remove" style="display:inline-block; font-size:12px; padding:2px 6px; background:#ff6b6b; color:white;" onclick="removeViewAttachment(' + quotationId + ', this)">×</button>';
+        list.appendChild(row);
+      }
+
+      async function handleFile(file) {
+        if (!file) return;
+        if (!isAllowed(file)) {
+          showModal({ title: 'Unsupported File Type', body: 'Please upload PDF, DOC, DOCX, TXT, or image files only.', buttons: [{ text: 'OK', action: 'close' }] });
+          return;
+        }
+        const formData = new FormData();
+        formData.append('attachments', file);
+        try {
+          const response = await fetch(`/api/quotations/${quotationId}/upload-attachments`, { method: 'POST', body: formData });
+          const result = await response.json();
+          if (result.success && result.attachmentPaths && result.attachmentPaths.length) {
+            addRow(result.attachmentPaths[result.attachmentPaths.length - 1]);
+          } else {
+            throw new Error(result.error || 'Upload failed');
+          }
+        } catch (error) {
+          console.error('Error uploading attachment:', error);
+          showModal({ title: 'Upload Error', body: 'Failed to upload attachment: ' + error.message, buttons: [{ text: 'OK', action: 'close' }] });
+        }
+      }
+
+      dz.addEventListener('click', (e) => {
+        if (e.target.closest('.view-attachment-item')) return;
+        inp.click();
+      });
+      inp.addEventListener('change', (e) => {
+        Array.from(e.target.files).forEach(handleFile);
+        inp.value = '';
+      });
+      dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.style.borderColor = '#000'; dz.style.backgroundColor = '#f0f0f0'; });
+      dz.addEventListener('dragleave', (e) => { e.preventDefault(); dz.style.borderColor = '#ccc'; dz.style.backgroundColor = '#fff'; });
+      dz.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dz.style.borderColor = '#ccc'; dz.style.backgroundColor = '#fff';
+        Array.from(e.dataTransfer.files).forEach(handleFile);
+      });
+
+      // Paste support (ignored while typing in a field)
+      const pasteHandler = (e) => {
+        const tag = document.activeElement && document.activeElement.tagName && document.activeElement.tagName.toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+        if (!getField('attachmentsDropZone')) return;
+        const items = e.clipboardData && e.clipboardData.items;
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].kind === 'file') {
+            e.preventDefault();
+            handleFile(items[i].getAsFile());
+          }
+        }
+      };
+      document.addEventListener('paste', pasteHandler);
     }
 
     async function deleteQuotation(quotationId) {
@@ -17743,24 +17875,26 @@
           // Attachments Upload (lower 70%)
           '<div style="flex:1; border:1px solid #000; padding:10px; background:#fafafa; overflow:hidden; display:flex; flex-direction:column; margin:20px;">' +
             '<h5 style="margin:0 0 10px 0; font-size:14px;">Attachments</h5>' +
-            '<div id="attachmentsDropZone" style="flex:1; border:2px dashed #ccc; border-radius:0; display:flex; flex-direction:column; background:#fff; position:relative; overflow-y:auto;">' +
+            '<div id="attachmentsDropZone" style="flex:1; border:2px dashed #ccc; border-radius:0; display:flex; flex-direction:column; background:#fff; cursor:pointer; position:relative; overflow-y:auto;">' +
               '<div id="attachmentsList" style="flex:1; padding:10px;">' +
                 (quotation.attachmentPaths && quotation.attachmentPaths.length > 0 ?
                   quotation.attachmentPaths.map(attachmentPath => {
                     const fileName = attachmentPath.split('/').pop() || attachmentPath.split('\\\\').pop();
                     const fileIcon = getFileIconFromPath(attachmentPath);
-                    return '<div style="display: flex; align-items: center; gap: 10px; padding: 5px; border-bottom: 1px solid #ddd;">' +
+                    return '<div class="view-attachment-item" data-path="' + attachmentPath + '" style="display: flex; align-items: center; gap: 10px; padding: 5px; border-bottom: 1px solid #ddd;">' +
                       '<span style="font-size: 16px;">' + fileIcon + '</span>' +
                       '<span style="flex: 1; font-size: 12px; cursor: pointer;" onclick="previewAttachment(\'' + attachmentPath + '\')">' + fileName + '</span>' +
                       '<a href="/' + attachmentPath + '" download="' + fileName + '" style="font-size: 12px; color: #000; text-decoration: none;">📥</a>' +
+                      '<button type="button" class="btn view-attachment-remove" style="display:none; font-size:12px; padding:2px 6px; background:#ff6b6b; color:white;" onclick="removeViewAttachment(' + quotation.id + ', this)">×</button>' +
                     '</div>';
                   }).join('') :
-                  '<div style="text-align:center; color:#666; font-size:12px;">' +
+                  '<div class="view-attachment-placeholder" style="text-align:center; color:#666; font-size:12px;">' +
                     '<div style="font-size:20px; margin-bottom:5px;">📎</div>' +
-                    '<div>No attachments uploaded</div>' +
+                    '<div>Drop files here or click to browse</div>' +
                   '</div>'
                 ) +
               '</div>' +
+              '<input type="file" id="attachmentsInput" multiple style="display:none;">' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -18886,28 +19020,28 @@
 
       // === Profile Image — pick a random dummy image ===
       const dummyImagePaths = [
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172339_127.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172356_184.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172421_543.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172445_063.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172501_563.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172518_390.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172638_157.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172652_458.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172703_705.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172712_175.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172722_004.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172738_692.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172747_939.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172848_834.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172859_250.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_172925_226.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173054_638.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173118_588.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173133_961.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173202_765.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173320_677.png',
-        'C:\\Users\\ng\\Desktop\\dummy image\\ScreenShot_2026-05-31_173350_577.png'
+        'dummy image/ScreenShot_2026-05-31_172339_127.png',
+        'dummy image/ScreenShot_2026-05-31_172356_184.png',
+        'dummy image/ScreenShot_2026-05-31_172421_543.png',
+        'dummy image/ScreenShot_2026-05-31_172445_063.png',
+        'dummy image/ScreenShot_2026-05-31_172501_563.png',
+        'dummy image/ScreenShot_2026-05-31_172518_390.png',
+        'dummy image/ScreenShot_2026-05-31_172638_157.png',
+        'dummy image/ScreenShot_2026-05-31_172652_458.png',
+        'dummy image/ScreenShot_2026-05-31_172703_705.png',
+        'dummy image/ScreenShot_2026-05-31_172712_175.png',
+        'dummy image/ScreenShot_2026-05-31_172722_004.png',
+        'dummy image/ScreenShot_2026-05-31_172738_692.png',
+        'dummy image/ScreenShot_2026-05-31_172747_939.png',
+        'dummy image/ScreenShot_2026-05-31_172848_834.png',
+        'dummy image/ScreenShot_2026-05-31_172859_250.png',
+        'dummy image/ScreenShot_2026-05-31_172925_226.png',
+        'dummy image/ScreenShot_2026-05-31_173054_638.png',
+        'dummy image/ScreenShot_2026-05-31_173118_588.png',
+        'dummy image/ScreenShot_2026-05-31_173133_961.png',
+        'dummy image/ScreenShot_2026-05-31_173202_765.png',
+        'dummy image/ScreenShot_2026-05-31_173320_677.png',
+        'dummy image/ScreenShot_2026-05-31_173350_577.png'
       ];
       const randomDummyPath = dummyImagePaths[Math.floor(Math.random() * dummyImagePaths.length)];
       try {
