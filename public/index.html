@@ -478,6 +478,47 @@
       flex-wrap:wrap;
     }
 
+    /* Quotation / Outsourcing view modal — view vs edit states.
+       VIEW (initial): whole popup is non-interactive and all text is dimmed grey.
+       EDIT (after clicking Edit): red border around the popup, dimming removed. */
+    .qv-modal .modal-body{ position:relative; }
+    /* Dim every text element in the body while in view mode */
+    .qv-modal[data-qv-mode="view"] .modal-header,
+    .qv-modal[data-qv-mode="view"] .modal-body{
+      color:#9a9a9a;
+    }
+    .qv-modal[data-qv-mode="view"] .modal-body h1,
+    .qv-modal[data-qv-mode="view"] .modal-body h2,
+    .qv-modal[data-qv-mode="view"] .modal-body h3,
+    .qv-modal[data-qv-mode="view"] .modal-body h4,
+    .qv-modal[data-qv-mode="view"] .modal-body h5,
+    .qv-modal[data-qv-mode="view"] .modal-body strong,
+    .qv-modal[data-qv-mode="view"] .modal-body b,
+    .qv-modal[data-qv-mode="view"] .modal-body label,
+    .qv-modal[data-qv-mode="view"] .modal-body span,
+    .qv-modal[data-qv-mode="view"] .modal-body p,
+    .qv-modal[data-qv-mode="view"] .modal-body div,
+    .qv-modal[data-qv-mode="view"] .modal-body td,
+    .qv-modal[data-qv-mode="view"] .modal-body th{
+      color:#9a9a9a;
+    }
+    /* Form fields already dimmed by JS (#666); keep them grey + disabled look in view mode */
+    .qv-modal[data-qv-mode="view"] .modal-body input,
+    .qv-modal[data-qv-mode="view"] .modal-body textarea,
+    .qv-modal[data-qv-mode="view"] .modal-body select{
+      color:#9a9a9a !important;
+      background-color:#f5f5f5 !important;
+    }
+    /* Block all pointer interaction with the body content in view mode (popup not clickable) */
+    .qv-modal[data-qv-mode="view"] .modal-body{ pointer-events:none; }
+
+    /* EDIT mode: red border, normal (non-dimmed) text */
+    .qv-modal[data-qv-mode="edit"]{
+      border:2px solid #dc3545 !important;
+      box-shadow:0 12px 32px rgba(220,53,69,.28);
+    }
+    .qv-modal[data-qv-mode="edit"] .modal-body{ pointer-events:auto; }
+
     /* Email reader modal - Microsoft Outlook style */
     .email-modal-overlay{
       position:fixed; inset:0;
@@ -15626,7 +15667,8 @@
       overlay.style.zIndex = '11000';
 
       const modal = document.createElement('div');
-      modal.className = 'modal';
+      modal.className = 'modal qv-modal';
+      modal.setAttribute('data-qv-mode', 'view'); // start in dimmed, non-clickable view mode
       modal.style.maxWidth = '900px';
       modal.style.width = '90vw';
       modal.style.maxHeight = '90vh';
@@ -15648,8 +15690,7 @@
       actions.className = 'modal-actions';
       actions.innerHTML = `
         <button class="btn" onclick="closeQuotationViewModal()">Close</button>
-        <button class="btn primary" onclick="editQuotationFromView(${quotation.id})">Edit Quotation</button>
-        <button class="btn" style="background: #ff6b6b; color: white;" onclick="deleteQuotation(${quotation.id})">Delete</button>
+        <button class="btn primary" onclick="editQuotationFromView(${quotation.id})">Edit</button>
       `;
 
       modal.appendChild(header);
@@ -15803,6 +15844,10 @@
       // Enable inline editing mode
       const formContainer = document.getElementById('quotationViewFormContainer');
       if (!formContainer) return;
+
+      // Switch modal to edit mode: red border + remove the dimmed-grey "view" treatment
+      const editModal = formContainer.closest('.qv-modal');
+      if (editModal) editModal.setAttribute('data-qv-mode', 'edit');
 
       // Enable all form fields
       const allInputs = formContainer.querySelectorAll('input, select, textarea');
