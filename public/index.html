@@ -509,8 +509,22 @@
       color:#9a9a9a !important;
       background-color:#f5f5f5 !important;
     }
-    /* Block all pointer interaction with the body content in view mode (popup not clickable) */
-    .qv-modal[data-qv-mode="view"] .modal-body{ pointer-events:none; }
+    /* View mode: keep the profile-image "Remove" button inert — greyed out, no hover, not clickable.
+       It becomes fully active again in edit mode (data-qv-mode="edit" drops this rule). */
+    .qv-modal[data-qv-mode="view"] .modal-body #removeProfileImageBtn{
+      color:#9a9a9a;
+      border-color:#9a9a9a;
+      pointer-events:none;
+      cursor:default;
+    }
+    /* View mode: the body must stay scrollable, so keep pointer events ON (wheel
+       scrolling needs them). Form fields are already disabled via JS, and the
+       file drop zones have no handlers attached in view mode, so nothing
+       unwanted is clickable. The drop zones are explicitly neutralized below as
+       a belt-and-suspenders guard. */
+    .qv-modal[data-qv-mode="view"] .modal-body{ pointer-events:auto; }
+    .qv-modal[data-qv-mode="view"] .modal-body #attachmentsDropZone,
+    .qv-modal[data-qv-mode="view"] .modal-body #profileImageDropZone{ pointer-events:none; }
 
     /* EDIT mode: red border, normal (non-dimmed) text */
     .qv-modal[data-qv-mode="edit"]{
@@ -14453,7 +14467,7 @@
     // Helper: format product details as email table rows
     function emailProductDetailsRows(productDetails) {
       const pd = (typeof productDetails === 'string') ? JSON.parse(productDetails || '{}') : (productDetails || {});
-      const labels = { material:'Material',size:'Size',printingMethod:'Printing Method',colorCount:'Color Count',edgeFinish:'Edge Finish',materialType:'Material Type',frontColor:'Front Color',backColor:'Back Color',transferType:'Transfer Type',application:'Application Method',thickness:'Thickness',colorMode:'Color Mode',backingType:'Backing Type',designComplexity:'Design Complexity',stitchType:'Stitch Type',borderType:'Border Type',threadColorCount:'Thread Color Count',productDescription:'Description',category:'Category',complexity:'Complexity' };
+      const labels = { material:'Material',size:'Size',printingMethod:'Printing Method',colorCount:'Color Count',edgeFinish:'Edge Finish',materialType:'Material Type',flatRaised:'Flat / Raised',ink:'Ink',raisedHeight:'Raised Height (mm)',frontColor:'Front Color',backColor:'Back Color',transferType:'Transfer Type',application:'Application Method',thickness:'Thickness',colorMode:'Color Mode',backingType:'Backing Type',designComplexity:'Design Complexity',stitchType:'Stitch Type',borderType:'Border Type',threadColorCount:'Thread Color Count',productDescription:'Description',category:'Category',complexity:'Complexity' };
       let rows = '';
       for (const [key, value] of Object.entries(pd)) {
         if (key.startsWith('_')) continue;
@@ -16119,6 +16133,10 @@
         }
         if (!quantity || quantity <= 0) {
           showModal({ title: 'Validation Error', body: 'Quantity must be greater than 0.' });
+          return;
+        }
+        // Printed Label: Raised Height required when Flat / Raised is "Raised"
+        if (editProductType === 'printed-label' && !validatePrintedLabelRaisedHeight(getField)) {
           return;
         }
 
@@ -17953,11 +17971,11 @@
               '</div>' +
               '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">' +
                 '<div>' +
-                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Height (mm)</label>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Height (mm, unfolded)</label>' +
                   '<input type="number" id="quotationHeightMm" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="e.g., 50" step="0.1" min="0" value="' + (quotation.height_mm || '') + '">' +
                 '</div>' +
                 '<div>' +
-                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Width (mm)</label>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Width (mm, unfolded)</label>' +
                   '<input type="number" id="quotationWidthMm" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="e.g., 30" step="0.1" min="0" value="' + (quotation.width_mm || '') + '">' +
                 '</div>' +
               '</div>' +
@@ -18115,11 +18133,11 @@
               '</div>' +
               '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">' +
                 '<div>' +
-                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Height (mm)</label>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Height (mm, unfolded)</label>' +
                   '<input type="number" id="quotationHeightMm" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="e.g., 50" step="0.1" min="0">' +
                 '</div>' +
                 '<div>' +
-                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Width (mm)</label>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Width (mm, unfolded)</label>' +
                   '<input type="number" id="quotationWidthMm" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="e.g., 30" step="0.1" min="0">' +
                 '</div>' +
               '</div>' +
@@ -18212,7 +18230,7 @@
       } else if (tagType === 'woven-label') {
         return { colorCount: el('quotationColorCount'), edgeFinish: el('quotationEdgeFinish') };
       } else if (tagType === 'printed-label') {
-        return { materialType: el('quotationMaterialType'), frontColor: el('quotationFrontColor'), backColor: el('quotationBackColor') };
+        return { materialType: el('quotationMaterialType'), flatRaised: el('quotationFlatRaised'), ink: el('quotationInk'), raisedHeight: el('quotationRaisedHeight'), frontColor: el('quotationFrontColor'), backColor: el('quotationBackColor') };
       } else if (tagType === 'heat-transfer') {
         return { transferType: el('quotationTransferType'), application: el('quotationApplication') };
       } else if (tagType === 'silicon-patch') {
@@ -18222,6 +18240,35 @@
       } else {
         return { productDescription: el('quotationProductDescription'), category: el('quotationCategory'), complexity: el('quotationComplexity') };
       }
+    }
+
+    // Printed Label: toggle Raised Height field state based on Flat / Raised selection.
+    // Flat (or empty) -> dimmed/disabled & cleared. Raised -> enabled & required.
+    window.togglePrintedLabelRaisedHeight = function() {
+      const container = (typeof getActiveQuotationContainer === 'function') ? getActiveQuotationContainer() : null;
+      const q = (id) => container ? container.querySelector('#' + id) : document.getElementById(id);
+      const select = q('quotationFlatRaised');
+      const input = q('quotationRaisedHeight');
+      if (!select || !input) return;
+      const isRaised = select.value === 'raised';
+      input.disabled = !isRaised;
+      input.style.backgroundColor = isRaised ? '#fff' : '#f5f5f5';
+      input.style.cursor = isRaised ? '' : 'not-allowed';
+      if (!isRaised) input.value = '';
+    };
+
+    // Printed Label: validate that Raised Height is filled when Flat / Raised is "Raised".
+    // Returns true if valid; otherwise shows a modal and returns false.
+    function validatePrintedLabelRaisedHeight(getField) {
+      const flatRaised = getField('quotationFlatRaised');
+      if (flatRaised && flatRaised.value === 'raised') {
+        const rh = getField('quotationRaisedHeight');
+        if (!rh || !rh.value || !rh.value.trim()) {
+          showModal({ title: 'Validation Error', body: 'Raised Height (mm) is required when Flat / Raised is set to Raised.' });
+          return false;
+        }
+      }
+      return true;
     }
 
     // Size ratio preview: renders a small proportional rectangle based on size input
@@ -18319,15 +18366,39 @@
           </div>
         `,
         'printed-label': `
-          <div style="margin-bottom:15px;">
-            <label style="display:block; margin-bottom:5px; font-weight:600;">Material Type</label>
-            <select id="quotationMaterialType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
-              <option value="">Select Material</option>
-              <option value="satin">Satin Tape</option>
-              <option value="cotton">Cotton Tape</option>
-              <option value="woven">Woven Fabric</option>
-              <option value="others">Others</option>
-            </select>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Material Type</label>
+              <select id="quotationMaterialType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
+                <option value="">Select Material</option>
+                <option value="satin">Satin Tape</option>
+                <option value="cotton">Cotton Tape</option>
+                <option value="woven">Woven Fabric</option>
+                <option value="others">Others</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Ink</label>
+              <select id="quotationInk" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
+                <option value="">Select...</option>
+                <option value="uv">UV</option>
+                <option value="silicon">Silicon</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Flat / Raised</label>
+              <select id="quotationFlatRaised" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" onchange="window.togglePrintedLabelRaisedHeight()">
+                <option value="">Select...</option>
+                <option value="flat">Flat</option>
+                <option value="raised">Raised</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Raised Height (mm)</label>
+              <input type="number" id="quotationRaisedHeight" disabled style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:#f5f5f5; cursor:not-allowed;" placeholder="e.g., 0.5" step="0.1" min="0">
+            </div>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
@@ -18543,15 +18614,39 @@
           </div>
         `,
         'printed-label': `
-          <div style="margin-bottom:15px;">
-            <label style="display:block; margin-bottom:5px; font-weight:600;">Material Type</label>
-            <select id="quotationMaterialType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
-              <option value="">Select Material</option>
-              <option value="satin" ${productDetails.materialType === 'satin' ? 'selected' : ''}>Satin Tape</option>
-              <option value="cotton" ${productDetails.materialType === 'cotton' ? 'selected' : ''}>Cotton Tape</option>
-              <option value="woven" ${productDetails.materialType === 'woven' ? 'selected' : ''}>Woven Fabric</option>
-              <option value="others" ${productDetails.materialType === 'others' ? 'selected' : ''}>Others</option>
-            </select>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Material Type</label>
+              <select id="quotationMaterialType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
+                <option value="">Select Material</option>
+                <option value="satin" ${productDetails.materialType === 'satin' ? 'selected' : ''}>Satin Tape</option>
+                <option value="cotton" ${productDetails.materialType === 'cotton' ? 'selected' : ''}>Cotton Tape</option>
+                <option value="woven" ${productDetails.materialType === 'woven' ? 'selected' : ''}>Woven Fabric</option>
+                <option value="others" ${productDetails.materialType === 'others' ? 'selected' : ''}>Others</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Ink</label>
+              <select id="quotationInk" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
+                <option value="" ${productDetails.ink === '' || !productDetails.ink ? 'selected' : ''}>Select...</option>
+                <option value="uv" ${productDetails.ink === 'uv' ? 'selected' : ''}>UV</option>
+                <option value="silicon" ${productDetails.ink === 'silicon' ? 'selected' : ''}>Silicon</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Flat / Raised</label>
+              <select id="quotationFlatRaised" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" onchange="window.togglePrintedLabelRaisedHeight()">
+                <option value="" ${productDetails.flatRaised === '' || !productDetails.flatRaised ? 'selected' : ''}>Select...</option>
+                <option value="flat" ${productDetails.flatRaised === 'flat' ? 'selected' : ''}>Flat</option>
+                <option value="raised" ${productDetails.flatRaised === 'raised' ? 'selected' : ''}>Raised</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:5px; font-weight:600;">Raised Height (mm)</label>
+              <input type="number" id="quotationRaisedHeight" ${productDetails.flatRaised === 'raised' ? '' : 'disabled'} style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:${productDetails.flatRaised === 'raised' ? '#fff' : '#f5f5f5'}; cursor:${productDetails.flatRaised === 'raised' ? '' : 'not-allowed'};" placeholder="e.g., 0.5" step="0.1" min="0" value="${productDetails.raisedHeight || ''}">
+            </div>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
@@ -19080,10 +19175,15 @@
         setSelectRandom(getField('quotationEdgeFinish'));
       } else if (currentType === 'printed-label') {
         setSelectRandom(getField('quotationMaterialType'));
+        setSelectRandom(getField('quotationFlatRaised'));
+        setSelectRandom(getField('quotationInk'));
+        if (typeof window.togglePrintedLabelRaisedHeight === 'function') window.togglePrintedLabelRaisedHeight();
         const frontColorField = getField('quotationFrontColor');
         if (frontColorField) frontColorField.value = Math.floor(Math.random() * 8) + 1;
         const backColorField = getField('quotationBackColor');
         if (backColorField) backColorField.value = Math.floor(Math.random() * 4) + 1;
+        const raisedHeightField = getField('quotationRaisedHeight');
+        if (raisedHeightField && !raisedHeightField.disabled) raisedHeightField.value = (Math.floor(Math.random() * 5) + 1) * 0.5;
       } else if (currentType === 'heat-transfer') {
         setSelectRandom(getField('quotationTransferType'));
         setSelectRandom(getField('quotationApplication'));
@@ -19332,6 +19432,10 @@
         }
         if (!quantity || quantity <= 0) {
           showModal({ title: 'Validation Error', body: 'Quantity must be greater than 0.' });
+          return;
+        }
+        // Printed Label: Raised Height required when Flat / Raised is "Raised"
+        if (tagType === 'printed-label' && !validatePrintedLabelRaisedHeight(getField)) {
           return;
         }
 
@@ -21472,7 +21576,7 @@
 
     const EXPORT_COLUMNS = [
       'Seq#', 'Customer Name', 'Item Name', 'Contact Person', 'Email', 'Phone',
-      'Brand', 'Product Type', 'Quantity', 'Total (HKD)', 'Height (mm)', 'Width (mm)',
+      'Brand', 'Product Type', 'Quantity', 'Total (HKD)', 'Height (mm, unfolded)', 'Width (mm, unfolded)',
       'Type', 'Status', 'Date Created', 'Sample Ready Date'
     ];
 
@@ -21494,8 +21598,8 @@
         'Product Type': getEffectiveProductTypeDisplay(q),
         'Quantity': q.quantity,
         'Total (HKD)': q.total,
-        'Height (mm)': q.height_mm || '',
-        'Width (mm)': q.width_mm || '',
+        'Height (mm, unfolded)': q.height_mm || '',
+        'Width (mm, unfolded)': q.width_mm || '',
         'Type': q.type || 'non email',
         'Status': q.status || 'draft',
         'Date Created': new Date(q.dateCreated).toLocaleString(),
