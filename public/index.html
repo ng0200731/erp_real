@@ -13601,9 +13601,20 @@
     }
 
     // Display outsourcing quotations (only 'other' type)
+    // Render lock — prevents concurrent renders from duplicate input/change events
+    // on <select> filters. When both events fire simultaneously, the second render
+    // is deferred; if the filter state changed, it re-runs after the first completes.
+    let _outsourcingRenderInProgress = false;
+    let _outsourcingRenderPending = false;
     async function displayOutsourcingQuotations() {
-      console.log('displayOutsourcingQuotations called');
-      await loadBrandsCache();
+      if (_outsourcingRenderInProgress) {
+        _outsourcingRenderPending = true;
+        return;
+      }
+      _outsourcingRenderInProgress = true;
+      try {
+        console.log('displayOutsourcingQuotations called');
+        await loadBrandsCache();
       const tbody = document.getElementById('outsourcingTableBody');
 
       // Load only 'other' type quotations from separate API endpoint
@@ -13905,6 +13916,15 @@
 
       tbody.innerHTML = rows.join('');
       renderQuotationQrThumbnails();
+      } finally {
+        _outsourcingRenderInProgress = false;
+        // If another render was requested while this one ran, re-run it so the
+        // latest filter/header state wins (prevents stale full-list overwrites).
+        if (_outsourcingRenderPending) {
+          _outsourcingRenderPending = false;
+          await displayOutsourcingQuotations();
+        }
+      }
     }
 
     // Handle rejection - increment resubmit count and set status to ordinal resubmit string
