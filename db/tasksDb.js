@@ -129,7 +129,8 @@ async function ensureSchema(db) {
       quotationSeq TEXT,
       height_mm REAL,
       width_mm REAL,
-      markupPercent REAL DEFAULT 0
+      markupPercent REAL DEFAULT 0,
+      variable TEXT DEFAULT 'NO'
     );
 
     CREATE TABLE IF NOT EXISTS skills (
@@ -578,6 +579,14 @@ async function ensureSchema(db) {
     }
   }
 
+  try {
+    await db.exec(`ALTER TABLE quotations ADD COLUMN variable TEXT DEFAULT 'NO';`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding variable column:', err);
+    }
+  }
+
   // === Guarantee the quotations schema is complete before serving requests ===
   // The columns above are added via migrations; if one failed to apply to an
   // existing DB (e.g. a stale server process), UPDATE would throw
@@ -603,6 +612,7 @@ async function ensureSchema(db) {
       ['profileImagePath', 'TEXT'],
       ['attachmentPaths', 'TEXT'],
       ['dateCreated', "TEXT NOT NULL DEFAULT ''"],
+      ['dateRevised', 'TEXT'],
       ['status', "TEXT NOT NULL DEFAULT 'draft'"],
       ['resendCount', 'INTEGER DEFAULT 0'],
       ['outsourcingSeq', 'TEXT'],
@@ -618,7 +628,8 @@ async function ensureSchema(db) {
       ['quotationSeq', 'TEXT'],
       ['height_mm', 'REAL'],
       ['width_mm', 'REAL'],
-      ['markupPercent', 'REAL DEFAULT 0']
+      ['markupPercent', 'REAL DEFAULT 0'],
+      ['variable', "TEXT DEFAULT 'NO'"]
     ];
     const cols = await db.all(`PRAGMA table_info(quotations);`);
     const present = new Set(cols.map(c => c.name.toLowerCase()));
@@ -1254,8 +1265,8 @@ export async function createQuotation(quotationData) {
 
   const result = await db.run(
     `
-      INSERT INTO quotations (customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, outsourcingSeq, quotationSeq, brandId, customerItemName, height_mm, width_mm)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO quotations (customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, outsourcingSeq, quotationSeq, brandId, customerItemName, height_mm, width_mm, variable)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       quotationData.customerName,
@@ -1281,7 +1292,8 @@ export async function createQuotation(quotationData) {
       quotationData.brandId || null,
       quotationData.customerItemName || null,
       quotationData.height_mm || null,
-      quotationData.width_mm || null
+      quotationData.width_mm || null,
+      quotationData.variable || 'NO'
     ]
   );
 
@@ -1292,7 +1304,7 @@ export async function getQuotationById(id) {
   const db = await getTasksDb();
   // Exclude profileImageBlob from general queries to avoid transferring large BLOB data
   const quotation = await db.get(
-    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, height_mm, width_mm, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations WHERE id = ?`,
+    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, dateRevised, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, height_mm, width_mm, variable, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations WHERE id = ?`,
     [id]
   );
 
@@ -1308,7 +1320,7 @@ export async function getAllQuotations() {
   const db = await getTasksDb();
   // Exclude profileImageBlob from general queries to avoid transferring large BLOB data
   const quotations = await db.all(
-    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, height_mm, width_mm, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations ORDER BY dateCreated DESC`
+    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, dateRevised, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, height_mm, width_mm, variable, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations ORDER BY dateCreated DESC`
   );
 
   // Parse JSON fields
@@ -1322,11 +1334,12 @@ export async function getAllQuotations() {
 
 export async function updateQuotation(id, quotationData) {
   const db = await getTasksDb();
+  const now = new Date().toISOString();
 
   await db.run(
     `
       UPDATE quotations
-      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?, outsourcingSeq = ?, quotationSeq = ?, selectedSupplierId = ?, selectedSupplierResponseId = ?, sampleReadyDate = ?, brandId = ?, customerItemName = ?, chaseSampleCount = ?, resubmitCount = ?, height_mm = ?, width_mm = ?
+      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?, outsourcingSeq = ?, quotationSeq = ?, selectedSupplierId = ?, selectedSupplierResponseId = ?, sampleReadyDate = ?, brandId = ?, customerItemName = ?, chaseSampleCount = ?, resubmitCount = ?, height_mm = ?, width_mm = ?, variable = ?, dateRevised = ?
       WHERE id = ?
     `,
     [
@@ -1359,6 +1372,8 @@ export async function updateQuotation(id, quotationData) {
       quotationData.resubmitCount || 0,
       quotationData.height_mm !== undefined ? quotationData.height_mm : null,
       quotationData.width_mm !== undefined ? quotationData.width_mm : null,
+      quotationData.variable || 'NO',
+      now,
       id
     ]
   );

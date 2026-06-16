@@ -2434,6 +2434,9 @@
                   <input type="text" id="quotationFilterDate" class="filter-input" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
+                  <div>Date Revised</div>
+                </th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Action</div>
                   <select id="quotationFilterAction" class="filter-input" style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
                     <option value="">All Actions</option>
@@ -2463,7 +2466,7 @@
             </thead>
             <tbody id="quotationsTableBody">
               <tr>
-                <td colspan="20" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+                <td colspan="21" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
                   No quotations saved yet. Create quotations first.
                 </td>
               </tr>
@@ -2569,6 +2572,9 @@
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Date Created</div>
                   <input type="text" id="outsourcingFilterDate" class="filter-input" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
+                </th>
+                <th style="border:1px solid #000; padding:8px; text-align:left;">
+                  <div>Date Revised</div>
                 </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Sample Ready Date</div>
@@ -13726,8 +13732,10 @@
         }
       }
 
-      // 3. Fetch attachments as base64 (sent as email attachments)
+      // 3. Fetch attachments as base64 (sent as email attachments). Capture name + size
+      //    for the in-body attachment reminder shown in the email and PDF.
       let attachments = [];
+      const attachmentList = [];
       if (Array.isArray(quotation.attachmentPaths) && quotation.attachmentPaths.length > 0) {
         for (const attPath of quotation.attachmentPaths) {
           try {
@@ -13739,11 +13747,13 @@
                 reader.onloadend = () => resolve(reader.result.split(',')[1]);
                 reader.readAsDataURL(blob);
               });
+              const filename = String(attPath).split('/').pop();
               attachments.push({
-                filename: String(attPath).split('/').pop(),
+                filename,
                 content: base64,
                 contentType: blob.type || 'application/octet-stream'
               });
+              attachmentList.push({ filename, sizeBytes: blob.size });
             }
           } catch (e) {
             console.warn('Failed to fetch attachment for batch email:', attPath, e);
@@ -13751,13 +13761,21 @@
         }
       }
 
-      // 4. Generate HTML email body (reuse existing template, no threading)
-      const emailHtml = generateQuotationEmailHtml(quotation, null, null, profileImageBase64);
+      // 4. Generate a QR code encoding the quotation reference (for the top-right corner).
+      //    type = 'outsourcing' for outsource quotations, else 'quotation' (matches QR scanner).
+      const isOutsource = quotation.productType === 'other' || quotation.productType === 'outsource';
+      const qrType = isOutsource ? 'outsourcing' : 'quotation';
+      const qrText = JSON.stringify({ type: qrType, id: quotation.id });
+      const qrBase64 = await generateQrCodeBase64(qrText, 160);
+      const osRef = quotation.outsourcingSeq || quotation.quotationSeq || '';
 
-      // 5. Generate an A4 PDF of the full quotation card and attach it
-      const pdfBase64 = await generateQuotationPdfBase64(quotation, profileImageBase64);
+      // 5. Generate HTML email body (reuse existing template, no threading)
+      const emailHtml = generateQuotationEmailHtml(quotation, null, null, profileImageBase64, qrBase64, osRef, attachmentList);
+
+      // 6. Generate an A4 PDF of the full quotation card and attach it
+      const pdfBase64 = await generateQuotationPdfBase64(quotation, profileImageBase64, qrBase64, osRef, attachmentList);
       if (pdfBase64) {
-        const seqPart = quotation.quotationSeq || quotation.id;
+        const seqPart = osRef || quotation.id;
         const safeName = String(quotation.customerName || 'Customer').replace(/[^\w\-]+/g, '_');
         attachments.unshift({
           filename: `Quotation-${safeName}-${seqPart}.pdf`,
@@ -13768,11 +13786,13 @@
         console.warn(`PDF generation failed for quotation #${quotationId}; sending without PDF attachment.`);
       }
 
-      // 6. Per-row subject
+      // 7. Per-row subject (includes OS reference)
       const productTypeName = quotation.productType || 'Product';
-      const emailSubject = `Quotation - ${quotation.customerName || 'Customer'} - ${productTypeName}`;
+      const emailSubject = osRef
+        ? `Quotation - ${quotation.customerName || 'Customer'} - ${productTypeName} - ${osRef}`
+        : `Quotation - ${quotation.customerName || 'Customer'} - ${productTypeName}`;
 
-      // 7. Send via API (with BCC)
+      // 8. Send via API (with BCC)
       const emailData = {
         to: recipientEmail,
         bcc: 'eric.brilliant@gmail.com',
@@ -13833,39 +13853,142 @@
       });
     }
 
+    // Format a byte count as a human-readable file size string.
+    function formatFileSize(bytes) {
+      if (!bytes || bytes < 0) return '0 B';
+      const units = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+      return `${parseFloat((bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1))} ${units[i]}`;
+    }
+
+    // Render a QR code to a base64 PNG data URL. qrText is the string to encode.
+    async function generateQrCodeBase64(qrText, sizePx = 160) {
+      try {
+        await loadQrcodeLib();
+        if (!window.QRCode) return null;
+        const div = document.createElement('div');
+        div.style.cssText = 'position:absolute; left:-9999px; top:-9999px;';
+        document.body.appendChild(div);
+        new QRCode(div, { text: qrText, width: sizePx, height: sizePx, colorDark: '#000000', colorLight: '#ffffff', correctLevel: window.QRCode.CorrectLevel.M });
+        // qrcodejs renders asynchronously (canvas + img); give it a tick
+        await new Promise(r => setTimeout(r, 150));
+        let dataUrl = null;
+        const canvas = div.querySelector('canvas');
+        const img = div.querySelector('img');
+        if (canvas) {
+          dataUrl = canvas.toDataURL('image/png');
+        } else if (img && img.src) {
+          dataUrl = img.src.startsWith('data:') ? img.src : await (async () => {
+            const resp = await fetch(img.src);
+            const blob = await resp.blob();
+            return await new Promise(resolve => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.readAsDataURL(blob);
+            });
+          })();
+        }
+        document.body.removeChild(div);
+        return dataUrl;
+      } catch (e) {
+        console.warn('Failed to generate QR code:', e);
+        return null;
+      }
+    }
+
     // Generate an A4 PDF of the full quotation card (same content as the email body).
     // profileImageBase64 is a full data URL (data:image/...;base64,...).
     // Returns base64 PDF string (no data: prefix), or null on failure.
-    async function generateQuotationPdfBase64(quotation, profileImageBase64) {
+    async function generateQuotationPdfBase64(quotation, profileImageBase64, qrBase64 = null, osRef = '', attachmentList = []) {
       try {
         const { jsPDF } = await loadJsPdfLib();
         const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
         const productTypeName = emailProductTypeDisplay(quotation.productType, productDetails);
         const brandName = (typeof getBrandName === 'function' ? getBrandName(quotation.brandId) : '') || 'N/A';
+        const fmtDate = (ds) => ds ? new Date(ds).toLocaleString() : '-';
 
         const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
         const pageWidth = doc.internal.pageSize.getWidth();
-        const margin = 15;
+        const margin = 10;
         let y = margin;
 
-        // Title bar
+        // QR code in the top-right corner (encodes the quotation/outsource reference).
+        // Drawn first so the title bar can be narrowed to sit beside it.
+        const qrSize = 18;
+        const qrGap = 3;
+        let qrBottom = margin;
+        if (qrBase64) {
+          try {
+            const qrX = pageWidth - margin - qrSize;
+            // white backing so the QR scans cleanly
+            doc.setFillColor(255, 255, 255);
+            doc.setDrawColor(204, 204, 204);
+            doc.rect(qrX - 1, margin - 1, qrSize + 2, qrSize + 2, 'FD');
+            doc.addImage(qrBase64.split(',')[1], 'PNG', qrX, margin, qrSize, qrSize);
+            qrBottom = margin + qrSize;
+            if (osRef) {
+              doc.setFont(undefined, 'bold');
+              doc.setFontSize(7);
+              doc.setTextColor(0, 0, 0);
+              doc.text(osRef, qrX + qrSize / 2, qrBottom + 3, { align: 'center' });
+              qrBottom += 4.5;
+            }
+          } catch (e) {
+            console.warn('Failed to add QR to PDF:', e);
+          }
+        }
+
+        // Title bar — narrowed when a QR occupies the top-right
+        const titleBarH = 12;
+        const titleBarWidth = qrBase64 ? (pageWidth - margin * 2 - qrSize - qrGap) : (pageWidth - margin * 2);
         doc.setFillColor(0, 0, 0);
-        doc.rect(margin, y, pageWidth - margin * 2, 16, 'F');
+        doc.rect(margin, y, titleBarWidth, titleBarH, 'F');
         doc.setTextColor(255, 255, 255);
         doc.setFont(undefined, 'bold');
-        doc.setFontSize(16);
-        doc.text('QUOTATION', pageWidth / 2, y + 7, { align: 'center' });
+        doc.setFontSize(13);
+        doc.text('QUOTATION', margin + titleBarWidth / 2, y + 5, { align: 'center' });
         doc.setFont(undefined, 'normal');
-        doc.setFontSize(11);
-        doc.text(productTypeName, pageWidth / 2, y + 13, { align: 'center' });
-        y += 16 + 8;
+        doc.setFontSize(9);
+        doc.text(productTypeName, margin + titleBarWidth / 2, y + 9.5, { align: 'center' });
+        y = Math.max(margin + titleBarH, qrBottom) + 4;
         doc.setTextColor(51, 51, 51);
 
-        // Profile image (proportional, fit in a 45x45 mm box, centered)
+        // Metadata band — just under the header: OS reference + dates
+        doc.autoTable({
+          startY: y,
+          theme: 'grid',
+          body: [[
+            osRef ? `Ref: ${osRef}` : '-',
+            `Date Created: ${fmtDate(quotation.dateCreated)}`,
+            `Date Revised: ${fmtDate(quotation.dateRevised)}`
+          ]],
+          styles: { fontSize: 7, cellPadding: 1.3, textColor: [0, 0, 0], fillColor: [245, 245, 245] },
+          margin: { left: margin, right: margin },
+        });
+        y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 3;
+
+        // Attachment reminder — names + sizes (just above the product profile image)
+        const attArr = Array.isArray(attachmentList) ? attachmentList : [];
+        const attSummary = attArr.length > 0
+          ? `Attachments (${attArr.length}): ` + attArr.map(a => `${a.filename} (${formatFileSize(a.sizeBytes)})`).join(', ')
+          : 'Attachments: No additional attachments (a PDF copy of this quotation is attached).';
+        doc.setFillColor(255, 248, 225);
+        doc.setDrawColor(255, 224, 130);
+        const reminderWrap = doc.splitTextToSize(attSummary, pageWidth - margin * 2 - 6);
+        const reminderH = reminderWrap.length * 3.2 + 3;
+        doc.rect(margin, y, pageWidth - margin * 2, reminderH, 'FD');
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(93, 64, 55);
+        doc.text(reminderWrap, margin + 3, y + 4);
+        y += reminderH + 3;
+        doc.setTextColor(51, 51, 51);
+
+        // Profile image (proportional, fit in a 30x30 mm box, centered)
         if (profileImageBase64) {
           try {
             const dims = await getImageDimensions(profileImageBase64);
-            const maxBox = 45;
+            const maxBox = 30;
             let imgW = maxBox, imgH = maxBox;
             if (dims && dims.width > 0 && dims.height > 0) {
               const scale = Math.min(maxBox / dims.width, maxBox / dims.height);
@@ -13876,7 +13999,7 @@
             const ext = (mimeType.split('/')[1] || 'jpeg').toUpperCase();
             const imgB64 = profileImageBase64.split(',')[1];
             doc.addImage(imgB64, ext, (pageWidth - imgW) / 2, y, imgW, imgH, undefined, 'FAST');
-            y += imgH + 6;
+            y += imgH + 3;
           } catch (e) {
             console.warn('Failed to add profile image to PDF:', e);
           }
@@ -13885,26 +14008,26 @@
         // Render a section heading + a 2-column (label|value) table.
         const renderSection = (title, rows) => {
           doc.setFont(undefined, 'bold');
-          doc.setFontSize(12);
+          doc.setFontSize(9);
           doc.setTextColor(0, 0, 0);
           doc.text(title, margin, y);
-          y += 2;
+          y += 1.5;
           doc.setDrawColor(0, 0, 0);
           doc.line(margin, y, pageWidth - margin, y);
-          y += 3;
+          y += 2;
           doc.autoTable({
             startY: y,
             theme: 'grid',
             body: rows,
-            styles: { fontSize: 9, cellPadding: 2, textColor: [51, 51, 51], overflow: 'linebreak' },
-            columnStyles: { 0: { fontStyle: 'bold', cellWidth: 60, fillColor: [245, 245, 245] }, 1: { cellWidth: pageWidth - margin * 2 - 60 } },
+            styles: { fontSize: 7.5, cellPadding: 1.3, textColor: [51, 51, 51], overflow: 'linebreak' },
+            columnStyles: { 0: { fontStyle: 'bold', cellWidth: 45, fillColor: [245, 245, 245] }, 1: { cellWidth: pageWidth - margin * 2 - 45 } },
             margin: { left: margin, right: margin },
           });
-          y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 4;
+          y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 2.5;
         };
 
         // Product Information
-        renderSection('Product Information', [['Product Type', productTypeName]]);
+        renderSection('Product Information', [['Product Type', productTypeName], ['Variable', quotation.variable === 'YES' ? 'YES' : 'NO']]);
 
         // Customer Information
         renderSection('Customer Information', [
@@ -13937,21 +14060,21 @@
         // Additional Notes (single full-width cell)
         if (quotation.notes) {
           doc.setFont(undefined, 'bold');
-          doc.setFontSize(12);
+          doc.setFontSize(9);
           doc.setTextColor(0, 0, 0);
           doc.text('Additional Notes', margin, y);
-          y += 2;
+          y += 1.5;
           doc.setDrawColor(0, 0, 0);
           doc.line(margin, y, pageWidth - margin, y);
-          y += 3;
+          y += 2;
           doc.autoTable({
             startY: y,
             theme: 'grid',
             body: [[String(quotation.notes)]],
-            styles: { fontSize: 9, cellPadding: 2, textColor: [51, 51, 51], overflow: 'linebreak' },
+            styles: { fontSize: 7.5, cellPadding: 1.3, textColor: [51, 51, 51], overflow: 'linebreak' },
             margin: { left: margin, right: margin },
           });
-          y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 4;
+          y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 2.5;
         }
 
         // Output as base64 (strip the "data:application/pdf;...;base64," prefix)
@@ -14031,7 +14154,7 @@
       if (quotations.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="21" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="22" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No outsourcing quotations saved yet. Create outsourcing quotations first.
             </td>
           </tr>
@@ -14045,7 +14168,7 @@
       if (filteredQuotations.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="21" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="22" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No outsourcing quotations match the current filters.
             </td>
           </tr>
@@ -14214,6 +14337,7 @@
               <td style="border:1px solid #000; padding:8px;">${quotation.type || 'non email'}</td>
               <td style="border:1px solid #000; padding:8px;">${quotation.status || 'pending'}</td>
               <td style="border:1px solid #000; padding:8px;">${formatDate(quotation.dateCreated)}</td>
+              <td style="border:1px solid #000; padding:8px;">${quotation.dateRevised ? formatDate(quotation.dateRevised) : '<span style="color:#ccc;">-</span>'}</td>
               <td style="border:1px solid #000; padding:8px;">${quotation.sampleReadyDate || '-'}</td>
               <td style="border:1px solid #000; padding:8px; color:#999;">No supplier</td>
               <td style="border:1px solid #000; padding:8px; text-align:center;">
@@ -14260,6 +14384,7 @@
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.type || 'non email'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.status || 'pending'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${formatDate(quotation.dateCreated)}</td>
+                  <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.dateRevised ? formatDate(quotation.dateRevised) : '<span style="color:#ccc;">-</span>'}</td>
                   <td style="border:1px solid #000; padding:8px;" rowspan="${suppliers.length}">${quotation.sampleReadyDate || '-'}</td>
                   <td style="border:1px solid #000; padding:8px;">
                     <strong>${supplier.companyName}</strong><br>
@@ -14850,6 +14975,7 @@
       raisedHeight: 'Raised Height (mm)',
       frontColor: 'Front Color',
       backColor: 'Back Color',
+      folding: 'Folding',
       transferType: 'Transfer Type',
       application: 'Application Method',
       thickness: 'Thickness',
@@ -14891,6 +15017,7 @@
       materialType: { satin: 'Satin Tape', cotton: 'Cotton Tape', woven: 'Woven Fabric', others: 'Others' },
       flatRaised: { flat: 'Flat', raised: 'Raised' },
       ink: { uv: 'UV', silicon: 'Silicon' },
+      folding: { 'end-fold': 'End Fold', 'loop-fold': 'Loop Fold', 'manhattan-fold': 'Manhattan Fold', 'mitre-fold': 'Mitre Fold', 'straight-cut': 'Straight Cut' },
       transferType: {
         'screen-print': 'Screen Print Transfer',
         'digital-print': 'Digital Print Transfer',
@@ -15795,7 +15922,7 @@
       if (quotations.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="20" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="21" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No quotations saved yet. Create quotations first.
             </td>
           </tr>
@@ -15809,7 +15936,7 @@
       if (filteredQuotations.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="20" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="21" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No quotations match the current filters.
             </td>
           </tr>
@@ -15902,6 +16029,7 @@
           <td style="border:1px solid #000; padding:8px;">${quotation.type || 'non email'}</td>
           <td style="border:1px solid #000; padding:8px;">${quotation.status || 'draft'}</td>
           <td style="border:1px solid #000; padding:8px;">${formatDate(quotation.dateCreated)}</td>
+          <td style="border:1px solid #000; padding:8px;">${quotation.dateRevised ? formatDate(quotation.dateRevised) : '<span style="color:#ccc;">-</span>'}</td>
           <td style="border:1px solid #000; padding:8px; text-align:center;">${getActionButton(quotation)}</td>
           <td style="border:1px solid #000; padding:8px; text-align:center;">
             <button class="page-btn" style="padding:4px 8px; font-size:12px; background:#dc3545; color:#fff;" onclick="event.stopPropagation(); deleteQuotation(${quotation.id})">Delete</button>
@@ -16620,6 +16748,7 @@
         const customerItemName = getField('quotationCustomerItemName')?.value?.trim() || null;
         const heightMm = getField('quotationHeightMm')?.value || null;
         const widthMm = getField('quotationWidthMm')?.value || null;
+        const variable = getField('quotationVariable')?.value || 'NO';
 
         // Validation
         if (!customerName) {
@@ -16664,7 +16793,8 @@
           brandId,
           customerItemName,
           height_mm: heightMm ? parseFloat(heightMm) : null,
-          width_mm: widthMm ? parseFloat(widthMm) : null
+          width_mm: widthMm ? parseFloat(widthMm) : null,
+          variable
         };
 
         console.log('Updated quotation:', updatedQuotation);
@@ -18420,10 +18550,17 @@
           '<form id="quotationForm">' +
             '<div style="margin-bottom:20px;">' +
               '<h4>Product Information</h4>' +
-              '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">' +
+              '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-bottom:15px;">' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Product Type *</label>' +
                   '<input type="text" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:#f5f5f5;" value="' + displayProductType + '" readonly>' +
+                '</div>' +
+                '<div>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Variable</label>' +
+                  '<select id="quotationVariable" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">' +
+                    '<option value="NO"' + (quotation.variable !== 'YES' ? ' selected' : '') + '>NO</option>' +
+                    '<option value="YES"' + (quotation.variable === 'YES' ? ' selected' : '') + '>YES</option>' +
+                  '</select>' +
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;"># Submit</label>' +
@@ -18630,9 +18767,18 @@
 
             '<div style="margin-bottom:20px;">' +
               '<h4>Product Specifications</h4>' +
-              '<div style="margin-bottom:15px;">' +
-                '<label style="display:block; margin-bottom:5px; font-weight:600;">Product Type *</label>' +
-                getProductTypeSelectHtml(tagType) +
+              '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">' +
+                '<div>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Product Type *</label>' +
+                  getProductTypeSelectHtml(tagType) +
+                '</div>' +
+                '<div>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Variable</label>' +
+                  '<select id="quotationVariable" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">' +
+                    '<option value="NO" selected>NO</option>' +
+                    '<option value="YES">YES</option>' +
+                  '</select>' +
+                '</div>' +
               '</div>' +
               '<div style="margin-bottom:15px;">' +
                 '<label style="display:block; margin-bottom:5px; font-weight:600;">Customer Item Name</label>' +
@@ -18737,7 +18883,7 @@
       } else if (tagType === 'woven-label') {
         return { colorCount: el('quotationColorCount'), edgeFinish: el('quotationEdgeFinish'), remark: el('quotationRemark') };
       } else if (tagType === 'printed-label') {
-        return { materialType: el('quotationMaterialType'), flatRaised: el('quotationFlatRaised'), ink: el('quotationInk'), raisedHeight: el('quotationRaisedHeight'), frontColor: el('quotationFrontColor'), backColor: el('quotationBackColor'), remark: el('quotationRemark') };
+        return { materialType: el('quotationMaterialType'), flatRaised: el('quotationFlatRaised'), ink: el('quotationInk'), raisedHeight: el('quotationRaisedHeight'), folding: el('quotationFolding'), frontColor: el('quotationFrontColor'), backColor: el('quotationBackColor'), remark: el('quotationRemark') };
       } else if (tagType === 'heat-transfer') {
         return { transferType: el('quotationTransferType'), application: el('quotationApplication'), remark: el('quotationRemark') };
       } else if (tagType === 'silicon-patch') {
@@ -18927,6 +19073,17 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Raised Height (mm)</label>
               <input type="number" id="quotationRaisedHeight" disabled style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:#f5f5f5; cursor:not-allowed;" placeholder="e.g., 0.5" step="0.1" min="0">
             </div>
+          </div>
+          <div style="margin-bottom:15px;">
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Folding</label>
+            <select id="quotationFolding" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
+              <option value="">Select...</option>
+              <option value="end-fold">End Fold</option>
+              <option value="loop-fold">Loop Fold</option>
+              <option value="manhattan-fold">Manhattan Fold</option>
+              <option value="mitre-fold">Mitre Fold</option>
+              <option value="straight-cut">Straight Cut</option>
+            </select>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
@@ -19258,6 +19415,17 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Raised Height (mm)</label>
               <input type="number" id="quotationRaisedHeight" ${productDetails.flatRaised === 'raised' ? '' : 'disabled'} style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:${productDetails.flatRaised === 'raised' ? '#fff' : '#f5f5f5'}; cursor:${productDetails.flatRaised === 'raised' ? '' : 'not-allowed'};" placeholder="e.g., 0.5" step="0.1" min="0" value="${productDetails.raisedHeight || ''}">
             </div>
+          </div>
+          <div style="margin-bottom:15px;">
+            <label style="display:block; margin-bottom:5px; font-weight:600;">Folding</label>
+            <select id="quotationFolding" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
+              <option value="" ${!productDetails.folding ? 'selected' : ''}>Select...</option>
+              <option value="end-fold" ${productDetails.folding === 'end-fold' ? 'selected' : ''}>End Fold</option>
+              <option value="loop-fold" ${productDetails.folding === 'loop-fold' ? 'selected' : ''}>Loop Fold</option>
+              <option value="manhattan-fold" ${productDetails.folding === 'manhattan-fold' ? 'selected' : ''}>Manhattan Fold</option>
+              <option value="mitre-fold" ${productDetails.folding === 'mitre-fold' ? 'selected' : ''}>Mitre Fold</option>
+              <option value="straight-cut" ${productDetails.folding === 'straight-cut' ? 'selected' : ''}>Straight Cut</option>
+            </select>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
             <div>
@@ -19826,6 +19994,9 @@
         brandIdField.value = randomBrand.id;
       }
 
+      // === Variable (YES / NO) ===
+      setSelectRandom(getField('quotationVariable'));
+
       // === Customer Item Name ===
       const customerItemNameField = getField('quotationCustomerItemName');
       if (customerItemNameField) {
@@ -19863,6 +20034,7 @@
         setSelectRandom(getField('quotationMaterialType'));
         setSelectRandom(getField('quotationFlatRaised'));
         setSelectRandom(getField('quotationInk'));
+        setSelectRandom(getField('quotationFolding'));
         if (typeof window.togglePrintedLabelRaisedHeight === 'function') window.togglePrintedLabelRaisedHeight();
         const frontColorField = getField('quotationFrontColor');
         if (frontColorField) frontColorField.value = Math.floor(Math.random() * 8) + 1;
@@ -20105,6 +20277,7 @@
         const customerItemName = getField('quotationCustomerItemName')?.value?.trim() || null;
         const heightMm = getField('quotationHeightMm')?.value || null;
         const widthMm = getField('quotationWidthMm')?.value || null;
+        const variable = getField('quotationVariable')?.value || 'NO';
 
         console.log('Saving quotation with data:', {
           customerName, contactPerson, email, phone, quantity, unitPrice, total, notes, tagType, source,
@@ -20153,6 +20326,7 @@
           customerItemName,
           height_mm: heightMm ? parseFloat(heightMm) : null,
           width_mm: widthMm ? parseFloat(widthMm) : null,
+          variable,
           type: source,
           sourceEmailUid: (source === 'email' && window.currentQuotationEmailMeta) ? window.currentQuotationEmailMeta.uid : null,
           sourceEmailSubject: (source === 'email' && window.currentQuotationEmailMeta) ? window.currentQuotationEmailMeta.subject : null,
@@ -20615,9 +20789,42 @@
     }
 
     // Generate HTML email content for quotation
-    function generateQuotationEmailHtml(quotation, emailMeta, originalEmailHtml, profileImageBase64 = null) {
+    function generateQuotationEmailHtml(quotation, emailMeta, originalEmailHtml, profileImageBase64 = null, qrBase64 = null, osRef = '', attachmentList = []) {
       const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
       const productTypeName = emailProductTypeDisplay(quotation.productType, productDetails);
+
+      const fmtDate = (ds) => ds ? new Date(ds).toLocaleString() : '';
+
+      // QR code for the top-right corner (encodes the quotation/outsource reference)
+      const qrCellHtml = qrBase64 ? `
+        <td width="100" valign="top" style="background:#fff; border:1px solid #ccc; text-align:center; padding:6px;">
+          <img src="${qrBase64}" width="84" height="84" style="width:84px; height:84px; display:block; margin:0 auto;" alt="QR Code">
+          ${osRef ? `<div style="font-size:11px; color:#000; font-weight:bold; margin-top:4px;">${osRef}</div>` : ''}
+        </td>` : '';
+
+      // Metadata band — just under the header: OS reference + date created + date revised
+      const metaBandHtml = `
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;">
+          <tr>
+            <td style="background:#f5f5f5; border:1px solid #ccc; padding:8px; font-size:12px;">
+              ${osRef ? `<strong style="color:#000;">Ref:</strong> <span style="color:#000;">${osRef}</span> &nbsp;|&nbsp; ` : ''}
+              <strong style="color:#000;">Date Created:</strong> <span style="color:#000;">${fmtDate(quotation.dateCreated) || '-'}</span> &nbsp;|&nbsp;
+              <strong style="color:#000;">Date Revised:</strong> <span style="color:#000;">${fmtDate(quotation.dateRevised) || '-'}</span>
+            </td>
+          </tr>
+        </table>`;
+
+      // Attachment reminder — shown just above the product profile image.
+      // Reminds the recipient that files are attached, with count, names, and sizes.
+      const attItems = (Array.isArray(attachmentList) ? attachmentList : [])
+        .map(a => `${a.filename} (${formatFileSize(a.sizeBytes)})`).join(', ');
+      const attachmentReminderHtml = (Array.isArray(attachmentList) && attachmentList.length > 0)
+        ? `<div style="margin-bottom:10px; padding:8px 10px; background:#fff8e1; border:1px solid #ffe082; font-size:12px; color:#5d4037;">
+             <strong>📎 Attachments (${attachmentList.length}):</strong> ${attItems}
+           </div>`
+        : `<div style="margin-bottom:10px; padding:8px 10px; background:#f5f5f5; border:1px solid #ccc; font-size:12px; color:#666;">
+             <strong>📎 Attachments:</strong> No additional attachments (a PDF copy of this quotation is attached).
+           </div>`;
 
       // Brand name lookup from cached brands
       const brandObj = (typeof cachedBrands !== 'undefined' && quotation.brandId)
@@ -20681,15 +20888,24 @@
 </head>
 <body>
   <div class="quotation-container">
-    <div class="quotation-header">
-      <h2 style="margin:0;">QUOTATION</h2>
-      <p style="margin:6px 0 0 0;">${productTypeName}</p>
-    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:12px;">
+      <tr>
+        <td valign="middle" style="background:#000; color:#fff; padding:15px; text-align:center; border:1px solid #000;">
+          <div style="font-size:22px; font-weight:bold; margin:0;">QUOTATION</div>
+          <div style="font-size:13px; margin:4px 0 0 0;">${productTypeName}</div>
+        </td>
+        ${qrCellHtml}
+      </tr>
+    </table>
+
+    ${metaBandHtml}
+    ${attachmentReminderHtml}
 
     <div class="quotation-section">
       <h3>Product Information</h3>
       <table class="quotation-table">
         <tr><td style="${cellLabel}">Product Type</td><td style="${cellValue}">${productTypeName}</td></tr>
+        <tr><td style="${cellLabel}">Variable</td><td style="${cellValue}">${quotation.variable === 'YES' ? 'YES' : 'NO'}</td></tr>
       </table>
     </div>
 
@@ -22624,13 +22840,10 @@
         }
       }
 
-      // Page 1: Data table with images
-      const headers = ['', ...EXPORT_COLUMNS]; // Add image column
-      const body = rows.map((r, i) => {
-        const q = quotations[i];
-        const imgData = imageDataMap[q.id];
-        return ['', ...EXPORT_COLUMNS.map(h => String(r[h] || ''))];
-      });
+      // Page 1: Data table with images (Specifications column excluded — too wide for PDF)
+      const pdfColumns = EXPORT_COLUMNS.filter(c => c !== 'Specifications');
+      const headers = ['', ...pdfColumns]; // Add image column
+      const body = rows.map((r) => ['', ...pdfColumns.map(h => String(r[h] || ''))]);
 
       doc.autoTable({
         head: [headers],
@@ -22648,6 +22861,7 @@
           // Draw profile image in the first column of body rows
           if (data.section === 'body' && data.column.index === 0) {
             const q = quotations[data.row.index];
+            if (!q) return;
             const imgData = imageDataMap[q.id];
             if (imgData) {
               try {
@@ -22705,7 +22919,14 @@
     window.exportQuotationData = async function(format) {
       document.getElementById('exportQuotationDropdown').style.display = 'none';
       const quotations = await loadQuotationsFromStorage();
-      const filteredQuotations = applyQuotationFilters(quotations);
+      let filteredQuotations = applyQuotationFilters(quotations);
+
+      // Honor row selection: if any rows are checked, export only those.
+      const selectedIds = Array.from(document.querySelectorAll('.quotation-checkbox:checked')).map(cb => cb.dataset.quotationId);
+      if (selectedIds.length > 0) {
+        const idSet = new Set(selectedIds.map(String));
+        filteredQuotations = quotations.filter(q => idSet.has(String(q.id)));
+      }
 
       if (filteredQuotations.length === 0) { alert('No data to export.'); return; }
 
@@ -22728,7 +22949,14 @@
     window.exportOutsourcingData = async function(format) {
       document.getElementById('exportOutsourcingDropdown').style.display = 'none';
       const quotations = await loadOutsourcingQuotationsFromStorage();
-      const filteredQuotations = applyOutsourcingFilters(quotations);
+      let filteredQuotations = applyOutsourcingFilters(quotations);
+
+      // Honor row selection: if any rows are checked, export only those.
+      const selectedIds = Array.from(document.querySelectorAll('.outsourcing-checkbox:checked')).map(cb => cb.dataset.quotationId);
+      if (selectedIds.length > 0) {
+        const idSet = new Set(selectedIds.map(String));
+        filteredQuotations = quotations.filter(q => idSet.has(String(q.id)));
+      }
 
       if (filteredQuotations.length === 0) { alert('No data to export.'); return; }
 
