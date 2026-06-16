@@ -13754,11 +13754,25 @@
       // 4. Generate HTML email body (reuse existing template, no threading)
       const emailHtml = generateQuotationEmailHtml(quotation, null, null, profileImageBase64);
 
-      // 5. Per-row subject
+      // 5. Generate an A4 PDF of the full quotation card and attach it
+      const pdfBase64 = await generateQuotationPdfBase64(quotation, profileImageBase64);
+      if (pdfBase64) {
+        const seqPart = quotation.quotationSeq || quotation.id;
+        const safeName = String(quotation.customerName || 'Customer').replace(/[^\w\-]+/g, '_');
+        attachments.unshift({
+          filename: `Quotation-${safeName}-${seqPart}.pdf`,
+          content: pdfBase64,
+          contentType: 'application/pdf'
+        });
+      } else {
+        console.warn(`PDF generation failed for quotation #${quotationId}; sending without PDF attachment.`);
+      }
+
+      // 6. Per-row subject
       const productTypeName = quotation.productType || 'Product';
       const emailSubject = `Quotation - ${quotation.customerName || 'Customer'} - ${productTypeName}`;
 
-      // 6. Send via API (with BCC)
+      // 7. Send via API (with BCC)
       const emailData = {
         to: recipientEmail,
         bcc: 'eric.brilliant@gmail.com',
@@ -13807,6 +13821,147 @@
     function hideSendingOverlay() {
       const overlay = document.getElementById('sendingOverlay');
       if (overlay) overlay.remove();
+    }
+
+    // Get natural dimensions of an image data URL (for proportional PDF sizing).
+    function getImageDimensions(dataUrl) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+        img.onerror = () => resolve(null);
+        img.src = dataUrl;
+      });
+    }
+
+    // Generate an A4 PDF of the full quotation card (same content as the email body).
+    // profileImageBase64 is a full data URL (data:image/...;base64,...).
+    // Returns base64 PDF string (no data: prefix), or null on failure.
+    async function generateQuotationPdfBase64(quotation, profileImageBase64) {
+      try {
+        const { jsPDF } = await loadJsPdfLib();
+        const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
+        const productTypeName = emailProductTypeDisplay(quotation.productType, productDetails);
+        const brandName = (typeof getBrandName === 'function' ? getBrandName(quotation.brandId) : '') || 'N/A';
+
+        const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const margin = 15;
+        let y = margin;
+
+        // Title bar
+        doc.setFillColor(0, 0, 0);
+        doc.rect(margin, y, pageWidth - margin * 2, 16, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont(undefined, 'bold');
+        doc.setFontSize(16);
+        doc.text('QUOTATION', pageWidth / 2, y + 7, { align: 'center' });
+        doc.setFont(undefined, 'normal');
+        doc.setFontSize(11);
+        doc.text(productTypeName, pageWidth / 2, y + 13, { align: 'center' });
+        y += 16 + 8;
+        doc.setTextColor(51, 51, 51);
+
+        // Profile image (proportional, fit in a 45x45 mm box, centered)
+        if (profileImageBase64) {
+          try {
+            const dims = await getImageDimensions(profileImageBase64);
+            const maxBox = 45;
+            let imgW = maxBox, imgH = maxBox;
+            if (dims && dims.width > 0 && dims.height > 0) {
+              const scale = Math.min(maxBox / dims.width, maxBox / dims.height);
+              imgW = dims.width * scale;
+              imgH = dims.height * scale;
+            }
+            const mimeType = profileImageBase64.match(/data:(image\/\w+);/)?.[1] || 'image/jpeg';
+            const ext = (mimeType.split('/')[1] || 'jpeg').toUpperCase();
+            const imgB64 = profileImageBase64.split(',')[1];
+            doc.addImage(imgB64, ext, (pageWidth - imgW) / 2, y, imgW, imgH, undefined, 'FAST');
+            y += imgH + 6;
+          } catch (e) {
+            console.warn('Failed to add profile image to PDF:', e);
+          }
+        }
+
+        // Render a section heading + a 2-column (label|value) table.
+        const renderSection = (title, rows) => {
+          doc.setFont(undefined, 'bold');
+          doc.setFontSize(12);
+          doc.setTextColor(0, 0, 0);
+          doc.text(title, margin, y);
+          y += 2;
+          doc.setDrawColor(0, 0, 0);
+          doc.line(margin, y, pageWidth - margin, y);
+          y += 3;
+          doc.autoTable({
+            startY: y,
+            theme: 'grid',
+            body: rows,
+            styles: { fontSize: 9, cellPadding: 2, textColor: [51, 51, 51], overflow: 'linebreak' },
+            columnStyles: { 0: { fontStyle: 'bold', cellWidth: 60, fillColor: [245, 245, 245] }, 1: { cellWidth: pageWidth - margin * 2 - 60 } },
+            margin: { left: margin, right: margin },
+          });
+          y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 4;
+        };
+
+        // Product Information
+        renderSection('Product Information', [['Product Type', productTypeName]]);
+
+        // Customer Information
+        renderSection('Customer Information', [
+          ['Customer Name', String(quotation.customerName || 'N/A')],
+          ['Contact Person', String(quotation.contactPerson || 'N/A')],
+          ['Email', String(quotation.email || 'N/A')],
+          ['Phone', String(quotation.phone || 'N/A')],
+        ]);
+
+        // Brand Detail
+        renderSection('Brand Detail', [['Brand Name', String(brandName)]]);
+
+        // Product Specifications (root-level fields first, then type-specific details)
+        const specRows = [];
+        const shownKeys = new Set();
+        if (quotation.customerItemName) { specRows.push(['Customer Item Name', String(quotation.customerItemName)]); shownKeys.add('customerItemName'); }
+        if (quotation.height_mm !== null && quotation.height_mm !== undefined && quotation.height_mm !== '') { specRows.push(['Height (mm, unfolded)', String(quotation.height_mm)]); shownKeys.add('height_mm'); }
+        if (quotation.width_mm !== null && quotation.width_mm !== undefined && quotation.width_mm !== '') { specRows.push(['Width (mm, unfolded)', String(quotation.width_mm)]); shownKeys.add('width_mm'); }
+        for (const [key, raw] of Object.entries(productDetails)) {
+          if (key.startsWith('_')) continue;
+          if (shownKeys.has(key)) continue;
+          if (raw === null || raw === undefined || raw === '') continue;
+          const label = PRODUCT_DETAILS_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+          const value = resolveProductDetailValue(key, raw);
+          specRows.push([label, String(value)]);
+        }
+        if (specRows.length === 0) specRows.push(['-', 'No specifications recorded.']);
+        renderSection('Product Specifications', specRows);
+
+        // Additional Notes (single full-width cell)
+        if (quotation.notes) {
+          doc.setFont(undefined, 'bold');
+          doc.setFontSize(12);
+          doc.setTextColor(0, 0, 0);
+          doc.text('Additional Notes', margin, y);
+          y += 2;
+          doc.setDrawColor(0, 0, 0);
+          doc.line(margin, y, pageWidth - margin, y);
+          y += 3;
+          doc.autoTable({
+            startY: y,
+            theme: 'grid',
+            body: [[String(quotation.notes)]],
+            styles: { fontSize: 9, cellPadding: 2, textColor: [51, 51, 51], overflow: 'linebreak' },
+            margin: { left: margin, right: margin },
+          });
+          y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 4;
+        }
+
+        // Output as base64 (strip the "data:application/pdf;...;base64," prefix)
+        const dataUri = doc.output('datauristring');
+        const base64 = dataUri.split(';base64,').pop();
+        return base64;
+      } catch (e) {
+        console.error('Failed to generate quotation PDF:', e);
+        return null;
+      }
     }
 
     // Initialize Outsourcing Panel (for creating outsourcing quotations)
