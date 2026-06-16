@@ -12,6 +12,7 @@ const dbPath = path.join(dataDir, 'tasks.db');
 let dbPromise = null;
 
 async function ensureSchema(db) {
+  try {
   await db.exec(`
     PRAGMA journal_mode = WAL;
     PRAGMA foreign_keys = ON;
@@ -113,7 +114,22 @@ async function ensureSchema(db) {
       profileImagePath TEXT,
       attachmentPaths TEXT,
       dateCreated TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'draft'
+      status TEXT NOT NULL DEFAULT 'draft',
+      resendCount INTEGER DEFAULT 0,
+      outsourcingSeq TEXT,
+      selectedSupplierId INTEGER,
+      selectedSupplierResponseId INTEGER,
+      sampleReadyDate TEXT,
+      brandId INTEGER,
+      profileImageBlob BLOB,
+      profileImageMime TEXT,
+      customerItemName TEXT,
+      chaseSampleCount INTEGER DEFAULT 0,
+      resubmitCount INTEGER DEFAULT 0,
+      quotationSeq TEXT,
+      height_mm REAL,
+      width_mm REAL,
+      markupPercent REAL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS skills (
@@ -349,6 +365,10 @@ async function ensureSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_opt_orderId ON order_progress_tracking(orderId);
     CREATE INDEX IF NOT EXISTS idx_opt_scannedAt ON order_progress_tracking(scannedAt DESC);
   `);
+  } catch (err) {
+    console.error('ensureSchema CREATE exec failed:', err);
+    throw err;
+  }
 
   // Add new columns if they don't exist (for database migration)
   try {
@@ -556,6 +576,72 @@ async function ensureSchema(db) {
     if (!err.message.includes('duplicate column name')) {
       console.warn('Error adding markupPercent column:', err);
     }
+  }
+
+  // === Guarantee the quotations schema is complete before serving requests ===
+  // The columns above are added via migrations; if one failed to apply to an
+  // existing DB (e.g. a stale server process), UPDATE would throw
+  // "no such column" while INSERT silently succeeds (create works, edit fails).
+  // This verifies every expected column exists and force-adds any that are
+  // missing, then logs proof. Wrapped so a PRAGMA failure can never break startup.
+  try {
+    const EXPECTED_QUOTATION_COLUMNS = [
+      ['customerName', "TEXT NOT NULL DEFAULT ''"],
+      ['contactPerson', 'TEXT'],
+      ['email', 'TEXT'],
+      ['phone', 'TEXT'],
+      ['productType', "TEXT NOT NULL DEFAULT ''"],
+      ['productDetails', 'TEXT'],
+      ['quantity', 'INTEGER NOT NULL DEFAULT 0'],
+      ['unitPrice', 'REAL NOT NULL DEFAULT 0'],
+      ['total', 'REAL NOT NULL DEFAULT 0'],
+      ['notes', 'TEXT'],
+      ['type', "TEXT DEFAULT 'non email'"],
+      ['sourceEmailUid', 'INTEGER'],
+      ['sourceEmailSubject', 'TEXT'],
+      ['sourceEmailMessageId', 'TEXT'],
+      ['profileImagePath', 'TEXT'],
+      ['attachmentPaths', 'TEXT'],
+      ['dateCreated', "TEXT NOT NULL DEFAULT ''"],
+      ['status', "TEXT NOT NULL DEFAULT 'draft'"],
+      ['resendCount', 'INTEGER DEFAULT 0'],
+      ['outsourcingSeq', 'TEXT'],
+      ['selectedSupplierId', 'INTEGER'],
+      ['selectedSupplierResponseId', 'INTEGER'],
+      ['sampleReadyDate', 'TEXT'],
+      ['brandId', 'INTEGER'],
+      ['profileImageBlob', 'BLOB'],
+      ['profileImageMime', 'TEXT'],
+      ['customerItemName', 'TEXT'],
+      ['chaseSampleCount', 'INTEGER DEFAULT 0'],
+      ['resubmitCount', 'INTEGER DEFAULT 0'],
+      ['quotationSeq', 'TEXT'],
+      ['height_mm', 'REAL'],
+      ['width_mm', 'REAL'],
+      ['markupPercent', 'REAL DEFAULT 0']
+    ];
+    const cols = await db.all(`PRAGMA table_info(quotations);`);
+    const present = new Set(cols.map(c => c.name.toLowerCase()));
+    console.log(`[schema] quotations columns present (${cols.length}): ${cols.map(c => c.name).join(', ')}`);
+    const missing = EXPECTED_QUOTATION_COLUMNS.filter(([name]) => !present.has(name.toLowerCase()));
+    if (missing.length > 0) {
+      console.warn(`[schema] quotations MISSING columns (force-adding): ${missing.map(([n]) => n).join(', ')}`);
+      for (const [name, def] of missing) {
+        try {
+          await db.exec(`ALTER TABLE quotations ADD COLUMN ${name} ${def};`);
+        } catch (err) {
+          if (!err.message.includes('duplicate column name')) {
+            console.warn(`[schema] Failed to add missing column ${name}:`, err);
+          }
+        }
+      }
+      const colsAfter = await db.all(`PRAGMA table_info(quotations);`);
+      console.log(`[schema] quotations columns after self-heal (${colsAfter.length}): ${colsAfter.map(c => c.name).join(', ')}`);
+    } else {
+      console.log('[schema] quotations schema complete; no columns missing.');
+    }
+  } catch (verifyErr) {
+    console.warn('[schema] quotations verification/self-heal failed (non-fatal):', verifyErr);
   }
 
   // Backfill quotationSeq for existing regular quotations (non-outsourcing)
