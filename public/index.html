@@ -2344,6 +2344,7 @@
               <div style="padding:8px 12px; cursor:pointer;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='#fff'" onclick="exportQuotationData('pdf')">PDF (.pdf)</div>
             </div>
           </div>
+          <button id="batchSendQuotationsBtn" class="page-btn" style="background:#8b5cf6; color:#fff;">Batch Send</button>
         </div>
 
         <!-- Quotation Table -->
@@ -2487,6 +2488,7 @@
               <div style="padding:8px 12px; cursor:pointer;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='#fff'" onclick="exportOutsourcingData('pdf')">PDF (.pdf)</div>
             </div>
           </div>
+          <button id="batchSendOutsourcingBtn" class="page-btn" style="background:#8b5cf6; color:#fff;">Batch Send</button>
         </div>
 
         <!-- Outsourcing Table -->
@@ -13463,6 +13465,12 @@
         generateQuotationDummyBtn.onclick = async () => await generateQuotationDummyData();
       }
 
+      // Batch Send button functionality
+      const batchSendQuotationBtn = document.getElementById('batchSendQuotationsBtn');
+      if (batchSendQuotationBtn) {
+        batchSendQuotationBtn.onclick = async () => await batchSendQuotations('quotation');
+      }
+
       // Set up filter event listeners
       const filterInputs = document.querySelectorAll('#quotationViewPanel .filter-input');
       filterInputs.forEach(input => {
@@ -13541,6 +13549,12 @@
         generateDummyBtn.onclick = async () => await generateOutsourcingDummyData();
       }
 
+      // Batch Send button functionality
+      const batchSendOutsourceBtn = document.getElementById('batchSendOutsourcingBtn');
+      if (batchSendOutsourceBtn) {
+        batchSendOutsourceBtn.onclick = async () => await batchSendQuotations('outsourcing');
+      }
+
       // Set up filter event listeners
       const filterInputs = document.querySelectorAll('#outsourcingViewPanel .filter-input');
       filterInputs.forEach(input => {
@@ -13600,6 +13614,199 @@
         console.error('Batch delete error:', error);
         alert('Error during batch delete: ' + error.message);
       }
+    }
+
+    // Batch send quotation/outsourcing emails to a single recipient address.
+    // type: 'quotation' (regular quotations) or 'outsourcing' (outsource product type).
+    async function batchSendQuotations(type) {
+      // 1. Gather selected rows for this view
+      const checkboxClass = type === 'outsourcing' ? '.outsourcing-checkbox:checked' : '.quotation-checkbox:checked';
+      const selectedCheckboxes = document.querySelectorAll(checkboxClass);
+
+      if (selectedCheckboxes.length === 0) {
+        await showModal({ title: 'Warning', body: 'Please select at least one row to send.', okText: 'OK' });
+        return;
+      }
+
+      // 2. Collect quotation IDs (preserve selection order)
+      const quotationIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.dataset.quotationId, 10));
+
+      // 3. Prompt for the recipient email address
+      const emailResult = await showTextInputModal({
+        title: 'Batch Send Email',
+        label: 'Enter recipient email address:',
+        initialValue: '',
+        okText: 'Send',
+        cancelText: 'Cancel'
+      });
+
+      if (!emailResult.ok || !emailResult.value) {
+        return; // User cancelled or left blank
+      }
+
+      const recipientEmail = String(emailResult.value).trim();
+
+      // 4. Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(recipientEmail)) {
+        await showModal({ title: 'Error', body: 'Invalid email address format.', okText: 'OK' });
+        return;
+      }
+
+      // 5. Confirm the count before sending
+      const confirmed = await showModal({
+        title: 'Confirm Batch Send',
+        body: `Send ${quotationIds.length} email(s) to <strong>${recipientEmail}</strong>?`,
+        okText: 'Send',
+        cancelText: 'Cancel'
+      });
+      if (!confirmed) return;
+
+      // 6. Send emails one by one, showing progress
+      showSendingOverlay(quotationIds.length);
+      const results = { success: 0, failed: 0, errors: [] };
+
+      for (let i = 0; i < quotationIds.length; i++) {
+        const qid = quotationIds[i];
+        updateSendingOverlayProgress(i + 1, quotationIds.length);
+        try {
+          await sendSingleBatchEmail(qid, recipientEmail);
+          results.success++;
+        } catch (err) {
+          results.failed++;
+          results.errors.push(`#${qid}: ${err.message}`);
+        }
+      }
+
+      hideSendingOverlay();
+
+      // 7. Report results
+      if (results.failed === 0) {
+        await showModal({ title: 'Success', body: `All ${results.success} email(s) sent successfully!`, okText: 'OK' });
+      } else {
+        await showModal({
+          title: 'Batch Send Results',
+          body: `Sent: ${results.success}<br>Failed: ${results.failed}<br><br>Errors:<br>${results.errors.join('<br>')}`,
+          okText: 'OK'
+        });
+      }
+    }
+
+    // Send a single quotation email (used by batch send). Embeds the profile image
+    // in the HTML body and attaches any uploaded files. BCCs the configured address.
+    async function sendSingleBatchEmail(quotationId, recipientEmail) {
+      // 1. Fetch full quotation data
+      const response = await fetch(`/api/quotations/${quotationId}`);
+      const qContentType = response.headers.get('content-type') || '';
+      if (!response.ok || !qContentType.includes('application/json')) {
+        const text = await response.text().catch(() => '');
+        throw new Error(`Failed to fetch quotation (HTTP ${response.status})${text ? ': ' + text.slice(0, 200) : ''}`);
+      }
+      const result = await response.json();
+      if (!result.success || !result.quotation) {
+        throw new Error('Failed to fetch quotation data');
+      }
+      const quotation = result.quotation;
+
+      // 2. Fetch profile image as base64 data URL (embedded in HTML body)
+      let profileImageBase64 = null;
+      if (quotation.hasProfileImage || quotation.id) {
+        try {
+          const imgResponse = await fetch(`/api/quotations/${quotation.id}/profile-image?v=${window.profileImageVersion || 0}`);
+          if (imgResponse.ok) {
+            const blob = await imgResponse.blob();
+            profileImageBase64 = await new Promise((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.readAsDataURL(blob);
+            });
+          }
+        } catch (e) {
+          console.warn('Failed to fetch profile image for batch email:', e);
+        }
+      }
+
+      // 3. Fetch attachments as base64 (sent as email attachments)
+      let attachments = [];
+      if (Array.isArray(quotation.attachmentPaths) && quotation.attachmentPaths.length > 0) {
+        for (const attPath of quotation.attachmentPaths) {
+          try {
+            const attResponse = await fetch(`/${attPath}`);
+            if (attResponse.ok) {
+              const blob = await attResponse.blob();
+              const base64 = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.readAsDataURL(blob);
+              });
+              attachments.push({
+                filename: String(attPath).split('/').pop(),
+                content: base64,
+                contentType: blob.type || 'application/octet-stream'
+              });
+            }
+          } catch (e) {
+            console.warn('Failed to fetch attachment for batch email:', attPath, e);
+          }
+        }
+      }
+
+      // 4. Generate HTML email body (reuse existing template, no threading)
+      const emailHtml = generateQuotationEmailHtml(quotation, null, null, profileImageBase64);
+
+      // 5. Per-row subject
+      const productTypeName = quotation.productType || 'Product';
+      const emailSubject = `Quotation - ${quotation.customerName || 'Customer'} - ${productTypeName}`;
+
+      // 6. Send via API (with BCC)
+      const emailData = {
+        to: recipientEmail,
+        bcc: 'eric.brilliant@gmail.com',
+        subject: emailSubject,
+        html: emailHtml,
+        attachments
+      };
+
+      const sendResponse = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailData)
+      });
+      // Guard against non-JSON (HTML error) responses, e.g. payload-too-large pages
+      const sendContentType = sendResponse.headers.get('content-type') || '';
+      if (!sendResponse.ok || !sendContentType.includes('application/json')) {
+        const text = await sendResponse.text().catch(() => '');
+        throw new Error(`Email send failed (HTTP ${sendResponse.status})${text ? ': ' + text.slice(0, 200) : ''}`);
+      }
+      const sendResult = await sendResponse.json();
+      if (!sendResult.success) {
+        throw new Error(sendResult.error || 'Failed to send email');
+      }
+      return sendResult;
+    }
+
+    // Sending overlay helpers — shown during batch email send.
+    function showSendingOverlay(total) {
+      let overlay = document.getElementById('sendingOverlay');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'sendingOverlay';
+        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:100001;';
+        overlay.innerHTML = '<div style="background:#fff; padding:30px 40px; border-radius:8px; text-align:center;"><div style="border:4px solid #f3f3f3; border-top:4px solid #000; border-radius:50%; width:40px; height:40px; animation:spin 1s linear infinite; margin:0 auto 15px;"></div><div style="font-size:16px;">Sending emails...</div><div id="sendingProgress" style="font-size:14px; color:#666; margin-top:8px;">0 / 0</div></div>';
+        document.body.appendChild(overlay);
+      }
+      const progressEl = document.getElementById('sendingProgress');
+      if (progressEl) progressEl.textContent = `0 / ${total}`;
+    }
+
+    function updateSendingOverlayProgress(current, total) {
+      const progressEl = document.getElementById('sendingProgress');
+      if (progressEl) progressEl.textContent = `${current} / ${total}`;
+    }
+
+    function hideSendingOverlay() {
+      const overlay = document.getElementById('sendingOverlay');
+      if (overlay) overlay.remove();
     }
 
     // Initialize Outsourcing Panel (for creating outsourcing quotations)
@@ -20254,16 +20461,53 @@
 
     // Generate HTML email content for quotation
     function generateQuotationEmailHtml(quotation, emailMeta, originalEmailHtml, profileImageBase64 = null) {
-      const productTypeNames = {
-        'hang-tag': 'Hang Tag',
-        'woven-label': 'Woven Label',
-        'printed-label': 'Printed Label',
-        'transfer': 'Transfer',
-        'pu-patch': 'PU Patch',
-        'other': 'Other'
+      const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
+      const productTypeName = emailProductTypeDisplay(quotation.productType, productDetails);
+
+      // Brand name lookup from cached brands
+      const brandObj = (typeof cachedBrands !== 'undefined' && quotation.brandId)
+        ? cachedBrands.find(b => b.id === quotation.brandId || String(b.id) === String(quotation.brandId))
+        : null;
+      const brandName = brandObj ? brandObj.name : 'N/A';
+
+      // Build Product Specification rows.
+      // Root-level fields first (customer item name, height/width are stored at the
+      // quotation root, not inside productDetails), then type-specific productDetails.
+      const cellLabel = 'padding:8px; border:1px solid #ccc; font-weight:bold; width:45%; vertical-align:top;';
+      const cellValue = 'padding:8px; border:1px solid #ccc; vertical-align:top;';
+      const shownKeys = new Set();
+      let specRows = '';
+
+      const addRow = (label, value) => {
+        specRows += `<tr><td style="${cellLabel}">${label}</td><td style="${cellValue}">${value}</td></tr>`;
       };
 
-      const productTypeName = productTypeNames[quotation.productType] || quotation.productType;
+      // Root-level specification fields
+      if (quotation.customerItemName) { addRow('Customer Item Name', quotation.customerItemName); shownKeys.add('customerItemName'); }
+      if (quotation.height_mm !== null && quotation.height_mm !== undefined && quotation.height_mm !== '') { addRow('Height (mm, unfolded)', quotation.height_mm); shownKeys.add('height_mm'); }
+      if (quotation.width_mm !== null && quotation.width_mm !== undefined && quotation.width_mm !== '') { addRow('Width (mm, unfolded)', quotation.width_mm); shownKeys.add('width_mm'); }
+
+      // Type-specific product details (convert option codes to display names)
+      for (const [key, raw] of Object.entries(productDetails)) {
+        if (key.startsWith('_')) continue;
+        if (shownKeys.has(key)) continue; // already rendered from root level
+        if (raw === null || raw === undefined || raw === '') continue;
+        const label = PRODUCT_DETAILS_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+        const value = resolveProductDetailValue(key, raw);
+        addRow(label, value);
+      }
+
+      if (specRows === '') {
+        specRows = '<tr><td style="padding:8px; border:1px solid #ccc; color:#999;">No specifications recorded.</td><td style="padding:8px; border:1px solid #ccc;"></td></tr>';
+      }
+
+      const imageHtml = profileImageBase64
+        ? `<div style="margin:15px 0; text-align:center;"><img src="${profileImageBase64}" style="max-width:200px; max-height:200px; object-fit:contain; border:1px solid #ddd; padding:5px;" alt="Product Image"></div>`
+        : '';
+
+      const notesHtml = quotation.notes
+        ? `<h3 style="margin-top:24px; margin-bottom:8px; border-bottom:2px solid #000; padding-bottom:8px;">Additional Notes</h3><p style="margin:0; white-space:pre-wrap;">${String(quotation.notes).replace(/\n/g, '<br>')}</p>`
+        : '';
 
       let html = `
 <!DOCTYPE html>
@@ -20274,83 +20518,52 @@
     body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
     .quotation-container { max-width: 800px; margin: 0 auto; padding: 20px; border: 2px solid #000; }
     .quotation-header { background: #000; color: #fff; padding: 15px; text-align: center; }
-    .quotation-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
-    .quotation-section h3 { margin-top: 0; border-bottom: 2px solid #000; padding-bottom: 10px; }
-    .quotation-row { display: flex; margin: 10px 0; }
-    .quotation-label { font-weight: bold; width: 150px; }
-    .quotation-value { flex: 1; }
+    .quotation-section { margin: 20px 0; }
+    .quotation-section h3 { margin-top: 0; margin-bottom: 8px; border-bottom: 2px solid #000; padding-bottom: 8px; }
+    .quotation-table { width: 100%; border-collapse: collapse; }
     .quotation-total { font-size: 1.2em; font-weight: bold; color: #000; text-align: right; margin-top: 20px; }
   </style>
 </head>
 <body>
   <div class="quotation-container">
     <div class="quotation-header">
-      <h2>QUOTATION</h2>
-      <p>${productTypeName}</p>
+      <h2 style="margin:0;">QUOTATION</h2>
+      <p style="margin:6px 0 0 0;">${productTypeName}</p>
+    </div>
+
+    <div class="quotation-section">
+      <h3>Product Information</h3>
+      <table class="quotation-table">
+        <tr><td style="${cellLabel}">Product Type</td><td style="${cellValue}">${productTypeName}</td></tr>
+      </table>
     </div>
 
     <div class="quotation-section">
       <h3>Customer Information</h3>
-      <div class="quotation-row">
-        <div class="quotation-label">Customer Name:</div>
-        <div class="quotation-value">${quotation.customerName || 'N/A'}</div>
-      </div>
-      <div class="quotation-row">
-        <div class="quotation-label">Contact Person:</div>
-        <div class="quotation-value">${quotation.contactPerson || 'N/A'}</div>
-      </div>
-      <div class="quotation-row">
-        <div class="quotation-label">Email:</div>
-        <div class="quotation-value">${quotation.email || 'N/A'}</div>
-      </div>
-      <div class="quotation-row">
-        <div class="quotation-label">Phone:</div>
-        <div class="quotation-value">${quotation.phone || 'N/A'}</div>
-      </div>
+      <table class="quotation-table">
+        <tr><td style="${cellLabel}">Customer Name</td><td style="${cellValue}">${quotation.customerName || 'N/A'}</td></tr>
+        <tr><td style="${cellLabel}">Contact Person</td><td style="${cellValue}">${quotation.contactPerson || 'N/A'}</td></tr>
+        <tr><td style="${cellLabel}">Email</td><td style="${cellValue}">${quotation.email || 'N/A'}</td></tr>
+        <tr><td style="${cellLabel}">Phone</td><td style="${cellValue}">${quotation.phone || 'N/A'}</td></tr>
+      </table>
     </div>
 
     <div class="quotation-section">
-      <h3>Product Details</h3>
-      ${profileImageBase64 ? `
-      <div style="margin-bottom:15px; text-align:center;">
-        <img src="${profileImageBase64}" style="max-width:200px; max-height:200px; object-fit:contain; border:1px solid #ddd; padding:5px;" alt="Product Image">
-      </div>
-      ` : ''}
-      ${quotation.customerItemName ? `
-      <div class="quotation-row">
-        <div class="quotation-label">Item Name:</div>
-        <div class="quotation-value">${quotation.customerItemName}</div>
-      </div>
-      ` : ''}
-      <div class="quotation-row">
-        <div class="quotation-label">Product Type:</div>
-        <div class="quotation-value">${productTypeName}</div>
-      </div>
-      <div class="quotation-row">
-        <div class="quotation-label">Quantity:</div>
-        <div class="quotation-value">${quotation.quantity.toLocaleString()}</div>
-      </div>
-      <div class="quotation-row">
-        <div class="quotation-label">Unit Price:</div>
-        <div class="quotation-value">HKD ${quotation.unitPrice.toFixed(2)}</div>
-      </div>
+      <h3>Brand Detail</h3>
+      <table class="quotation-table">
+        <tr><td style="${cellLabel}">Brand Name</td><td style="${cellValue}">${brandName}</td></tr>
+      </table>
     </div>
 
-    ${quotation.notes ? `
     <div class="quotation-section">
-      <h3>Additional Notes</h3>
-      <p>${quotation.notes.replace(/\n/g, '<br>')}</p>
-    </div>
-    ` : ''}
-
-    <div class="quotation-total">
-      Total: HKD ${quotation.total.toFixed(2)}
+      <h3>Product Specifications</h3>
+      ${imageHtml}
+      <table class="quotation-table">
+        ${specRows}
+      </table>
     </div>
 
-    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 0.9em; color: #666;">
-      <p>Thank you for your inquiry. Please review the quotation above and let us know if you have any questions.</p>
-      <p>Date: ${new Date(quotation.dateCreated).toLocaleDateString()}</p>
-    </div>
+    ${notesHtml ? `<div class="quotation-section">${notesHtml}</div>` : ''}
   </div>
 
   ${originalEmailHtml ? `
