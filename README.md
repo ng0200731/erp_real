@@ -54,3 +54,4 @@ Email service for ERP system with IMAP (incoming) and SMTP (outgoing) support.
 
 ⚠️ **Never commit the `env` file to git!** It contains sensitive credentials.
 
+# erp_real
