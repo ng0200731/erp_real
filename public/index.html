@@ -951,6 +951,17 @@
       background: var(--nav-accent-soft, #EFF6FF) !important;
       color: var(--nav-accent, #2563EB) !important;
     }
+    /* Mini-tab buttons inside quotation form: follow tag button style */
+    .mini-tab-btn.selected {
+      background: var(--nav-accent, #2563EB) !important;
+      color: #fff !important;
+      border-color: var(--nav-accent, #2563EB) !important;
+    }
+    .mini-tab-btn:hover:not(.selected) {
+      background: var(--nav-accent-soft, #EFF6FF) !important;
+      color: var(--nav-accent, #2563EB) !important;
+      border-color: var(--nav-accent-border, #BFDBFE) !important;
+    }
     .tab-close{
       opacity: 0;
       border: none;
@@ -2244,6 +2255,7 @@
           <div style="margin-bottom:15px;">
             <button id="addSupplierMemberBtn" class="page-btn">+ Add Member</button>
             <button id="dummySupplierMemberBtn" class="page-btn" style="margin-left:10px;">Dummy Input</button>
+            <button id="saveAllSupplierMembersBtn" class="page-btn" style="margin-left:10px;">Save Members & Finish</button>
           </div>
 
           <div id="supplierMembersList">
@@ -10516,9 +10528,9 @@
         }
 
         // Set up event listeners for total calculation
-        const quantityField = document.getElementById('quotationQuantity');
-        const unitPriceField = document.getElementById('quotationUnitPrice');
-        const totalField = document.getElementById('quotationTotal');
+        const quantityField = content.querySelector('#quotationQuantity') || document.getElementById('quotationQuantity');
+        const unitPriceField = content.querySelector('#quotationUnitPrice') || document.getElementById('quotationUnitPrice');
+        const totalField = content.querySelector('#quotationTotal') || document.getElementById('quotationTotal');
 
         if (quantityField && unitPriceField && totalField) {
           const calculateTotal = () => {
@@ -10538,6 +10550,9 @@
         // Set initial visibility of supplier section using quotationType parameter
         // (not the dropdown value, since dropdown filters out 'outsource')
         toggleSupplierSection(quotationType);
+
+        initMiniQuotationTabs(content);
+        initPricingMode(content);
       }, 100);
     }
 
@@ -12198,6 +12213,7 @@
       const saveSupplierBtn = document.getElementById('saveSupplierBtn');
       const addMemberBtn = document.getElementById('addSupplierMemberBtn');
       const dummyMemberBtn = document.getElementById('dummySupplierMemberBtn');
+      const saveAllMembersBtn = document.getElementById('saveAllSupplierMembersBtn');
 
       // Dummy input functionality
       dummyInputBtn.onclick = () => fillSupplierDummyData();
@@ -12211,6 +12227,9 @@
       // Dummy member functionality
       dummyMemberBtn.onclick = () => addDummySupplierMember();
 
+      if (saveAllMembersBtn) {
+        saveAllMembersBtn.onclick = () => saveAllSupplierMembers();
+      }
       // File upload functionality
       initializeSupplierFileUpload();
     }
@@ -12252,7 +12271,7 @@
     // Generate 10 outsourcing dummy data with supplier distribution
     async function generateOutsourcingDummyData() {
       const statuses = ['pending', 'send to outsourcing supplier', 'await quotation',
-        'compare quotation', 'send to customer', 'price confirmed', 'sampling', 'sample delivered'];
+        'compare quotation', 'send to customer', 'await customer confirm price', 'price confirmed', 'sampling', 'await sample ready date', 'sample delivered'];
 
       // 3 with 2 suppliers, 3 with 4 suppliers, 4 with 1 supplier
       const supplierDistribution = [2, 2, 2, 4, 4, 4, 1, 1, 1, 1];
@@ -12329,6 +12348,7 @@
           const unitPrice = Math.floor(10 + Math.random() * 90);
           const total = quantity * unitPrice;
 
+          const finalStatus = statuses[Math.floor(Math.random() * statuses.length)];
           const quotationData = {
             customerName: customerNames[i],
             contactPerson: `Contact Person ${i + 1}`,
@@ -12341,7 +12361,7 @@
             total: total,
             type: 'non email',
             dateCreated: new Date().toISOString(),
-            status: statuses[Math.floor(Math.random() * statuses.length)],
+            status: 'pending',
             brandId: brands.length > 0 ? brands[Math.floor(Math.random() * brands.length)].id : null,
             customerItemName: dummyItemNames[i]
           };
@@ -12378,6 +12398,8 @@
                 method: 'POST'
               });
             }
+
+            await applyOutsourcingStatusPath(quotationId, finalStatus);
           }
         }
 
@@ -12462,6 +12484,7 @@
           const unitPrice = Math.floor(10 + Math.random() * 90);
           const total = quantity * unitPrice;
 
+          const finalStatus = statuses[Math.floor(Math.random() * statuses.length)];
           const quotationData = {
             customerName: customerNames[i],
             contactPerson: `Contact ${i + 1}`,
@@ -12474,7 +12497,7 @@
             total: total,
             type: 'non email',
             dateCreated: new Date().toISOString(),
-            status: statuses[Math.floor(Math.random() * statuses.length)],
+            status: 'pending',
             brandId: brands.length > 0 ? brands[Math.floor(Math.random() * brands.length)].id : null,
             customerItemName: dummyItemNames[i]
           };
@@ -12498,6 +12521,8 @@
             } catch (imgErr) {
               console.warn('Failed to set dummy image for quotation', result.quotation.id, imgErr);
             }
+
+            await applyQuotationStatusPath(result.quotation.id, finalStatus);
           }
         }
 
@@ -12507,6 +12532,66 @@
       } catch (error) {
         console.error('Error generating quotation dummy data:', error);
         alert('Failed to generate quotation data. Please try again.');
+      }
+    }
+
+    async function putQuotationStatus(id, status, extra = {}) {
+      await fetch(`/api/quotations/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...extra, status })
+      });
+    }
+
+    function buildQuotationPath(finalStatus) {
+      const map = {
+        'pending': [],
+        'send to customer': ['send to customer'],
+        'price confirmed': ['send to customer', 'price confirmed'],
+        'sampling': ['send to customer', 'price confirmed', 'sampling'],
+        'sample delivered': ['send to customer', 'price confirmed', 'sampling', 'sample delivered']
+      };
+      return map[finalStatus] || [];
+    }
+
+    async function applyQuotationStatusPath(id, finalStatus) {
+      const steps = buildQuotationPath(finalStatus);
+      for (const st of steps) {
+        await putQuotationStatus(id, st);
+      }
+    }
+
+    function buildOutsourcingPath(finalStatus) {
+      const order = ['send to outsourcing supplier', 'await quotation', 'compare quotation', 'send to customer', 'await customer confirm price', 'price confirmed', 'sampling', 'await sample ready date', 'sample delivered'];
+      const idx = order.indexOf(finalStatus);
+      if (idx === -1) return [];
+      return order.slice(0, idx + 1);
+    }
+
+    function makeSampleReadyDate(finalStatus) {
+      if (finalStatus === 'await sample ready date') {
+        const d = new Date(Date.now() + (7 + Math.floor(Math.random() * 14)) * 86400000);
+        return d.toISOString().split('T')[0];
+      }
+      if (finalStatus === 'sample delivered') {
+        const d = new Date(Date.now() - (1 + Math.floor(Math.random() * 7)) * 86400000);
+        return d.toISOString().split('T')[0];
+      }
+      return null;
+    }
+
+    async function applyOutsourcingStatusPath(id, finalStatus) {
+      const steps = buildOutsourcingPath(finalStatus);
+      for (const st of steps) {
+        if (st === 'await sample ready date') {
+          const srd = makeSampleReadyDate('await sample ready date');
+          await putQuotationStatus(id, st, { sampleReadyDate: srd });
+        } else if (st === 'sample delivered') {
+          const srd = makeSampleReadyDate('sample delivered');
+          await putQuotationStatus(id, st, { sampleReadyDate: srd });
+        } else {
+          await putQuotationStatus(id, st);
+        }
       }
     }
 
@@ -12660,6 +12745,43 @@
 
       // Handle save completion with add more prompt
       handleSupplierMemberSaveComplete(name);
+    }
+
+    async function saveAllSupplierMembers() {
+      if (!currentSupplierData) {
+        showModal({ title: 'Error', body: 'Please complete supplier information first.' });
+        return;
+      }
+      const items = Array.from(document.querySelectorAll('.supplier-member-item'));
+      if (items.length === 0) {
+        showModal({ title: 'Validation Error', body: 'Please add at least one member.' });
+        return;
+      }
+      const newMembers = [];
+      for (const item of items) {
+        const name = item.querySelector('.supplier-member-name')?.value.trim() || '';
+        const emailPrefix = item.querySelector('.supplier-member-email-prefix')?.value.trim() || '';
+        const title = item.querySelector('.supplier-member-title')?.value.trim() || '';
+        const tel = item.querySelector('.supplier-member-tel')?.value.trim() || '';
+        if (!name) {
+          showModal({ title: 'Validation Error', body: 'Member name is required.' });
+          return;
+        }
+        if (!emailPrefix) {
+          showModal({ title: 'Validation Error', body: 'Member email prefix is required.' });
+          return;
+        }
+        newMembers.push({ name, emailPrefix, title, tel });
+      }
+      supplierMembersData = newMembers;
+      currentSupplierData.members = [...supplierMembersData];
+      try {
+        await saveSupplierToStorage(currentSupplierData);
+        showModal({ title: 'Success', body: 'All members saved successfully.' });
+        clearAllSupplierData();
+      } catch (e) {
+        showModal({ title: 'Error', body: 'Failed to save members. Please try again.' });
+      }
     }
 
     async function handleSupplierMemberSaveComplete(memberName) {
@@ -17663,15 +17785,16 @@
 
       // Set up event listeners for total calculation
       setTimeout(() => {
-        const quantityInput = document.getElementById('quotationQuantity');
-        const unitPriceInput = document.getElementById('quotationUnitPrice');
+        const container = document.getElementById('quotationSubBoardContent');
+        const quantityInput = container ? container.querySelector('#quotationQuantity') : document.getElementById('quotationQuantity');
+        const unitPriceInput = container ? container.querySelector('#quotationUnitPrice') : document.getElementById('quotationUnitPrice');
 
         if (quantityInput && unitPriceInput) {
           const updateTotal = () => {
             const quantity = parseFloat(quantityInput.value) || 0;
             const unitPrice = parseFloat(unitPriceInput.value) || 0;
             const total = quantity * unitPrice;
-            const totalInput = document.getElementById('quotationTotal');
+            const totalInput = container ? container.querySelector('#quotationTotal') : document.getElementById('quotationTotal');
             if (totalInput) {
               totalInput.value = total.toFixed(2);
             }
@@ -17680,6 +17803,9 @@
           quantityInput.addEventListener('input', updateTotal);
           unitPriceInput.addEventListener('input', updateTotal);
         }
+
+        initMiniQuotationTabs(container || document);
+        initPricingMode(container || document);
       }, 100);
 
       // Show sub-board
@@ -17788,6 +17914,8 @@
           quantityInput.addEventListener('input', updateTotal);
           unitPriceInput.addEventListener('input', updateTotal);
         }
+        initMiniQuotationTabs(subBoardContent);
+        initPricingMode(subBoardContent);
       }, 100);
 
       subBoard.style.display = 'block';
@@ -18728,6 +18856,11 @@
         // Left side: Form (70% width)
         '<div style="flex:0 0 70%; overflow-y:auto; padding-right:10px;">' +
           '<form id="quotationForm">' +
+            '<div style="display:flex; gap:6px; margin:6px 0 12px 0;">' +
+              '<button type="button" id="miniTabBtnDetails" class="page-btn mini-tab-btn selected" style="padding:6px 10px; font-size:12px;">Product Details</button>' +
+              '<button type="button" id="miniTabBtnPricing" class="page-btn mini-tab-btn" style="padding:6px 10px; font-size:12px;">Quotation</button>' +
+            '</div>' +
+            '<div id="miniTabDetails" style="display:block;">' +
             '<div style="margin-bottom:20px;">' +
               '<h4>Customer Information</h4>' +
               '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">' +
@@ -18810,10 +18943,19 @@
                 '<div style="color:#999; font-size:14px;">No suppliers selected</div>' +
               '</div>' +
             '</div>' +
+            '</div>' + // end miniTabDetails
+            '<div id="miniTabPricing" style="display:none;">' +
+            '<div style="margin-bottom:16px;">' +
+              '<h4>Pricing Mode</h4>' +
+              '<select id="pricingModeSelect" style="width:220px; padding:4px; font-size:12px; border:1px solid #ccc;">' +
+                '<option value="flat" selected>Flat Price</option>' +
+                '<option value="tier">Tier Price</option>' +
+              '</select>' +
+            '</div>' +
 
             '<div style="margin-bottom:20px;">' +
               '<h4>Quantity & Pricing</h4>' +
-              '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px;">' +
+              '<div id="flatPricingSection" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px;">' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Quantity *</label>' +
                   '<input type="number" id="quotationQuantity" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="1000" min="1">' +
@@ -18827,12 +18969,27 @@
                   '<input type="text" id="quotationTotal" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:#f5f5f5;" readonly>' +
                 '</div>' +
               '</div>' +
+              '<div id="tierPricingSection" style="display:none; border:1px solid #ccc; padding:10px; margin-top:10px; background:#fafafa;">' +
+                '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+                  '<div style="font-weight:600;">Tiers</div>' +
+                  '<button type="button" id="addTierRowBtn" class="btn" style="padding:4px 8px; font-size:12px;">+ Add Tier</button>' +
+                '</div>' +
+                '<div style="display:grid; grid-template-columns:1fr 1fr 1fr 80px; gap:8px; font-size:12px; margin-bottom:6px;">' +
+                  '<div style="font-weight:600;">Quantity</div>' +
+                  '<div style="font-weight:600;">Unit Price</div>' +
+                  '<div style="font-weight:600;">Total</div>' +
+                  '<div></div>' +
+                '</div>' +
+                '<div id="tierRows"></div>' +
+                '<div style="font-size:11px; color:#666; margin-top:6px;">Base fields will follow the first tier automatically.</div>' +
+              '</div>' +
             '</div>' +
 
             '<div style="margin-bottom:20px;">' +
               '<h4>Additional Notes</h4>' +
               '<textarea id="quotationNotes" style="width:100%; min-height:80px; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="Special requirements, delivery instructions, etc."></textarea>' +
             '</div>' +
+            '</div>' + // end miniTabPricing
           '</form>' +
         '</div>' +
 
@@ -18878,6 +19035,22 @@
     function collectProductDetailsFromForm(tagType) {
       const container = getActiveQuotationContainer();
       const el = (id) => (container ? container.querySelector('#' + id) : document.getElementById(id))?.value || '';
+      // Pricing mode + tiers (stored inside productDetails for persistence)
+      const pricing = {};
+      const pricingModeEl = (container ? container.querySelector('#pricingModeSelect') : document.getElementById('pricingModeSelect'));
+      if (pricingModeEl) {
+        pricing.pricingMode = pricingModeEl.value || 'flat';
+        if (pricing.pricingMode === 'tier') {
+          const rowsContainer = container ? container.querySelector('#tierRows') : document.getElementById('tierRows');
+          const rows = rowsContainer ? Array.from(rowsContainer.querySelectorAll('.tier-row')) : [];
+          pricing.pricingTiers = rows.map(r => {
+            const q = parseInt(r.querySelector('.tier-qty')?.value || '0', 10) || 0;
+            const u = parseFloat(r.querySelector('.tier-unit')?.value || '0') || 0;
+            const t = q * u;
+            return { quantity: q, unitPrice: u, total: t };
+          }).filter(t => t.quantity > 0 && t.unitPrice >= 0);
+        }
+      }
       if (tagType === 'hang-tag') {
         return { material: el('quotationMaterial'), size: el('quotationSize'), printingMethod: el('quotationPrintingMethod'), remark: el('quotationRemark') };
       } else if (tagType === 'woven-label') {
@@ -18901,10 +19074,11 @@
           hotPress: el('quotationHotPress'),
           edge: el('quotationEdge'),
           metalEmbedded: el('quotationMetalEmbedded'),
-          remark: el('quotationRemark')
+          remark: el('quotationRemark'),
+          ...pricing
         };
       } else {
-        return { productDescription: el('quotationProductDescription'), category: el('quotationCategory'), complexity: el('quotationComplexity'), remark: el('quotationRemark') };
+        return { productDescription: el('quotationProductDescription'), category: el('quotationCategory'), complexity: el('quotationComplexity'), remark: el('quotationRemark'), ...pricing };
       }
     }
 
@@ -18972,6 +19146,106 @@
 
       sizeInput.addEventListener('input', updatePreview);
       updatePreview(); // Initial call if there's already a value
+    }
+
+    // Mini tabs inside quotation create/view: Product Details vs Quotation (pricing)
+    function initMiniQuotationTabs(scope) {
+      const s = scope || document;
+      const btnDetails = s.querySelector('#miniTabBtnDetails');
+      const btnPricing = s.querySelector('#miniTabBtnPricing');
+      const tabDetails = s.querySelector('#miniTabDetails');
+      const tabPricing = s.querySelector('#miniTabPricing');
+      if (!btnDetails || !btnPricing || !tabDetails || !tabPricing) return;
+      const activate = (which) => {
+        if (which === 'details') {
+          tabDetails.style.display = 'block';
+          tabPricing.style.display = 'none';
+          btnDetails.classList.add('selected');
+          btnPricing.classList.remove('selected');
+        } else {
+          tabDetails.style.display = 'none';
+          tabPricing.style.display = 'block';
+          btnPricing.classList.add('selected');
+          btnDetails.classList.remove('selected');
+        }
+      };
+      btnDetails.onclick = () => activate('details');
+      btnPricing.onclick = () => activate('pricing');
+      activate('details');
+    }
+
+    // Pricing mode (flat vs tier) with dynamic tiers
+    function initPricingMode(scope) {
+      const s = scope || document;
+      const modeSel = s.querySelector('#pricingModeSelect');
+      const flatSec = s.querySelector('#flatPricingSection');
+      const tierSec = s.querySelector('#tierPricingSection');
+      const rowsWrap = s.querySelector('#tierRows');
+      const addRowBtn = s.querySelector('#addTierRowBtn');
+      const qty = s.querySelector('#quotationQuantity');
+      const unit = s.querySelector('#quotationUnitPrice');
+      const tot = s.querySelector('#quotationTotal');
+      if (!modeSel || !flatSec || !tierSec || !rowsWrap) return;
+
+      function syncBaseFromTiers() {
+        const first = rowsWrap.querySelector('.tier-row');
+        if (!first || !qty || !unit || !tot) return;
+        const q = parseInt(first.querySelector('.tier-qty')?.value || '0', 10) || 0;
+        const u = parseFloat(first.querySelector('.tier-unit')?.value || '0') || 0;
+        const t = q * u;
+        qty.value = q > 0 ? String(q) : '';
+        unit.value = u > 0 ? u.toFixed(2) : '';
+        tot.value = (q > 0 && u >= 0) ? t.toFixed(2) : '';
+      }
+
+      function recalcRowTotal(row) {
+        const q = parseInt(row.querySelector('.tier-qty')?.value || '0', 10) || 0;
+        const u = parseFloat(row.querySelector('.tier-unit')?.value || '0') || 0;
+        row.querySelector('.tier-total').value = (q * u).toFixed(2);
+        syncBaseFromTiers();
+      }
+
+      function addTierRow(initQ = '', initU = '') {
+        const row = document.createElement('div');
+        row.className = 'tier-row';
+        row.style.cssText = 'display:grid; grid-template-columns:1fr 1fr 1fr 80px; gap:8px; margin-bottom:6px;';
+        row.innerHTML =
+          '<input type="number" class="tier-qty" min="1" placeholder="Qty" style="padding:4px; border:1px solid #ccc;">' +
+          '<input type="number" class="tier-unit" min="0" step="0.01" placeholder="Unit Price" style="padding:4px; border:1px solid #ccc;">' +
+          '<input type="text" class="tier-total" readonly placeholder="Total" style="padding:4px; border:1px solid #ccc; background:#f5f5f5;">' +
+          '<button type="button" class="btn remove-tier" style="padding:4px 8px;">Remove</button>';
+        rowsWrap.appendChild(row);
+        const qEl = row.querySelector('.tier-qty');
+        const uEl = row.querySelector('.tier-unit');
+        const rm = row.querySelector('.remove-tier');
+        if (initQ !== '') qEl.value = initQ;
+        if (initU !== '') uEl.value = parseFloat(initU).toFixed(2);
+        qEl.addEventListener('input', () => recalcRowTotal(row));
+        uEl.addEventListener('input', () => recalcRowTotal(row));
+        rm.onclick = () => { row.remove(); syncBaseFromTiers(); };
+        recalcRowTotal(row);
+      }
+
+      if (addRowBtn) {
+        addRowBtn.onclick = () => addTierRow();
+      }
+
+      function onModeChange() {
+        const mode = modeSel.value || 'flat';
+        if (mode === 'flat') {
+          flatSec.style.display = 'grid';
+          tierSec.style.display = 'none';
+        } else {
+          flatSec.style.display = 'none';
+          tierSec.style.display = 'block';
+          if (!rowsWrap.querySelector('.tier-row')) {
+            addTierRow(qty ? qty.value : '', unit ? unit.value : '');
+          }
+          syncBaseFromTiers();
+        }
+      }
+      modeSel.onchange = onModeChange;
+      onModeChange();
     }
 
     function getProductSpecificFields(tagType) {
@@ -20269,9 +20543,9 @@
         const contactPerson = getField('quotationContactPerson').value;
         const email = getField('quotationEmail').value.trim();
         const phone = getField('quotationPhone').value.trim();
-        const quantity = getField('quotationQuantity').value;
-        const unitPrice = getField('quotationUnitPrice').value;
-        const total = getField('quotationTotal').value;
+        let quantity = getField('quotationQuantity').value;
+        let unitPrice = getField('quotationUnitPrice').value;
+        let total = getField('quotationTotal').value;
         const notes = getField('quotationNotes').value.trim();
         const brandId = getField('quotationBrandId')?.value || null;
         const customerItemName = getField('quotationCustomerItemName')?.value?.trim() || null;
@@ -20286,6 +20560,12 @@
 
         // Get product-specific fields
         let productDetails = collectProductDetailsFromForm(tagType);
+        if (productDetails && productDetails.pricingMode === 'tier' && Array.isArray(productDetails.pricingTiers) && productDetails.pricingTiers.length > 0) {
+          const firstTier = productDetails.pricingTiers[0];
+          quantity = String(firstTier.quantity || 0);
+          unitPrice = String(firstTier.unitPrice || 0);
+          total = String(firstTier.total || 0);
+        }
 
         // If saving from outsourcing panel, override productType so it appears in outsourcing view
         // Store the real product tag in productDetails so the view can render correct fields

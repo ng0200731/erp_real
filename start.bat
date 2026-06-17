@@ -43,7 +43,7 @@ if not exist "env" (
 
 echo [3/4] Checking for existing server and killing old process...
 REM Get port from env file or use default
-set SERVER_PORT=3001
+set SERVER_PORT=5999
 if exist env (
     for /f "tokens=2 delims==" %%a in ('findstr /C:"PORT=" env') do (
         set SERVER_PORT=%%a

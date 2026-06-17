@@ -146,7 +146,7 @@ const {
   SMTP_HOST = 'smtp.bbmail.com.hk',
   SMTP_PORT = 465,
   SMTP_SECURE = 'true',
-  PORT = 3000,
+  PORT = 5999,
 } = process.env;
 
 // Process password (remove quotes)
