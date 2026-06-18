@@ -30,7 +30,7 @@ import {
   // Product Profile functions
   getAllProductProfiles, getProductProfileById, createProductProfile, updateProductProfile, deleteProductProfile, getProductProfilesByType,
   // Pricing Tier Table functions
-  getAllPricingTierTables, getPricingTierTableById, createPricingTierTable, updatePricingTierTable, deletePricingTierTable,
+  getAllPricingTierTables, getPricingTierTablesByFilter, getPricingTierTableById, createPricingTierTable, updatePricingTierTable, deletePricingTierTable,
   // Workshop functions
   getAllWorkshops, getWorkshopById, createWorkshop, updateWorkshop, deleteWorkshop,
   // Order functions
@@ -537,6 +537,7 @@ app.use('/api/product-profiles', productProfileRoutes);
 // Pricing Tier Table routes
 const pricingTierTableRoutes = createPricingTierTableRoutes({
   getAllPricingTierTables,
+  getPricingTierTablesByFilter,
   getPricingTierTableById,
   createPricingTierTable,
   updatePricingTierTable,

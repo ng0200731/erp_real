@@ -2118,6 +2118,51 @@ export async function getAllPricingTierTables() {
   return hydrated;
 }
 
+export async function getCustomerIdsByName(name) {
+  const db = await getTasksDb();
+  if (!name || !String(name).trim()) return [];
+  const rows = await db.all(
+    `SELECT DISTINCT id FROM customers WHERE companyName = ? COLLATE NOCASE`,
+    [String(name).trim()]
+  );
+  return rows.map((r) => r.id);
+}
+
+export async function getPricingTierTablesByFilter({ scope, brandId, customerId, customerName } = {}) {
+  const db = await getTasksDb();
+  const clauses = ['disabled = 0'];
+  const params = [];
+
+  if (scope) {
+    clauses.push('scope = ?');
+    params.push(scope);
+  }
+  if (brandId != null) {
+    clauses.push('brandId = ?');
+    params.push(Number(brandId));
+  }
+  if (customerId != null) {
+    clauses.push('customerId = ?');
+    params.push(Number(customerId));
+  }
+  if (customerName) {
+    const ids = await getCustomerIdsByName(customerName);
+    if (ids.length === 0) return [];
+    clauses.push(`customerId IN (${ids.map(() => '?').join(',')})`);
+    params.push(...ids);
+  }
+
+  const rows = await db.all(
+    `SELECT * FROM pricing_tier_tables WHERE ${clauses.join(' AND ')} ORDER BY name COLLATE NOCASE ASC, id DESC`,
+    params
+  );
+  const out = [];
+  for (const row of rows) {
+    out.push(await hydratePricingTierTable(db, row));
+  }
+  return out;
+}
+
 export async function updatePricingTierTable(id, data) {
   const db = await getTasksDb();
   const now = new Date().toISOString();

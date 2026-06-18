@@ -5,6 +5,7 @@ const router = express.Router();
 export function createPricingTierTableRoutes(deps) {
   const {
     getAllPricingTierTables,
+    getPricingTierTablesByFilter,
     getPricingTierTableById,
     createPricingTierTable,
     updatePricingTierTable,
@@ -13,7 +14,16 @@ export function createPricingTierTableRoutes(deps) {
 
   router.get('/', async (req, res) => {
     try {
-      const tables = await getAllPricingTierTables();
+      const { scope, brandId, customerId, customerName } = req.query || {};
+      const hasFilter = scope || brandId != null || customerId != null || customerName;
+      const tables = hasFilter
+        ? await getPricingTierTablesByFilter({
+            scope,
+            brandId: brandId != null ? Number(brandId) : undefined,
+            customerId: customerId != null ? Number(customerId) : undefined,
+            customerName,
+          })
+        : await getAllPricingTierTables();
       res.json({ success: true, tables });
     } catch (error) {
       console.error('Error fetching pricing tier tables:', error);
