@@ -7,7 +7,10 @@ import { open } from 'sqlite';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '..');
 const dataDir = path.join(projectRoot, 'data');
-const dbPath = path.join(dataDir, 'tasks.db');
+const defaultDbPath = path.join(dataDir, 'tasks.db');
+function resolveDbPath() {
+  return process.env.ERP_DB_PATH || defaultDbPath;
+}
 
 let dbPromise = null;
 
@@ -810,9 +813,10 @@ async function ensureSchema(db) {
 export async function getTasksDb() {
   if (!dbPromise) {
     dbPromise = (async () => {
-      await fs.mkdir(dataDir, { recursive: true });
+      const filename = resolveDbPath();
+      await fs.mkdir(path.dirname(filename), { recursive: true });
       const db = await open({
-        filename: dbPath,
+        filename,
         driver: sqlite3.Database,
       });
       await ensureSchema(db);
@@ -820,6 +824,18 @@ export async function getTasksDb() {
     })();
   }
   return dbPromise;
+}
+
+export async function resetTasksDbForTest() {
+  if (dbPromise) {
+    try {
+      const db = await dbPromise;
+      await db.close();
+    } catch (_) {
+      // ignore close errors during test reset
+    }
+    dbPromise = null;
+  }
 }
 
 /**
