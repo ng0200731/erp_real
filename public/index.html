@@ -16705,6 +16705,7 @@
       setTimeout(() => {
         const viewContainer = document.getElementById('quotationViewFormContainer');
         populateQuotationViewForm(quotation, viewContainer);
+        populateViewPricing(quotation, viewContainer);
       }, 100);
 
       // Global function to close the modal.
@@ -18977,7 +18978,22 @@
 
             '<div style="margin-bottom:20px;">' +
               '<h4>Quantity & Pricing</h4>' +
-              '<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px;">' +
+              '<div style="margin-bottom:16px;">' +
+                '<label style="display:block; margin-bottom:5px; font-weight:600;">Pricing Mode</label>' +
+                '<select id="pricingModeSelect" style="width:220px; padding:4px; font-size:12px; border:1px solid #ccc;">' +
+                  '<option value="none" selected>None (flat)</option>' +
+                '</select>' +
+                '<div id="viewTierTableLabel" style="margin-top:6px; font-size:12px; color:#444; display:none;"></div>' +
+                '<div id="brandTierWrap" style="margin-top:10px; display:none;">' +
+                  '<label style="font-size:12px; display:block; margin-bottom:4px;">Brand tier table</label>' +
+                  '<select id="brandTierTableSelect" style="width:100%; padding:4px; border:1px solid #ccc;"><option value="">Select…</option></select>' +
+                '</div>' +
+                '<div id="customerTierWrap" style="margin-top:10px; display:none;">' +
+                  '<label style="font-size:12px; display:block; margin-bottom:4px;">Garment-factory tier table</label>' +
+                  '<select id="customerTierTableSelect" style="width:100%; padding:4px; border:1px solid #ccc;"><option value="">Select…</option></select>' +
+                '</div>' +
+              '</div>' +
+              '<div id="flatPricingSection" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px;">' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Quantity *</label>' +
                   '<input type="number" id="quotationQuantity" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="1000" min="1" value="' + (quotation.quantity || '') + '">' +
@@ -18990,6 +19006,19 @@
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Total (Auto)</label>' +
                   '<input type="text" id="quotationTotal" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; background:#f5f5f5;" readonly value="' + (quotation.total ? quotation.total.toFixed(2) : '') + '">' +
                 '</div>' +
+              '</div>' +
+              '<div id="tierPricingSection" style="display:none; border:1px solid #ccc; padding:10px; margin-top:10px; background:#fafafa;">' +
+                '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+                  '<div style="font-weight:600;">Tiers</div>' +
+                  '<button type="button" id="addTierRowBtn" class="btn" style="padding:4px 8px; font-size:12px;">+ Add Tier</button>' +
+                '</div>' +
+                '<div style="display:grid; grid-template-columns:1fr 1fr 1fr 80px; gap:8px; font-size:12px; margin-bottom:6px;">' +
+                  '<div style="font-weight:600;">Quantity</div>' +
+                  '<div style="font-weight:600;">Unit Price</div>' +
+                  '<div style="font-weight:600;">Total</div>' +
+                  '<div></div>' +
+                '</div>' +
+                '<div id="tierRows"></div>' +
               '</div>' +
             '</div>' +
 
@@ -19409,6 +19438,88 @@
       btnDetails.onclick = () => activate('details');
       btnPricing.onclick = () => activate('pricing');
       activate('details');
+    }
+
+    // Render saved pricing read-only in the view form (does NOT call initPricingMode).
+    async function populateViewPricing(quotation, scope) {
+      const s = scope || document;
+      const modeSel = s.querySelector('#pricingModeSelect');
+      if (!modeSel) return;
+      const flatSec = s.querySelector('#flatPricingSection');
+      const tierSec = s.querySelector('#tierPricingSection');
+      const rowsWrap = s.querySelector('#tierRows');
+      const addBtn = s.querySelector('#addTierRowBtn');
+      const label = s.querySelector('#viewTierTableLabel');
+      const brandWrap = s.querySelector('#brandTierWrap');
+      const custWrap = s.querySelector('#customerTierWrap');
+
+      // Pricing is stored flat at the top level of productDetails (tierScopeMode,
+      // brandTierTableId/customerTierTableId, tiers) per the project's flat
+      // convention (see commits 357a454 / 140a10e). Fall back to a nested
+      // .pricing block for forward-compat with later tasks.
+      const pd = (quotation && quotation.productDetails) || null;
+      const pricing = (pd && pd.pricing) || (pd && pd.tierScopeMode ? pd : null);
+      const mode = pricing ? pricing.tierScopeMode : 'none';
+      const hasTiers = pricing && Array.isArray(pricing.tiers) && pricing.tiers.length > 0;
+
+      if (!pricing || mode === 'none' || !hasTiers) {
+        modeSel.value = 'none';
+        modeSel.disabled = true;
+        return; // flat section already populated; tier section stays hidden (display:none)
+      }
+
+      const uiMode = mode === 'customer' ? 'factory' : mode;
+      // The view form's #pricingModeSelect ships with only the "none" option
+      // (initPricingMode is intentionally NOT invoked in view mode). Inject a
+      // matching read-only option so setting .value reflects the saved mode.
+      const modeLabel = uiMode === 'brand' ? 'Brand tier' : (uiMode === 'factory' ? 'Garment-factory tier' : uiMode);
+      if (uiMode !== 'none' && !Array.from(modeSel.options).some((o) => o.value === uiMode)) {
+        const opt = document.createElement('option');
+        opt.value = uiMode;
+        opt.textContent = modeLabel;
+        modeSel.appendChild(opt);
+      }
+      modeSel.value = uiMode;
+      modeSel.disabled = true;
+      if (flatSec) flatSec.style.display = 'none';
+      if (tierSec) tierSec.style.display = 'block';
+      if (brandWrap) brandWrap.style.display = 'none';
+      if (custWrap) custWrap.style.display = 'none';
+      if (addBtn) addBtn.style.display = 'none';
+
+      // Fetch the saved tier-table name for the read-only label
+      const tableId = uiMode === 'brand' ? pricing.brandTierTableId : pricing.customerTierTableId;
+      let nameText = '';
+      if (tableId != null) {
+        try {
+          const res = await fetch('/api/pricing-tier-tables/' + encodeURIComponent(tableId));
+          const data = await res.json();
+          nameText = (data && data.success && data.table && data.table.name) ? data.table.name : '';
+        } catch (e) { nameText = ''; }
+      }
+      const scopeLabel = uiMode === 'brand' ? 'Brand tier table' : 'Garment-factory tier table';
+      if (label) {
+        label.textContent = nameText ? (scopeLabel + ': ' + nameText) : (scopeLabel + ': (table no longer available)');
+        label.style.display = 'block';
+      }
+
+      // Render read-only tier rows from saved tiers (source of truth)
+      if (rowsWrap) {
+        rowsWrap.innerHTML = '';
+        pricing.tiers.forEach((t) => {
+          const q = Number(t.quantity || 0);
+          const u = Number(t.unitPrice || 0);
+          const row = document.createElement('div');
+          row.className = 'tier-row';
+          row.style.cssText = 'display:grid; grid-template-columns:1fr 1fr 1fr 80px; gap:8px; margin-bottom:6px;';
+          row.innerHTML =
+            '<input type="number" class="tier-qty" value="' + q + '" disabled style="padding:4px; border:1px solid #ccc; background:#f5f5f5;">' +
+            '<input type="number" class="tier-unit" value="' + u.toFixed(2) + '" disabled style="padding:4px; border:1px solid #ccc; background:#f5f5f5;">' +
+            '<input type="text" class="tier-total" value="' + (q * u).toFixed(2) + '" readonly style="padding:4px; border:1px solid #ccc; background:#f5f5f5;">' +
+            '<span></span>';
+          rowsWrap.appendChild(row);
+        });
+      }
     }
 
     // Pricing mode (flat vs tier) with dynamic tiers
