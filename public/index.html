@@ -4850,13 +4850,16 @@
       if (id === 'welcome') {
         const hasExistingCharts = chartInstance || outsourcingChartInstance || brandChartInstance || brandValueChartInstance;
         if (hasExistingCharts) {
-          // Charts already exist — redraw without resizing to prevent expansion
+          // Charts already exist — reload fresh data so the dashboard stays in sync
+          // with quotation/outsourcing changes made in other views. The loaders fetch
+          // current data and re-render each chart; deferring slightly lets the panel
+          // finish laying out before the charts re-render (avoids the expansion glitch).
           requestAnimationFrame(() => {
             setTimeout(() => {
-              if (chartInstance) chartInstance.draw();
-              if (outsourcingChartInstance) outsourcingChartInstance.draw();
-              if (brandChartInstance) brandChartInstance.draw();
-              if (brandValueChartInstance) brandValueChartInstance.draw();
+              loadDashboardQuotations().catch(() => {});
+              loadDashboardOutsourcing().catch(() => {});
+              loadDashboardBrand().catch(() => {});
+              loadDashboardBrandValue().catch(() => {});
             }, 50);
           });
         } else {
