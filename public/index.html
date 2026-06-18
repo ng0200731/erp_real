@@ -19101,13 +19101,15 @@
             '<div style="margin-bottom:16px;">' +
               '<h4>Pricing Mode</h4>' +
               '<select id="pricingModeSelect" style="width:220px; padding:4px; font-size:12px; border:1px solid #ccc;">' +
-                '<option value="flat" selected>Flat Price</option>' +
-                '<option value="tier">Tier Price</option>' +
+                '<option value="none" selected>None (flat)</option>' +
               '</select>' +
-              '<div id="tierTableSelectWrap" style="margin-top:10px; display:flex; gap:8px; align-items:center;">' +
-                '<label style="font-size:12px;">Select Tier Table</label>' +
-                '<select id="tierTemplateSelect" style="flex:1; padding:4px; border:1px solid #ccc;"><option value="">Load from settings...</option></select>' +
-                '<button type="button" id="applyTierTemplateBtn" class="btn" style="padding:4px 8px; font-size:12px;">Apply</button>' +
+              '<div id="brandTierWrap" style="margin-top:10px; display:none;">' +
+                '<label style="font-size:12px; display:block; margin-bottom:4px;">Brand tier table</label>' +
+                '<select id="brandTierTableSelect" style="width:100%; padding:4px; border:1px solid #ccc;"><option value="">Select…</option></select>' +
+              '</div>' +
+              '<div id="customerTierWrap" style="margin-top:10px; display:none;">' +
+                '<label style="font-size:12px; display:block; margin-bottom:4px;">Garment-factory tier table</label>' +
+                '<select id="customerTierTableSelect" style="width:100%; padding:4px; border:1px solid #ccc;"><option value="">Select…</option></select>' +
               '</div>' +
             '</div>' +
 
@@ -19345,6 +19347,10 @@
       const qty = s.querySelector('#quotationQuantity');
       const unit = s.querySelector('#quotationUnitPrice');
       const tot = s.querySelector('#quotationTotal');
+      const brandWrap = s.querySelector('#brandTierWrap');
+      const brandSel = s.querySelector('#brandTierTableSelect');
+      const custWrap = s.querySelector('#customerTierWrap');
+      const custSel = s.querySelector('#customerTierTableSelect');
       if (!modeSel || !flatSec || !tierSec || !rowsWrap) return;
 
       function syncBaseFromTiers() {
@@ -19390,80 +19396,117 @@
         addRowBtn.onclick = () => addTierRow();
       }
 
-      function onModeChange() {
-        const mode = modeSel.value || 'flat';
-        if (mode === 'flat') {
-          flatSec.style.display = 'grid';
-          tierSec.style.display = 'none';
-        } else {
-          flatSec.style.display = 'none';
-          tierSec.style.display = 'block';
-          if (!rowsWrap.querySelector('.tier-row')) {
-            addTierRow(qty ? qty.value : '', unit ? unit.value : '');
-          }
-          syncBaseFromTiers();
+      // ---- field readers (container-scoped) ----
+      function brandIdEl() { return s.querySelector('#quotationBrandId') || document.getElementById('quotationBrandId'); }
+      function custNameEl() { return s.querySelector('#quotationCustomerName') || document.getElementById('quotationCustomerName'); }
+      function brandIdVal() { const el = brandIdEl(); return el ? String(el.value || '').trim() : ''; }
+      function customerNameVal() { const el = custNameEl(); return el ? String(el.value || '').trim() : ''; }
+
+      // ---- conditional pricing-mode dropdown ----
+      function populateModeOptions() {
+        const opts = ['<option value="none">None (flat)</option>'];
+        if (brandIdVal()) opts.push('<option value="brand">Brand</option>');
+        if (customerNameVal()) opts.push('<option value="factory">Garment Factory</option>');
+        const prev = modeSel.value;
+        modeSel.innerHTML = opts.join('');
+        modeSel.value = Array.from(modeSel.options).some((o) => o.value === prev) ? prev : 'none';
+      }
+
+      // ---- load one tier table's breakpoints into the grid ----
+      async function loadTierTableIntoGrid(tableId) {
+        rowsWrap.innerHTML = '';
+        if (!tableId) return;
+        try {
+          const res = await fetch('/api/pricing-tier-tables/' + encodeURIComponent(tableId));
+          const data = await res.json();
+          const tiers = data && data.success && data.table ? (data.table.tiers || []) : [];
+          tiers.forEach((t) => addTierRow(t.quantity || 0, t.unitPrice || 0));
+        } catch (e) {
+          console.error('Failed to load tier table', e);
         }
       }
-      modeSel.onchange = onModeChange;
-      onModeChange();
 
-      // Load tier tables from settings for quick apply
-      const templateSelect = s.querySelector('#tierTemplateSelect');
-      const applyBtn = s.querySelector('#applyTierTemplateBtn');
-      if (templateSelect && applyBtn) {
-        (async () => {
-          try {
-            const res = await fetch('/api/pricing-tier-tables');
-            const data = await res.json();
-            const items = data && data.success ? (data.tables || []) : [];
-            const brandIdEl = s.querySelector('#quotationBrandId') || document.getElementById('quotationBrandId');
-            const brandIdVal = brandIdEl ? String(brandIdEl.value || '') : '';
-            const custNameEl = s.querySelector('#quotationCustomerName') || document.getElementById('quotationCustomerName');
-            const custNameVal = custNameEl ? String((custNameEl.value || '').trim()) : '';
-            const filtered = items.filter(p => {
-              if (p.scope === 'brand' && brandIdVal && String(p.brandId || '') === brandIdVal) return true;
-              if (p.scope === 'customer' && custNameVal && String((p.customerName || '')).toLowerCase() === custNameVal.toLowerCase()) return true;
-              return false;
-            });
-            const opts = ['<option value="">Load from settings...</option>'].concat(
-              filtered.map(p => {
-                const scopeLabel = p.scope === 'customer' ? (p.customerName || 'Customer') : (p.brandName || 'Brand');
-                return `<option value="${p.id}">${escapeHtml(p.name || 'Untitled')} — ${escapeHtml(scopeLabel)}</option>`;
-              })
-            );
-            templateSelect.innerHTML = opts.join('');
-          } catch (e) { console.warn('Failed to load tier templates', e); }
-        })();
-
-        applyBtn.onclick = async () => {
-          const id = templateSelect.value;
-          if (!id) return;
-          try {
-            const res = await fetch('/api/pricing-tier-tables/' + id);
-            const data = await res.json();
-            if (!data || !data.success || !data.table) return;
-            const tiers = data.table.tiers || [];
-            // Switch to tier mode and populate
-            modeSel.value = 'tier';
-            onModeChange();
-            rowsWrap.innerHTML = '';
-            tiers.forEach(t => {
-              const q = t.quantity || t.qty || 0;
-              const u = t.unitPrice || t.price || 0;
-              addTierRow(q, u);
-            });
-            // Mark selected template in a hidden input for saving
-            let hidden = s.querySelector('#selectedTierTemplateId');
-            if (!hidden) {
-              hidden = document.createElement('input');
-              hidden.type = 'hidden';
-              hidden.id = 'selectedTierTemplateId';
-              s.querySelector('#miniTabPricing')?.appendChild(hidden);
-            }
-            hidden.value = String(id);
-          } catch (e) { console.error('Failed to apply tier template', e); }
-        };
+      // ---- populate a scope picker from the filtered API (auto-show if exactly one) ----
+      async function populateScopePicker(selEl, url) {
+        if (!selEl) return;
+        let items = [];
+        try {
+          const res = await fetch(url);
+          const data = await res.json();
+          items = data && data.success ? (data.tables || []) : [];
+        } catch (e) {
+          console.warn('Failed to load tier tables', e);
+        }
+        if (items.length === 0) {
+          selEl.innerHTML = '<option value="">(no tier table — create one)</option>';
+          return;
+        }
+        selEl.innerHTML = ['<option value="">Select…</option>']
+          .concat(items.map((p) => `<option value="${p.id}">${escapeHtml(p.name || 'Untitled')}</option>`))
+          .join('');
+        if (items.length === 1) {
+          selEl.value = String(items[0].id);
+          await loadTierTableIntoGrid(items[0].id);
+        }
       }
+
+      async function refreshBrandPicker() {
+        const bid = brandIdVal();
+        if (bid) await populateScopePicker(brandSel, '/api/pricing-tier-tables?scope=brand&brandId=' + encodeURIComponent(bid));
+      }
+      async function refreshCustomerPicker() {
+        const cn = customerNameVal();
+        if (cn) await populateScopePicker(custSel, '/api/pricing-tier-tables?scope=customer&customerName=' + encodeURIComponent(cn));
+      }
+
+      // ---- mode change drives which picker + grid show ----
+      async function onModeChange() {
+        const mode = modeSel.value || 'none';
+        if (brandWrap) brandWrap.style.display = 'none';
+        if (custWrap) custWrap.style.display = 'none';
+        if (mode === 'none') {
+          flatSec.style.display = 'grid';
+          tierSec.style.display = 'none';
+          rowsWrap.innerHTML = '';
+          return;
+        }
+        flatSec.style.display = 'none';
+        tierSec.style.display = 'block';
+        rowsWrap.innerHTML = '';
+        if (mode === 'brand') {
+          if (brandWrap) brandWrap.style.display = '';
+          await refreshBrandPicker();
+        } else if (mode === 'factory') {
+          if (custWrap) custWrap.style.display = '';
+          await refreshCustomerPicker();
+        }
+        if (!rowsWrap.querySelector('.tier-row')) addTierRow(qty ? qty.value : '', unit ? unit.value : '');
+        syncBaseFromTiers();
+      }
+      modeSel.onchange = onModeChange;
+      modeSel.addEventListener('focus', populateModeOptions);
+      if (brandSel) brandSel.onchange = () => loadTierTableIntoGrid(brandSel.value);
+      if (custSel) custSel.onchange = () => loadTierTableIntoGrid(custSel.value);
+
+      // ---- re-evaluate when customer/brand change ----
+      function onCustomerOrBrandChange() {
+        const before = modeSel.value;
+        populateModeOptions();
+        if (before === 'brand' && !brandIdVal()) { modeSel.value = 'none'; return onModeChange(); }
+        if (before === 'factory' && !customerNameVal()) { modeSel.value = 'none'; return onModeChange(); }
+        if (modeSel.value === 'brand') refreshBrandPicker();
+        else if (modeSel.value === 'factory') refreshCustomerPicker();
+      }
+      const bEl = brandIdEl();
+      const cEl = custNameEl();
+      if (bEl) bEl.addEventListener('change', onCustomerOrBrandChange);
+      if (cEl) {
+        cEl.addEventListener('change', onCustomerOrBrandChange);
+        cEl.addEventListener('input', onCustomerOrBrandChange);
+      }
+
+      populateModeOptions();
+      onModeChange();
     }
 
     // Initialize Quotation Tier Table settings panel
