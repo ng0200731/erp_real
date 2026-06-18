@@ -2138,16 +2138,20 @@
 
       <!-- Customer View board -->
       <div id="customerViewPanel" style="padding:20px; margin-bottom:20px; display:none;">
-        <div style="margin-bottom:15px;">
+        <div style="margin-bottom:15px; display:flex; gap:10px; align-items:center;">
           <button id="refreshCustomersBtn" class="page-btn">Refresh List</button>
+          <button id="batchDeleteCustomersBtn" class="page-btn" style="background:#c44; color:#fff;" disabled>Delete Selected</button>
+          <span id="selectedCustomersCount" style="color:#666; font-size:12px;"></span>
         </div>
 
-
-        <!-- Customer Table -->
-        <div id="customersTableContainer">
-          <table id="customersTable" style="width:100%; border-collapse:collapse; border:1px solid #000;">
-            <thead>
-              <tr style="background:#f8f8f8;">
+        <!-- Customer Table with vertical scroll -->
+        <div id="customersTableContainer" style="max-height:400px; overflow-y:auto; border:1px solid #000;">
+          <table id="customersTable" style="width:100%; border-collapse:collapse;">
+            <thead style="position:sticky; top:0; background:#f8f8f8; z-index:1;">
+              <tr>
+                <th style="border:1px solid #000; padding:8px; text-align:center; width:40px;">
+                  <input type="checkbox" id="selectAllCustomers" title="Select All">
+                </th>
                 <th style="border:1px solid #000; padding:8px; text-align:left;">
                   <div>Company Name</div>
                   <input type="text" id="customerFilterName" class="filter-input" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
@@ -2176,14 +2180,14 @@
                   <div>Members</div>
                   <input type="text" id="customerFilterMembers" class="filter-input" placeholder="Filter..." style="width:100%; margin-top:4px; padding:4px; font-size:12px; border:1px solid #ccc;">
                 </th>
-                <th style="border:1px solid #000; padding:8px; text-align:left;">
+                <th style="border:1px solid #000; padding:8px; text-align:left; width:80px;">
                   <div>Action</div>
                 </th>
               </tr>
             </thead>
             <tbody id="customersTableBody">
               <tr>
-                <td colspan="7" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+                <td colspan="8" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
                   No customers saved yet. Create customers first.
                 </td>
               </tr>
@@ -11737,12 +11741,20 @@
 
     async function displayCustomers() {
       const tbody = document.getElementById('customersTableBody');
+      const selectAllCb = document.getElementById('selectAllCustomers');
+      const batchDelBtn = document.getElementById('batchDeleteCustomersBtn');
+      const selCountEl = document.getElementById('selectedCustomersCount');
       const customers = await loadCustomersFromStorage();
+
+      // Reset selection state
+      if (selectAllCb) selectAllCb.checked = false;
+      if (batchDelBtn) batchDelBtn.disabled = true;
+      if (selCountEl) selCountEl.textContent = '';
 
       if (customers.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="6" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="8" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No customers saved yet. Create customers first.
             </td>
           </tr>
@@ -11756,7 +11768,7 @@
       if (filteredCustomers.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="6" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
+            <td colspan="8" style="border:1px solid #000; padding:20px; text-align:center; color:#666;">
               No customers match the current filters.
             </td>
           </tr>
@@ -11770,10 +11782,14 @@
         const membersTooltip = customer.members && customer.members.length > 0
           ? customer.members.map(m => `${m.name} (${m.emailPrefix}@${customer.emailDomain})`).join('\n')
           : 'No members';
+        const customerId = customer.id || custIndex;
 
-        // Main customer row
+        // Main customer row with checkbox
         html += `
-          <tr style="border:1px solid #000;" class="customer-row" data-cust-index="${custIndex}">
+          <tr style="border:1px solid #000;" class="customer-row" data-cust-index="${custIndex}" data-customer-id="${customerId}">
+            <td style="border:1px solid #000; padding:8px; text-align:center;">
+              <input type="checkbox" class="customer-select-cb" data-customer-id="${customerId}">
+            </td>
             <td style="border:1px solid #000; padding:8px;">${escapeHtml(customer.companyName)}</td>
             <td style="border:1px solid #000; padding:8px;">${escapeHtml(customer.companyType)}</td>
             <td style="border:1px solid #000; padding:8px;">${escapeHtml(customer.emailDomain)}</td>
@@ -11801,7 +11817,7 @@
 
         html += `
           <tr class="customer-members-row" style="display:none;">
-            <td colspan="6" style="border:1px solid #000; padding:8px; background:#fff;">
+            <td colspan="8" style="border:1px solid #000; padding:8px; background:#fff;">
               <div style="padding:8px 0;">${membersHtml}</div>
             </td>
           </tr>
@@ -11809,6 +11825,30 @@
       });
 
       tbody.innerHTML = html;
+
+      // ---- batch selection helpers ----
+      function updateBatchSelectionState() {
+        const allCbs = document.querySelectorAll('.customer-select-cb');
+        const checkedCbs = document.querySelectorAll('.customer-select-cb:checked');
+        const count = checkedCbs.length;
+        if (selectAllCb) selectAllCb.checked = count > 0 && count === allCbs.length;
+        if (batchDelBtn) batchDelBtn.disabled = count === 0;
+        if (selCountEl) selCountEl.textContent = count > 0 ? `${count} selected` : '';
+      }
+
+      // Checkbox per row
+      document.querySelectorAll('.customer-select-cb').forEach(cb => {
+        cb.addEventListener('change', updateBatchSelectionState);
+      });
+
+      // Select All checkbox
+      if (selectAllCb) {
+        selectAllCb.addEventListener('change', () => {
+          const checked = selectAllCb.checked;
+          document.querySelectorAll('.customer-select-cb').forEach(cb => cb.checked = checked);
+          updateBatchSelectionState();
+        });
+      }
 
       // Add hover effects to table rows
       document.querySelectorAll('.customer-row').forEach(row => {
@@ -12271,6 +12311,32 @@
       // Refresh button functionality
       const refreshBtn = document.getElementById('refreshCustomersBtn');
       refreshBtn.onclick = async () => await displayCustomers();
+
+      // Batch delete button
+      const batchDelBtn = document.getElementById('batchDeleteCustomersBtn');
+      if (batchDelBtn) {
+        batchDelBtn.onclick = async () => {
+          const checkedCbs = document.querySelectorAll('.customer-select-cb:checked');
+          if (checkedCbs.length === 0) return;
+
+          const customerIds = Array.from(checkedCbs).map(cb => cb.dataset.customerId);
+          const confirmMsg = `Delete ${customerIds.length} customer(s)?\n\nThis will also delete all members and related data.`;
+
+          if (!confirm(confirmMsg)) return;
+
+          try {
+            let deleted = 0;
+            for (const id of customerIds) {
+              const res = await fetch('/api/customers/' + encodeURIComponent(id), { method: 'DELETE' });
+              if (res.ok) deleted++;
+            }
+            alert(`Deleted ${deleted} customer(s).`);
+            await displayCustomers();
+          } catch (e) {
+            alert('Error deleting customers: ' + e.message);
+          }
+        };
+      }
 
       // Set up filter event listeners
       const filterInputs = document.querySelectorAll('#customerViewPanel .filter-input');
