@@ -14871,6 +14871,7 @@
           const tokenData = await tokenRes.json();
 
           if (!tokenData.success) {
+            if (loadingOverlay) document.body.removeChild(loadingOverlay);
             alert(tokenData.error || 'Failed to generate supplier tokens.');
             return;
           }
@@ -14917,6 +14918,7 @@
           }
 
           if (sentCount === 0) {
+            if (loadingOverlay) document.body.removeChild(loadingOverlay);
             alert('No emails were sent. Status will not be updated. Please check SMTP settings.');
             return;
           }
