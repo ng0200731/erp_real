@@ -19740,9 +19740,9 @@
         if (custWrap) custWrap.style.display = (uiMode === 'factory') ? '' : 'none';
         flatSec.style.display = 'none';
         tierSec.style.display = 'block';
-        // populateModeOptions() only adds the brand/factory option when #quotationBrandId /
-        // #quotationCustomerName have values. The view form lacks those fields, so the saved
-        // mode's option may be absent — inject it (mirrors populateViewPricing's view-mode path).
+        // populateModeOptions() may not have added the brand/factory option yet (it
+        // runs an async availability fetch and only appends when brand/customer are
+        // set). Defensively inject the saved-mode option if absent, then select it.
         await populateModeOptions();
         if (uiMode !== 'none' && !Array.from(modeSel.options).some((o) => o.value === uiMode)) {
           const lbl = uiMode === 'brand' ? 'Brand tier' : (uiMode === 'factory' ? 'Garment-factory tier' : uiMode);

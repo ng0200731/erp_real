@@ -222,6 +222,7 @@ test('old quotation without pricing block shows flat fields only', async ({ page
   const vc = page.locator('#quotationViewFormContainer');
   // No pricing block -> flat fields visible, tier section hidden, mode disabled at none
   await expect(vc.locator('#pricingModeSelect')).toHaveValue('none');
+  await expect(vc.locator('#pricingModeSelect')).toBeDisabled();
   await expect(vc.locator('#flatPricingSection')).toBeVisible();
   await expect(vc.locator('#tierPricingSection')).toBeHidden();
   await expect(vc.locator('#viewTierTableLabel')).toBeHidden();
