@@ -17,6 +17,8 @@
 - Flat field IDs (`#quotationQuantity` / `#quotationUnitPrice` / `#quotationTotal`) are unchanged; they move inside `#flatPricingSection`. No duplicate IDs anywhere.
 - Pricing controls that the create flow already defines (`#pricingModeSelect`, `#brandTierWrap`, `#brandTierTableSelect`, `#customerTierWrap`, `#customerTierTableSelect`, `#flatPricingSection`, `#tierPricingSection`, `#tierRows`, `#addTierRowBtn`) are reused verbatim so `initPricingMode` behaves identically.
 - The create flow calls `initPricingMode(scope)` with one argument — the new second argument defaults to `null`, so create-flow behavior is unchanged.
+- **Saved pricing lives FLAT at the top level of `productDetails`** (`tierScopeMode`, `brandTierTableId`/`customerTierTableId`, `tiers`) — NOT nested under `productDetails.pricing`. This is the project's documented flat convention (`collectProductDetailsFromForm` spreads `...pricing` flat); see `tests/unit-pricing-persist.spec.js:116-123`. Helpers MAY fall back to a nested `.pricing` block for forward-compat, but the canonical read is flat.
+- **Create-flow UI navigation (`menu-quotation` → `quotation-create-btn` → `hang-tag-btn`) times out under headless Chromium** (each onclick toggles a child submenu's `display:block`). Tests that need a created quotation must drive the form via `window.showQuotationSubBoard('hang-tag', ...)` + force the panels visible, mirroring `openQuotationHangTagForm` in `tests/unit-pricing-persist.spec.js`. Material and PrintingMethod are `<select>`s — use `selectOption`, not `fill`.
 - Tests run via `npx playwright test tests/unit-pricing-view.spec.js --project=chromium` (Playwright auto-starts `npm start` on :5999; webServer env carries `PLAYWRIGHT_TEST=true`).
 
 ## File Structure (this plan)
@@ -212,7 +214,11 @@ First, define the helper. In `public/index.html`, immediately **before** `functi
       const brandWrap = s.querySelector('#brandTierWrap');
       const custWrap = s.querySelector('#customerTierWrap');
 
-      const pricing = (quotation && quotation.productDetails && quotation.productDetails.pricing) || null;
+      // Pricing is stored FLAT at the top level of productDetails (flat convention;
+      // see tests/unit-pricing-persist.spec.js). Fall back to a nested .pricing block
+      // for forward-compat.
+      const pd = (quotation && quotation.productDetails) || null;
+      const pricing = (pd && pd.pricing) || (pd && pd.tierScopeMode ? pd : null);
       const mode = pricing ? pricing.tierScopeMode : 'none';
       const hasTiers = pricing && Array.isArray(pricing.tiers) && pricing.tiers.length > 0;
 
@@ -223,6 +229,16 @@ First, define the helper. In `public/index.html`, immediately **before** `functi
       }
 
       const uiMode = mode === 'customer' ? 'factory' : mode;
+      // The view form's #pricingModeSelect ships with only the "none" option
+      // (initPricingMode is intentionally NOT invoked in view mode). Inject a
+      // matching read-only option so setting .value reflects the saved mode.
+      const modeLabel = uiMode === 'brand' ? 'Brand tier' : (uiMode === 'factory' ? 'Garment-factory tier' : uiMode);
+      if (uiMode !== 'none' && !Array.from(modeSel.options).some((o) => o.value === uiMode)) {
+        const opt = document.createElement('option');
+        opt.value = uiMode;
+        opt.textContent = modeLabel;
+        modeSel.appendChild(opt);
+      }
       modeSel.value = uiMode;
       modeSel.disabled = true;
       if (flatSec) flatSec.style.display = 'none';
@@ -371,8 +387,8 @@ test('inline-edit seeds saved brand tier, edits persist on save', async ({ page,
   const vc = page.locator('#quotationViewFormContainer');
   await expect(vc.locator('#pricingModeSelect')).toBeEnabled();
   await expect(vc.locator('#brandTierTableSelect')).toBeVisible();
-  // Picker pre-selected to the saved table
-  await expect(vc.locator('#brandTierTableSelect')).toHaveValue(String(created.productDetails.pricing.brandTierTableId));
+  // Picker pre-selected to the saved table (pricing stored FLAT in productDetails)
+  await expect(vc.locator('#brandTierTableSelect')).toHaveValue(String(created.productDetails.brandTierTableId));
   // Edit the first tier's unit price
   await vc.locator('.tier-row .tier-unit').first().fill('0.77');
 
@@ -383,11 +399,12 @@ test('inline-edit seeds saved brand tier, edits persist on save', async ({ page,
   const r2 = await req.get('/api/quotations/' + created.id);
   const d2 = await r2.json();
   const saved = d2.quotation;
-  const pricing = (saved.productDetails || {}).pricing || {};
-  expect(pricing.tierScopeMode).toBe('brand');
-  expect(pricing.brandTierTableId).toBe(created.productDetails.pricing.brandTierTableId);
-  expect(Number(pricing.tiers[0].quantity)).toBe(1000);
-  expect(Number(pricing.tiers[0].unitPrice)).toBeCloseTo(0.77, 2);
+  // Pricing is stored FLAT at the top level of productDetails (see unit-pricing-persist.spec.js).
+  const pd = saved.productDetails || {};
+  expect(pd.tierScopeMode).toBe('brand');
+  expect(pd.brandTierTableId).toBe(created.productDetails.brandTierTableId);
+  expect(Number(pd.tiers[0].quantity)).toBe(1000);
+  expect(Number(pd.tiers[0].unitPrice)).toBeCloseTo(0.77, 2);
 });
 ```
 
@@ -482,9 +499,12 @@ Replace those two lines with:
       window.originalQuotationData = quotation;
 
       // Wire pricing controls and seed with the saved selection (view → edit).
+      // Pricing is stored FLAT at the top level of productDetails (tierScopeMode,
+      // brandTierTableId/customerTierTableId, tiers) — see tests/unit-pricing-persist.spec.js.
       const vLabel = formContainer.querySelector('#viewTierTableLabel');
       if (vLabel) vLabel.style.display = 'none';
-      const savedPricing = (quotation && quotation.productDetails && quotation.productDetails.pricing) || null;
+      const pd = (quotation && quotation.productDetails) || null;
+      const savedPricing = (pd && pd.tierScopeMode ? pd : null) || (pd && pd.pricing) || null;
       initPricingMode(formContainer, savedPricing);
     }
 ```
