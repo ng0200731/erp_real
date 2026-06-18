@@ -269,6 +269,40 @@ async function ensureSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_product_profiles_productType ON product_profiles(productType);
     CREATE INDEX IF NOT EXISTS idx_product_profiles_name ON product_profiles(name);
 
+    CREATE TABLE IF NOT EXISTS pricing_tier_tables (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      scope TEXT NOT NULL,
+      brandId INTEGER,
+      brandName TEXT,
+      customerId INTEGER,
+      customerName TEXT,
+      disabled INTEGER NOT NULL DEFAULT 0,
+      sourceProfileId INTEGER UNIQUE,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      FOREIGN KEY (brandId) REFERENCES brands(id) ON DELETE SET NULL,
+      FOREIGN KEY (customerId) REFERENCES customers(id) ON DELETE SET NULL,
+      FOREIGN KEY (sourceProfileId) REFERENCES product_profiles(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS pricing_tier_table_rows (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tableId INTEGER NOT NULL,
+      quantity INTEGER NOT NULL,
+      unitPrice REAL NOT NULL,
+      sortOrder INTEGER NOT NULL DEFAULT 0,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL,
+      FOREIGN KEY (tableId) REFERENCES pricing_tier_tables(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_pricing_tier_tables_scope ON pricing_tier_tables(scope);
+    CREATE INDEX IF NOT EXISTS idx_pricing_tier_tables_brandId ON pricing_tier_tables(brandId);
+    CREATE INDEX IF NOT EXISTS idx_pricing_tier_tables_customerId ON pricing_tier_tables(customerId);
+    CREATE INDEX IF NOT EXISTS idx_pricing_tier_tables_name ON pricing_tier_tables(name);
+    CREATE INDEX IF NOT EXISTS idx_pricing_tier_table_rows_tableId ON pricing_tier_table_rows(tableId);
+
     CREATE TABLE IF NOT EXISTS workshops (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       fullCompanyName TEXT NOT NULL,
@@ -711,6 +745,65 @@ async function ensureSchema(db) {
     if (!e.message.includes('duplicate column name')) {
       console.warn('Error adding contactPerson column:', e);
     }
+  }
+
+  try {
+    const legacyTierProfiles = await db.all(
+      `SELECT id, name, specs, createdAt, updatedAt
+       FROM product_profiles
+       WHERE productType = 'pricing-tier'
+         AND id NOT IN (
+           SELECT COALESCE(sourceProfileId, -1)
+           FROM pricing_tier_tables
+           WHERE sourceProfileId IS NOT NULL
+         )`
+    );
+
+    for (const profile of legacyTierProfiles) {
+      let specs = {};
+      try {
+        specs = typeof profile.specs === 'string' ? JSON.parse(profile.specs || '{}') : (profile.specs || {});
+      } catch (e) {
+        specs = {};
+      }
+
+      const scope = specs.scope === 'customer' ? 'customer' : 'brand';
+      const createdAt = profile.createdAt || new Date().toISOString();
+      const updatedAt = profile.updatedAt || createdAt;
+      const header = await db.run(
+        `INSERT INTO pricing_tier_tables
+         (name, scope, brandId, brandName, customerId, customerName, disabled, sourceProfileId, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          profile.name || 'Untitled',
+          scope,
+          specs.brandId || null,
+          specs.brandName || null,
+          specs.customerId || null,
+          specs.customerName || null,
+          specs.disabled ? 1 : 0,
+          profile.id,
+          createdAt,
+          updatedAt
+        ]
+      );
+
+      const tiers = Array.isArray(specs.tiers) ? specs.tiers : [];
+      for (let i = 0; i < tiers.length; i++) {
+        const tier = tiers[i] || {};
+        const quantity = parseInt(tier.quantity ?? tier.qty ?? 0, 10) || 0;
+        const unitPrice = parseFloat(tier.unitPrice ?? tier.price ?? 0) || 0;
+        if (quantity <= 0) continue;
+        await db.run(
+          `INSERT INTO pricing_tier_table_rows
+           (tableId, quantity, unitPrice, sortOrder, createdAt, updatedAt)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [header.lastID, quantity, unitPrice, i, createdAt, updatedAt]
+        );
+      }
+    }
+  } catch (err) {
+    console.warn('Error migrating legacy pricing tier tables:', err);
   }
 }
 
@@ -1903,6 +1996,142 @@ export async function updateProductProfile(id, profileData) {
 export async function deleteProductProfile(id) {
   const db = await getTasksDb();
   await db.run(`DELETE FROM product_profiles WHERE id = ?`, [id]);
+  return true;
+}
+
+async function getPricingTierRows(db, tableId) {
+  return await db.all(
+    `SELECT id, quantity, unitPrice, sortOrder
+     FROM pricing_tier_table_rows
+     WHERE tableId = ?
+     ORDER BY sortOrder ASC, id ASC`,
+    [tableId]
+  );
+}
+
+async function hydratePricingTierTable(db, row) {
+  if (!row) return null;
+  const tiers = await getPricingTierRows(db, row.id);
+  return {
+    ...row,
+    disabled: !!row.disabled,
+    tiers: tiers.map(t => ({
+      id: t.id,
+      quantity: t.quantity,
+      unitPrice: Number(t.unitPrice),
+      total: Number(t.quantity) * Number(t.unitPrice),
+      sortOrder: t.sortOrder
+    }))
+  };
+}
+
+function normalizePricingTierTablePayload(data = {}) {
+  const scope = data.scope === 'customer' ? 'customer' : 'brand';
+  const tiers = Array.isArray(data.tiers) ? data.tiers : [];
+  return {
+    name: String(data.name || '').trim(),
+    scope,
+    brandId: scope === 'brand' && data.brandId ? Number(data.brandId) : null,
+    brandName: scope === 'brand' ? (data.brandName || null) : null,
+    customerId: scope === 'customer' && data.customerId ? Number(data.customerId) : null,
+    customerName: scope === 'customer' ? (data.customerName || null) : null,
+    disabled: data.disabled ? 1 : 0,
+    tiers: tiers.map((tier, index) => ({
+      quantity: parseInt(tier.quantity ?? tier.qty ?? 0, 10) || 0,
+      unitPrice: parseFloat(tier.unitPrice ?? tier.price ?? 0) || 0,
+      sortOrder: tier.sortOrder ?? index
+    })).filter(tier => tier.quantity > 0)
+  };
+}
+
+export async function createPricingTierTable(data) {
+  const db = await getTasksDb();
+  const now = new Date().toISOString();
+  const payload = normalizePricingTierTablePayload(data);
+
+  const result = await db.run(
+    `INSERT INTO pricing_tier_tables
+     (name, scope, brandId, brandName, customerId, customerName, disabled, createdAt, updatedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      payload.name,
+      payload.scope,
+      payload.brandId,
+      payload.brandName,
+      payload.customerId,
+      payload.customerName,
+      payload.disabled,
+      now,
+      now
+    ]
+  );
+
+  for (const tier of payload.tiers) {
+    await db.run(
+      `INSERT INTO pricing_tier_table_rows
+       (tableId, quantity, unitPrice, sortOrder, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [result.lastID, tier.quantity, tier.unitPrice, tier.sortOrder, now, now]
+    );
+  }
+
+  return result.lastID;
+}
+
+export async function getPricingTierTableById(id) {
+  const db = await getTasksDb();
+  const row = await db.get(`SELECT * FROM pricing_tier_tables WHERE id = ?`, [id]);
+  return await hydratePricingTierTable(db, row);
+}
+
+export async function getAllPricingTierTables() {
+  const db = await getTasksDb();
+  const rows = await db.all(`SELECT * FROM pricing_tier_tables ORDER BY name COLLATE NOCASE ASC, id DESC`);
+  const hydrated = [];
+  for (const row of rows) {
+    hydrated.push(await hydratePricingTierTable(db, row));
+  }
+  return hydrated;
+}
+
+export async function updatePricingTierTable(id, data) {
+  const db = await getTasksDb();
+  const now = new Date().toISOString();
+  const payload = normalizePricingTierTablePayload(data);
+
+  await db.run(
+    `UPDATE pricing_tier_tables
+     SET name = ?, scope = ?, brandId = ?, brandName = ?, customerId = ?, customerName = ?, disabled = ?, updatedAt = ?
+     WHERE id = ?`,
+    [
+      payload.name,
+      payload.scope,
+      payload.brandId,
+      payload.brandName,
+      payload.customerId,
+      payload.customerName,
+      payload.disabled,
+      now,
+      id
+    ]
+  );
+
+  await db.run(`DELETE FROM pricing_tier_table_rows WHERE tableId = ?`, [id]);
+  for (const tier of payload.tiers) {
+    await db.run(
+      `INSERT INTO pricing_tier_table_rows
+       (tableId, quantity, unitPrice, sortOrder, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [id, tier.quantity, tier.unitPrice, tier.sortOrder, now, now]
+    );
+  }
+
+  return true;
+}
+
+export async function deletePricingTierTable(id) {
+  const db = await getTasksDb();
+  await db.run(`DELETE FROM pricing_tier_tables WHERE id = ?`, [id]);
   return true;
 }
 

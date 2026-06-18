@@ -29,6 +29,8 @@ import {
   getAllBrands, getBrandById, createBrand, updateBrand, deleteBrand,
   // Product Profile functions
   getAllProductProfiles, getProductProfileById, createProductProfile, updateProductProfile, deleteProductProfile, getProductProfilesByType,
+  // Pricing Tier Table functions
+  getAllPricingTierTables, getPricingTierTableById, createPricingTierTable, updatePricingTierTable, deletePricingTierTable,
   // Workshop functions
   getAllWorkshops, getWorkshopById, createWorkshop, updateWorkshop, deleteWorkshop,
   // Order functions
@@ -50,6 +52,7 @@ import { createSkillRoutes } from './routes/skills.js';
 import { createEmailRoutes } from './routes/emails.js';
 import { createBrandRoutes } from './routes/brands.js';
 import { createProductProfileRoutes } from './routes/product-profiles.js';
+import { createPricingTierTableRoutes } from './routes/pricing-tier-tables.js';
 import { createWorkshopRoutes } from './routes/workshops.js';
 import { createOrderRoutes } from './routes/orders.js';
 import supplierPortalRouter from './routes/supplier-portal.js';
@@ -530,6 +533,16 @@ const productProfileRoutes = createProductProfileRoutes({
   getProductProfilesByType
 });
 app.use('/api/product-profiles', productProfileRoutes);
+
+// Pricing Tier Table routes
+const pricingTierTableRoutes = createPricingTierTableRoutes({
+  getAllPricingTierTables,
+  getPricingTierTableById,
+  createPricingTierTable,
+  updatePricingTierTable,
+  deletePricingTierTable
+});
+app.use('/api/pricing-tier-tables', pricingTierTableRoutes);
 
 // Workshop routes
 const workshopRoutes = createWorkshopRoutes({

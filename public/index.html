@@ -2127,6 +2127,7 @@
           <div style="margin-bottom:15px;">
             <button id="addMemberBtn" class="page-btn">+ Add Member</button>
             <button id="dummyMemberBtn" class="page-btn" style="margin-left:10px;">Dummy Input</button>
+            <button id="saveCustomerAllBtn" class="page-btn" style="margin-left:10px; background:#16a34a; color:#fff;">Save Company</button>
           </div>
 
           <div id="membersList">
@@ -3628,6 +3629,80 @@
         </div>
       </div>
 
+      <!-- Quotation Tier Table Panel -->
+      <div id="quotationTierPanel" style="border:0; padding:0; margin-bottom:20px; display:none;">
+        <div class="settings-section" id="sectionQuotationTiers">
+          <div class="settings-section-header" onclick="toggleSettingsSection('sectionQuotationTiers')">
+            <h3 class="settings-section-title">
+              <span class="settings-section-arrow">▼</span>
+              Quotation Tier Table
+            </h3>
+            <span style="font-size:11px; opacity:0.6; letter-spacing:0.08em;">CLICK TO TOGGLE</span>
+          </div>
+          <div class="settings-section-body">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:12px;">
+              <div>
+                <label style="display:block; font-weight:600; margin-bottom:6px;">Scope</label>
+                <select id="tierScopeSelect" style="width:100%; padding:6px; border:1px solid #ccc;">
+                  <option value="brand">Brand</option>
+                  <option value="customer">Garment Factory Database</option>
+                </select>
+              </div>
+              <div id="tierScopeBrandWrap">
+                <label style="display:block; font-weight:600; margin-bottom:6px;">Brand</label>
+                <select id="tierBrandSelect" style="width:100%; padding:6px; border:1px solid #ccc;">
+                  <option value="">Select brand...</option>
+                </select>
+              </div>
+              <div id="tierScopeCustomerWrap" style="display:none;">
+                <label style="display:block; font-weight:600; margin-bottom:6px;">Garment Factory</label>
+                <select id="tierCustomerSelect" style="width:100%; padding:6px; border:1px solid #ccc;">
+                  <option value="">Select customer...</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-bottom:10px;">
+              <label style="display:block; font-weight:600; margin-bottom:6px;">Table Name</label>
+              <input id="tierTableName" type="text" style="width:100%; padding:6px; border:1px solid #ccc;" placeholder="e.g., PU Patch Standard Tiers">
+            </div>
+            <div style="border:1px solid #ccc; padding:10px; background:#fafafa; margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <div style="font-weight:600;">Tiers</div>
+                <button type="button" id="tierAddRowBtn" class="btn" style="padding:4px 8px; font-size:12px;">+ Add Tier</button>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr 80px; gap:8px; font-size:12px; margin-bottom:6px;">
+                <div style="font-weight:600;">Quantity</div>
+                <div style="font-weight:600;">Unit Price</div>
+                <div style="font-weight:600;">Total</div>
+                <div></div>
+              </div>
+              <div id="tierEditorRows"></div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+              <button type="button" id="saveTierTableBtn" class="page-btn">Save Tier Table</button>
+              <button type="button" id="resetTierTableBtn" class="page-btn">Reset</button>
+              <button type="button" id="dummyFillTierBtn" class="page-btn">Dummy Fill</button>
+              <label style="display:flex; align-items:center; gap:6px; font-size:12px;">
+                <input type="checkbox" id="tierDisabledCheckbox"> Disabled
+              </label>
+            </div>
+            <div>
+              <div style="display:flex; gap:10px; align-items:center; margin-bottom:8px;">
+                <input id="tierSearchInput" type="text" style="flex:1; padding:6px; border:1px solid #ccc;" placeholder="Search by brand or garment factory...">
+                <select id="tierFilterScope" style="padding:6px; border:1px solid #ccc;">
+                  <option value="">All</option>
+                  <option value="brand">Brand</option>
+                  <option value="customer">Garment Factory</option>
+                </select>
+              </div>
+              <div id="tierTablesList" style="border:1px solid #ddd; max-height:260px; overflow:auto;">
+                <div style="padding:10px; color:#999; font-style:italic;">No tier tables loaded</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Email UI (next step; hidden for now) -->
       <div id="emails" style="margin:0; display:none; width:100%;">
         <div class="topbar">
@@ -4451,10 +4526,30 @@
 
     async function loadQuotationDefaults() {
       try {
-        const res = await fetch('/api/quotation-defaults', { cache: 'no-cache' });
-        const data = await res.json();
+        const [defaultsRes, brandsRes] = await Promise.all([
+          fetch('/api/quotation-defaults', { cache: 'no-cache' }),
+          fetch('/api/brands', { cache: 'no-cache' })
+        ]);
+        
+        const data = await defaultsRes.json();
+        let dbBrands = [];
+        try {
+          const brandsData = await brandsRes.json();
+          if (brandsData.brands) {
+            dbBrands = brandsData.brands.map(b => b.name);
+          }
+        } catch (e) {
+          console.log('Failed to load brands from DB', e);
+        }
+        
         if (data.success && data.defaults) {
           brandNamesList = data.defaults.brands || [];
+          // Add brands from DB if not already in list
+          dbBrands.forEach(b => {
+            if (!brandNamesList.some(existing => existing.toLowerCase() === b.toLowerCase())) {
+              brandNamesList.push(b);
+            }
+          });
           // Rebuild product types
           PRESET_PRODUCT_TYPES.length = 0;
           customProductTypes.length = 0;
@@ -4695,6 +4790,7 @@
       profilesListPanel.style.display = id === 'profiles' ? 'block' : 'none';
       document.getElementById('quotationDefaultsPanel').style.display = id === 'profiles' ? 'block' : 'none';
       document.getElementById('productProfilesPanel').style.display = id === 'profiles' ? 'block' : 'none';
+      document.getElementById('quotationTierPanel').style.display = id === 'profiles' ? 'block' : 'none';
       document.getElementById('emails').style.display = id === 'emails' ? 'block' : 'none';
       document.getElementById('email-send').style.display = id === 'email-send' ? 'block' : 'none';
       document.getElementById('customerPanel').style.display = id === 'customer' ? 'block' : 'none';
@@ -4732,6 +4828,19 @@
       if (id === 'profiles') {
         loadProfilesList().catch(() => {});
         loadProductProfilesList();
+        // Collapse all settings sections by default
+        ['sectionEmailProfiles', 'sectionQuotationDefaults', 'sectionProductProfiles', 'sectionQuotationTiers'].forEach(sectionId => {
+          const section = document.getElementById(sectionId);
+          if (section) section.classList.add('collapsed');
+        });
+        // Make sure brands are loaded first for the tier panel
+        if (typeof loadBrandsCache === 'function') {
+          loadBrandsCache().then(() => {
+            if (typeof initQuotationTierPanel === 'function') initQuotationTierPanel();
+          });
+        } else if (typeof initQuotationTierPanel === 'function') {
+          initQuotationTierPanel();
+        }
       }
 
       if (id === 'welcome') {
@@ -8637,7 +8746,7 @@
     const menuProfilesBtn = document.getElementById('menuProfilesBtn');
     menuProfilesBtn.onclick = () => {
       document.getElementById('settingSubmenu').style.display = 'none';
-      ensureTab('profiles', 'Setting');
+      ensureTab('profiles', 'Setting (Profiles / Config)');
       activateTab('profiles');
       loadProfilesList();
     };
@@ -11147,6 +11256,7 @@
       const saveCustomerBtn = document.getElementById('saveCustomerBtn');
       const addMemberBtn = document.getElementById('addMemberBtn');
       const dummyMemberBtn = document.getElementById('dummyMemberBtn');
+      const saveAllBtn = document.getElementById('saveCustomerAllBtn');
 
       // Dummy input functionality
       dummyInputBtn.onclick = () => fillDummyData();
@@ -11159,6 +11269,22 @@
 
       // Dummy member functionality
       dummyMemberBtn.onclick = () => addDummyMember();
+      if (saveAllBtn) {
+        saveAllBtn.onclick = async () => {
+          try {
+            if (!currentCustomerData) {
+              showModal({ title: 'Error', body: 'Please save Customer info first.' });
+              return;
+            }
+            currentCustomerData.members = [...membersData];
+            await saveCustomerToStorage(currentCustomerData);
+            showModal({ title: 'Saved', body: 'Company and members saved successfully.' });
+            clearAllCustomerData();
+          } catch (e) {
+            showModal({ title: 'Error', body: 'Failed to save company: ' + e.message });
+          }
+        };
+      }
 
       // File upload functionality
       initializeFileUpload();
@@ -11229,6 +11355,9 @@
         companyWebsite,
         members: [] // Will be populated when members are saved
       };
+
+      // Save to database
+      await saveCustomerToStorage(currentCustomerData);
 
       // Enable member tab
       const memberTab = document.querySelector('[data-tab="member-info"]');
@@ -11395,6 +11524,12 @@
       const addMore = await showAddMoreModal(memberName);
 
       if (!addMore) {
+        // Save company and members first
+        if (currentCustomerData) {
+          currentCustomerData.members = [...membersData];
+          await saveCustomerToStorage(currentCustomerData);
+          showModal({ title: 'Saved', body: 'Company and members saved successfully.' });
+        }
         // Clear all data and reset forms
         clearAllCustomerData();
       }
@@ -15209,6 +15344,22 @@
       const imageHtml = profileImageBase64 ? `<div style="text-align:center; margin:15px 0;"><img src="${profileImageBase64}" style="max-width:150px; max-height:150px; object-fit:contain; border:1px solid #ddd; padding:3px;" alt="Product Image"></div>` : '';
       const itemRow = quotation.customerItemName ? `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer Item</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerItemName}</td></tr>` : '';
       const detailRows = emailProductDetailsRows(productDetails);
+      let tiersHtml = '';
+      if (productDetails && productDetails.pricingMode === 'tier' && Array.isArray(productDetails.pricingTiers) && productDetails.pricingTiers.length > 0) {
+        const rows = productDetails.pricingTiers.map(t => {
+          const q = t.quantity || 0;
+          const u = t.unitPrice != null ? Number(t.unitPrice).toFixed(2) : '0.00';
+          const z = (q * (parseFloat(u) || 0)).toFixed(2);
+          return `<tr><td style="padding:6px; border:1px solid #ccc;">${q.toLocaleString()}</td><td style="padding:6px; border:1px solid #ccc;">${u}</td><td style="padding:6px; border:1px solid #ccc;">${z}</td></tr>`;
+        }).join('');
+        tiersHtml = `
+          <h3 style="margin:20px 0 8px 0;">Requested Pricing Tiers</h3>
+          <table style="width:100%; border-collapse:collapse; margin:8px 0;">
+            <thead><tr><th style="padding:6px; border:1px solid #ccc; text-align:left;">Quantity</th><th style="padding:6px; border:1px solid #ccc; text-align:left;">Unit Price (HKD)</th><th style="padding:6px; border:1px solid #ccc; text-align:left;">Total</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
+      }
       return `
         <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
           <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Quotation Request</h2>
@@ -15222,6 +15373,7 @@
             ${detailRows}
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity ? quotation.quantity.toLocaleString() : 'N/A'}</td></tr>
           </table>
+          ${tiersHtml}
           <p>Please submit your quotation using the link below:</p>
           <table cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;"><tr><td align="center" bgcolor="#000000" style="padding:12px 24px; border-radius:4px;"><a href="${portalLink}" style="color:#ffffff; text-decoration:none; font-weight:500; font-size:14px;" target="_blank">Submit Your Quotation</a></td></tr></table>
           <p style="font-size:13px; color:#333; margin-bottom:4px; font-weight:600;">📋 Copy this link to open in your browser:</p>
@@ -18427,6 +18579,7 @@
         const data = await r.json();
         if (data.success) {
           cachedBrands = data.brands;
+          window.cachedBrands = cachedBrands;
           const filterEl = document.getElementById('quotationFilterBrand');
           if (filterEl) {
             const currentVal = filterEl.value;
@@ -18951,6 +19104,11 @@
                 '<option value="flat" selected>Flat Price</option>' +
                 '<option value="tier">Tier Price</option>' +
               '</select>' +
+              '<div id="tierTableSelectWrap" style="margin-top:10px; display:flex; gap:8px; align-items:center;">' +
+                '<label style="font-size:12px;">Select Tier Table</label>' +
+                '<select id="tierTemplateSelect" style="flex:1; padding:4px; border:1px solid #ccc;"><option value="">Load from settings...</option></select>' +
+                '<button type="button" id="applyTierTemplateBtn" class="btn" style="padding:4px 8px; font-size:12px;">Apply</button>' +
+              '</div>' +
             '</div>' +
 
             '<div style="margin-bottom:20px;">' +
@@ -19049,6 +19207,8 @@
             const t = q * u;
             return { quantity: q, unitPrice: u, total: t };
           }).filter(t => t.quantity > 0 && t.unitPrice >= 0);
+          const selectedTemplateId = (container ? container.querySelector('#selectedTierTemplateId') : document.getElementById('selectedTierTemplateId'))?.value || '';
+          if (selectedTemplateId) pricing.selectedTierTemplateId = selectedTemplateId;
         }
       }
       if (tagType === 'hang-tag') {
@@ -19246,6 +19406,542 @@
       }
       modeSel.onchange = onModeChange;
       onModeChange();
+
+      // Load tier tables from settings for quick apply
+      const templateSelect = s.querySelector('#tierTemplateSelect');
+      const applyBtn = s.querySelector('#applyTierTemplateBtn');
+      if (templateSelect && applyBtn) {
+        (async () => {
+          try {
+            const res = await fetch('/api/pricing-tier-tables');
+            const data = await res.json();
+            const items = data && data.success ? (data.tables || []) : [];
+            const brandIdEl = s.querySelector('#quotationBrandId') || document.getElementById('quotationBrandId');
+            const brandIdVal = brandIdEl ? String(brandIdEl.value || '') : '';
+            const custNameEl = s.querySelector('#quotationCustomerName') || document.getElementById('quotationCustomerName');
+            const custNameVal = custNameEl ? String((custNameEl.value || '').trim()) : '';
+            const filtered = items.filter(p => {
+              if (p.scope === 'brand' && brandIdVal && String(p.brandId || '') === brandIdVal) return true;
+              if (p.scope === 'customer' && custNameVal && String((p.customerName || '')).toLowerCase() === custNameVal.toLowerCase()) return true;
+              return false;
+            });
+            const opts = ['<option value="">Load from settings...</option>'].concat(
+              filtered.map(p => {
+                const scopeLabel = p.scope === 'customer' ? (p.customerName || 'Customer') : (p.brandName || 'Brand');
+                return `<option value="${p.id}">${escapeHtml(p.name || 'Untitled')} — ${escapeHtml(scopeLabel)}</option>`;
+              })
+            );
+            templateSelect.innerHTML = opts.join('');
+          } catch (e) { console.warn('Failed to load tier templates', e); }
+        })();
+
+        applyBtn.onclick = async () => {
+          const id = templateSelect.value;
+          if (!id) return;
+          try {
+            const res = await fetch('/api/pricing-tier-tables/' + id);
+            const data = await res.json();
+            if (!data || !data.success || !data.table) return;
+            const tiers = data.table.tiers || [];
+            // Switch to tier mode and populate
+            modeSel.value = 'tier';
+            onModeChange();
+            rowsWrap.innerHTML = '';
+            tiers.forEach(t => {
+              const q = t.quantity || t.qty || 0;
+              const u = t.unitPrice || t.price || 0;
+              addTierRow(q, u);
+            });
+            // Mark selected template in a hidden input for saving
+            let hidden = s.querySelector('#selectedTierTemplateId');
+            if (!hidden) {
+              hidden = document.createElement('input');
+              hidden.type = 'hidden';
+              hidden.id = 'selectedTierTemplateId';
+              s.querySelector('#miniTabPricing')?.appendChild(hidden);
+            }
+            hidden.value = String(id);
+          } catch (e) { console.error('Failed to apply tier template', e); }
+        };
+      }
+    }
+
+    // Initialize Quotation Tier Table settings panel
+    let _tierPanelReady = false;
+    function initQuotationTierPanel() {
+      if (_tierPanelReady) return;
+      const panel = document.getElementById('quotationTierPanel');
+      if (!panel) return;
+      _tierPanelReady = true;
+      const scopeSel = panel.querySelector('#tierScopeSelect');
+      const brandWrap = panel.querySelector('#tierScopeBrandWrap');
+      const custWrap = panel.querySelector('#tierScopeCustomerWrap');
+      const brandSel = panel.querySelector('#tierBrandSelect');
+      const custSel = panel.querySelector('#tierCustomerSelect');
+      const nameInput = panel.querySelector('#tierTableName');
+      const rowsWrap = panel.querySelector('#tierEditorRows');
+      const addBtn = panel.querySelector('#tierAddRowBtn');
+      const saveBtn = panel.querySelector('#saveTierTableBtn');
+      const resetBtn = panel.querySelector('#resetTierTableBtn');
+      const disabledCb = panel.querySelector('#tierDisabledCheckbox');
+      const listWrap = panel.querySelector('#tierTablesList');
+      const searchInput = panel.querySelector('#tierSearchInput');
+      const filterScope = panel.querySelector('#tierFilterScope');
+      window._tierEditingId = null;
+
+      function appendTierRow(container, q = '', u = '') {
+        const row = document.createElement('div');
+        row.className = 'tier-row';
+        row.style.cssText = 'display:grid; grid-template-columns:1fr 1fr 1fr 80px; gap:8px; margin-bottom:6px;';
+        row.innerHTML =
+          '<input type="number" class="tier-qty" min="1" placeholder="Qty" style="padding:6px; border:1px solid #ccc;">' +
+          '<input type="number" class="tier-unit" min="0" step="0.01" placeholder="Unit Price" style="padding:6px; border:1px solid #ccc;">' +
+          '<input type="text" class="tier-total" readonly placeholder="Total" style="padding:6px; border:1px solid #ccc; background:#f5f5f5;">' +
+          '<button type="button" class="btn remove-tier" style="padding:4px 8px; font-size:12px;">Remove</button>';
+        container.appendChild(row);
+        const qtyEl = row.querySelector('.tier-qty');
+        const unitEl = row.querySelector('.tier-unit');
+        const totEl = row.querySelector('.tier-total');
+        const rm = row.querySelector('.remove-tier');
+        qtyEl.value = q !== '' ? q : '';
+        unitEl.value = u !== '' ? Number(u).toFixed(2) : '';
+        const recalc = () => { const qv = parseInt(qtyEl.value || '0', 10) || 0; const uv = parseFloat(unitEl.value || '0') || 0; totEl.value = (qv * uv).toFixed(2); };
+        qtyEl.addEventListener('input', recalc);
+        unitEl.addEventListener('input', recalc);
+        rm.onclick = () => { row.remove(); };
+        recalc();
+      }
+
+      function addRow(q = '', u = '') {
+        appendTierRow(rowsWrap, q, u);
+      }
+
+      function collectTierRows(container) {
+        return Array.from(container.querySelectorAll('.tier-row')).map(r => {
+          const q = parseInt(r.querySelector('.tier-qty')?.value || '0', 10) || 0;
+          const u = parseFloat(r.querySelector('.tier-unit')?.value || '0') || 0;
+          return q > 0 ? { quantity: q, unitPrice: u, total: q * u } : null;
+        }).filter(Boolean);
+      }
+
+      function onScopeChange() {
+        const v = scopeSel.value;
+        brandWrap.style.display = v === 'brand' ? 'block' : 'none';
+        custWrap.style.display = v === 'customer' ? 'block' : 'none';
+      }
+      scopeSel.onchange = onScopeChange;
+      onScopeChange();
+
+      // Populate brands
+      (async () => {
+        try {
+          if (typeof loadBrandsCache === 'function') await loadBrandsCache();
+          const brands = (cachedBrands || []);
+          let brandOptions = '';
+          if (brands.length === 0) {
+            brandOptions = '<option value="">No brands yet...</option>';
+          } else {
+            brandOptions = '<option value="">Select brand...</option>' + brands.map(b => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('');
+          }
+          brandSel.innerHTML = brandOptions;
+          
+          // Add "Add Brand" button next to dropdown
+          let addBrandBtn = brandWrap.querySelector('.add-brand-btn');
+          if (!addBrandBtn) {
+            addBrandBtn = document.createElement('button');
+            addBrandBtn.className = 'page-btn add-brand-btn';
+            addBrandBtn.textContent = '+ Add Brand';
+            addBrandBtn.style.marginTop = '8px';
+            addBrandBtn.style.fontSize = '12px';
+            addBrandBtn.onclick = () => {
+              activateTab('brand-create');
+            };
+            brandWrap.appendChild(addBrandBtn);
+          }
+        } catch (e) { console.warn('Failed to load brands for tier panel', e); }
+      })();
+
+      // Populate customers
+      (async () => {
+        try {
+          const res = await fetch('/api/customers');
+          const data = await res.json();
+          const customers = data && data.success ? (data.customers || []) : (Array.isArray(data) ? data : []);
+          let custOptions = '';
+          if (customers.length === 0) {
+            custOptions = '<option value="">No factories yet...</option>';
+          } else {
+            custOptions = '<option value="">Select customer...</option>' + customers.map(c => `<option value="${c.id}">${escapeHtml(c.companyName)}</option>`).join('');
+          }
+          custSel.innerHTML = custOptions;
+          
+          // Add "Add Factory" button next to dropdown
+          let addBtn = custWrap.querySelector('.add-factory-btn');
+          if (!addBtn) {
+            addBtn = document.createElement('button');
+            addBtn.className = 'page-btn add-factory-btn';
+            addBtn.textContent = '+ Add Factory';
+            addBtn.style.marginTop = '8px';
+            addBtn.style.fontSize = '12px';
+            addBtn.onclick = () => {
+              activateTab('customer');
+            };
+            custWrap.appendChild(addBtn);
+          }
+        } catch (e) { console.warn('Failed to load customers for tier panel', e); }
+      })();
+
+      addBtn.onclick = () => addRow();
+      resetBtn.onclick = () => { 
+        window._tierEditingId = null; 
+        scopeSel.value = 'brand'; 
+        onScopeChange(); 
+        brandSel.value = ''; 
+        custSel.value = ''; 
+        nameInput.value = ''; 
+        rowsWrap.innerHTML = ''; 
+        disabledCb.checked = false; 
+      };
+
+      const dummyFillBtn = panel.querySelector('#dummyFillTierBtn');
+      dummyFillBtn.onclick = () => {
+        // Random scope
+        scopeSel.value = Math.random() > 0.5 ? 'brand' : 'customer';
+        onScopeChange();
+        
+        // Fill scope specific fields
+        if (scopeSel.value === 'brand') {
+          const brandOptions = brandSel.querySelectorAll('option');
+          if (brandOptions.length > 1) {
+            const randBrandIdx = Math.floor(Math.random() * (brandOptions.length - 1)) + 1;
+            brandSel.value = brandOptions[randBrandIdx].value;
+          }
+        } else {
+          const custOptions = custSel.querySelectorAll('option');
+          if (custOptions.length > 1) {
+            const randCustIdx = Math.floor(Math.random() * (custOptions.length - 1)) + 1;
+            custSel.value = custOptions[randCustIdx].value;
+          }
+        }
+        
+        // Fill name
+        const tierNames = ['Standard Pricing', 'Bulk Discount Tiers', 'Wholesale Rates', 'Premium Pricing', 'Sample Tiers'];
+        nameInput.value = tierNames[Math.floor(Math.random() * tierNames.length)];
+        
+        // Random disabled state
+        disabledCb.checked = Math.random() > 0.8;
+        
+        // Fill tiers
+        rowsWrap.innerHTML = '';
+        const numTiers = Math.floor(Math.random() * 3) + 2; // 2-4 tiers
+        let quantity = 100;
+        for (let i = 0; i < numTiers; i++) {
+          const unitPrice = (Math.random() * 20 + 1).toFixed(2);
+          addRow(quantity, parseFloat(unitPrice));
+          quantity += Math.floor(Math.random() * 200) + 100;
+        }
+      };
+
+      async function requestPricingTierTable(url, options = {}) {
+        const res = await fetch(url, options);
+        const raw = await res.text();
+        let data = {};
+        try {
+          data = raw ? JSON.parse(raw) : {};
+        } catch (e) {
+          throw new Error(res.ok ? 'Invalid server response.' : `HTTP ${res.status} - ${raw || 'Request failed'}`);
+        }
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || `HTTP ${res.status} - Request failed`);
+        }
+        return data;
+      }
+
+      async function fetchTierProfile(id) {
+        const data = await requestPricingTierTable('/api/pricing-tier-tables/' + id);
+        if (!data.table) {
+          throw new Error('Failed to load tier table.');
+        }
+        return data.table;
+      }
+
+      async function openTierTableEditorModal(id) {
+        const p = await fetchTierProfile(id);
+
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:99999; padding:16px;';
+
+        const scopeLabel = p.scope === 'customer' ? 'Garment Factory' : 'Brand';
+        const targetLabel = p.scope === 'customer' ? (p.customerName || '-') : (p.brandName || '-');
+
+        overlay.innerHTML = `
+          <div style="background:#fff; width:min(760px, 100%); max-height:90vh; overflow:auto; border:1px solid #111; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid #ddd;">
+              <div style="font-size:18px; font-weight:700;">Edit Tier Table</div>
+              <button type="button" class="tier-modal-close" style="border:1px solid #ccc; background:#fff; padding:6px 10px; cursor:pointer;">Close</button>
+            </div>
+            <div style="padding:16px;">
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                <div>
+                  <label style="display:block; font-weight:600; margin-bottom:6px;">Scope</label>
+                  <input type="text" value="${escapeHtml(scopeLabel)}" readonly style="width:100%; padding:6px; border:1px solid #ccc; background:#f5f5f5;">
+                </div>
+                <div>
+                  <label style="display:block; font-weight:600; margin-bottom:6px;">Target</label>
+                  <input type="text" value="${escapeHtml(targetLabel)}" readonly style="width:100%; padding:6px; border:1px solid #ccc; background:#f5f5f5;">
+                </div>
+              </div>
+              <div style="margin-bottom:12px;">
+                <label style="display:block; font-weight:600; margin-bottom:6px;">Table Name</label>
+                <input type="text" class="tier-modal-name" value="${escapeHtml(p.name || '')}" style="width:100%; padding:6px; border:1px solid #ccc;">
+              </div>
+              <div style="border:1px solid #ccc; padding:10px; background:#fafafa; margin-bottom:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <div style="font-weight:600;">Tiers</div>
+                  <button type="button" class="tier-modal-add btn" style="padding:4px 8px; font-size:12px;">+ Add Tier</button>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr 80px; gap:8px; font-size:12px; margin-bottom:6px;">
+                  <div style="font-weight:600;">Quantity</div>
+                  <div style="font-weight:600;">Unit Price</div>
+                  <div style="font-weight:600;">Total</div>
+                  <div></div>
+                </div>
+                <div class="tier-modal-rows"></div>
+              </div>
+              <label style="display:flex; align-items:center; gap:6px; font-size:12px; margin-bottom:12px;">
+                <input type="checkbox" class="tier-modal-disabled" ${p.disabled ? 'checked' : ''}> Disabled
+              </label>
+              <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" class="tier-modal-cancel page-btn">Cancel</button>
+                <button type="button" class="tier-modal-save page-btn">Save Changes</button>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const closeModal = () => {
+          try { document.body.removeChild(overlay); } catch (e) {}
+        };
+
+        const rowsContainer = overlay.querySelector('.tier-modal-rows');
+        const addModalRow = (q = '', u = '') => appendTierRow(rowsContainer, q, u);
+        (p.tiers || []).forEach(t => addModalRow(t.quantity || 0, t.unitPrice || 0));
+        if ((p.tiers || []).length === 0) addModalRow();
+
+        overlay.querySelector('.tier-modal-add').onclick = () => addModalRow();
+        overlay.querySelector('.tier-modal-close').onclick = closeModal;
+        overlay.querySelector('.tier-modal-cancel').onclick = closeModal;
+        overlay.onclick = (e) => {
+          if (e.target === overlay) closeModal();
+        };
+
+        overlay.querySelector('.tier-modal-save').onclick = async () => {
+          const nextName = (overlay.querySelector('.tier-modal-name')?.value || '').trim();
+          const nextTiers = collectTierRows(rowsContainer);
+          if (!nextName) {
+            alert('Table name is required.');
+            return;
+          }
+          if (nextTiers.length === 0) {
+            alert('Please add at least one tier.');
+            return;
+          }
+
+          try {
+            await requestPricingTierTable('/api/pricing-tier-tables/' + id, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: nextName,
+                scope: p.scope,
+                brandId: p.brandId,
+                brandName: p.brandName,
+                customerId: p.customerId,
+                customerName: p.customerName,
+                disabled: !!overlay.querySelector('.tier-modal-disabled')?.checked,
+                tiers: nextTiers
+              })
+            });
+            closeModal();
+            refreshList();
+            alert('Tier table updated.');
+          } catch (err) {
+            console.error('Failed to update tier table', err);
+            alert('Failed to save tier table changes.');
+          }
+        };
+      }
+
+      async function refreshList() {
+        try {
+          const data = await requestPricingTierTable('/api/pricing-tier-tables');
+          const items = data.tables || [];
+          const kw = (searchInput.value || '').toLowerCase();
+          const scopeFilter = filterScope.value || '';
+          const rows = items.filter(p => {
+            const scope = p.scope || '';
+            const brandName = p.brandName || '';
+            const customerName = p.customerName || '';
+            if (scopeFilter && scope !== scopeFilter) return false;
+            const hay = `${p.name} ${brandName} ${customerName}`.toLowerCase();
+            return !kw || hay.includes(kw);
+          }).map(p => {
+            const scope = p.scope || '-';
+            const who = scope === 'customer' ? (p.customerName || '-') : (p.brandName || '-');
+            const status = p.disabled ? 'Disabled' : 'Active';
+            return `
+              <div data-id="${p.id}" style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:8px; padding:8px; border-bottom:1px solid #eee; align-items:center;">
+                <button type="button" class="tier-name-click" data-id="${p.id}" style="background:none; border:none; padding:0; text-align:left; font-size:14px; font-weight:600; cursor:pointer; color:#000;">${escapeHtml(p.name || 'Untitled')}</button>
+                <div>${escapeHtml(scope === 'customer' ? 'Garment Factory' : 'Brand')}</div>
+                <div>${escapeHtml(who)}</div>
+                <div style="display:flex; gap:6px; justify-content:flex-end;">
+                  <span style="font-size:11px; color:${p.disabled ? '#b91c1c' : '#065f46'}; align-self:center;">${status}</span>
+                  <button type="button" class="btn tier-edit" style="padding:4px 8px; font-size:12px;">Edit</button>
+                  <button type="button" class="btn tier-toggle" style="padding:4px 8px; font-size:12px;">${p.disabled ? 'Enable' : 'Disable'}</button>
+                  <button type="button" class="btn tier-delete" style="padding:4px 8px; font-size:12px; color:#b91c1c; border-color:#b91c1c;">Delete</button>
+                </div>
+              </div>`;
+          }).join('');
+          listWrap.innerHTML = rows || '<div style="padding:10px; color:#999; font-style:italic;">No tier tables</div>';
+        } catch (e) {
+          console.error('Failed to load tier tables', e);
+          listWrap.innerHTML = `<div style="padding:10px; color:#b91c1c;">Failed to load tier tables: ${escapeHtml(e.message || 'Unknown error')}</div>`;
+        }
+      }
+
+      if (!listWrap.dataset.bound) {
+        listWrap.dataset.bound = '1';
+        listWrap.addEventListener('click', async (e) => {
+          const nameBtn = e.target.closest('.tier-name-click');
+          if (nameBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            await openTierTableEditorModal(nameBtn.dataset.id);
+            return;
+          }
+
+          const editBtn = e.target.closest('.tier-edit');
+          if (editBtn) {
+            const row = editBtn.closest('[data-id]');
+            if (!row) return;
+            await openTierTableEditorModal(row.dataset.id);
+            return;
+          }
+
+          const toggleBtn = e.target.closest('.tier-toggle');
+          if (toggleBtn) {
+            const row = toggleBtn.closest('[data-id]');
+            if (!row) return;
+            try {
+              const p = await fetchTierProfile(row.dataset.id);
+              await requestPricingTierTable('/api/pricing-tier-tables/' + row.dataset.id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  name: p.name,
+                  scope: p.scope,
+                  brandId: p.brandId,
+                  brandName: p.brandName,
+                  customerId: p.customerId,
+                  customerName: p.customerName,
+                  disabled: !p.disabled,
+                  tiers: p.tiers || []
+                })
+              });
+              refreshList();
+            } catch (err) {
+              console.error('Failed to toggle tier table', err);
+              alert('Failed to update tier table status.');
+            }
+            return;
+          }
+
+          const deleteBtn = e.target.closest('.tier-delete');
+          if (deleteBtn) {
+            const row = deleteBtn.closest('[data-id]');
+            if (!row) return;
+            const confirmed = window.confirm('Delete this tier table?');
+            if (!confirmed) return;
+            try {
+              await requestPricingTierTable('/api/pricing-tier-tables/' + row.dataset.id, { method: 'DELETE' });
+              await refreshList();
+            } catch (err) {
+              console.error('Failed to delete tier table', err);
+              alert('Failed to delete tier table.');
+            }
+          }
+        });
+      }
+      searchInput.oninput = () => refreshList();
+      filterScope.onchange = () => refreshList();
+      refreshList();
+
+      saveBtn.onclick = async () => {
+        const scope = scopeSel.value;
+        const tiers = collectTierRows(rowsWrap);
+        if (tiers.length === 0) {
+          alert('Please add at least one tier.');
+          return;
+        }
+        let name = (nameInput.value || '').trim();
+        const nowStr = new Date().toISOString().slice(0, 10);
+        const specs = { scope, tiers, disabled: !!disabledCb.checked };
+        if (scope === 'brand') {
+          const bid = brandSel.value;
+          if (!bid) { alert('Please select a Brand.'); return; }
+          specs.brandId = Number(bid);
+          specs.brandName = (cachedBrands || []).find(b => String(b.id) === String(bid))?.name || '';
+          if (!name) name = `Tiers — ${specs.brandName} — ${nowStr}`;
+        } else {
+          const cid = custSel.value;
+          if (!cid) { alert('Please select a Garment Factory.'); return; }
+          // Fetch customer name from select text
+          specs.customerId = Number(cid);
+          specs.customerName = custSel.options[custSel.selectedIndex]?.text || '';
+          if (!name) name = `Tiers — ${specs.customerName} — ${nowStr}`;
+        }
+        const payload = {
+          name,
+          scope: specs.scope,
+          brandId: specs.brandId,
+          brandName: specs.brandName,
+          customerId: specs.customerId,
+          customerName: specs.customerName,
+          disabled: specs.disabled,
+          tiers
+        };
+        try {
+          if (window._tierEditingId) {
+            await requestPricingTierTable('/api/pricing-tier-tables/' + window._tierEditingId, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+          } else {
+            await requestPricingTierTable('/api/pricing-tier-tables', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+          }
+          // Reset all fields
+          window._tierEditingId = null;
+          scopeSel.value = 'brand';
+          onScopeChange();
+          brandSel.value = '';
+          custSel.value = '';
+          nameInput.value = '';
+          rowsWrap.innerHTML = '';
+          disabledCb.checked = false;
+          await refreshList();
+          alert('Saved.');
+        } catch (e) {
+          console.error('Failed to save tier table', e);
+          alert('Failed to save tier table: ' + (e.message || 'Unknown error'));
+        }
+      };
     }
 
     function getProductSpecificFields(tagType) {
