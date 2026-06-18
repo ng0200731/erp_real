@@ -12474,8 +12474,10 @@
 
     // Generate 10 outsourcing dummy data with supplier distribution
     async function generateOutsourcingDummyData() {
+      // 10 statuses (including terminal states) mapped 1:1 to the 10 rows so every action shows up
       const statuses = ['pending', 'send to outsourcing supplier', 'await quotation',
-        'compare quotation', 'send to customer', 'await customer confirm price', 'price confirmed', 'sampling', 'await sample ready date', 'sample delivered'];
+        'compare quotation', 'price confirmed', 'sampling',
+        'await approval', 'approved', 'rejected', 'complete'];
 
       // 3 with 2 suppliers, 3 with 4 suppliers, 4 with 1 supplier
       const supplierDistribution = [2, 2, 2, 4, 4, 4, 1, 1, 1, 1];
@@ -12552,7 +12554,7 @@
           const unitPrice = Math.floor(10 + Math.random() * 90);
           const total = quantity * unitPrice;
 
-          const finalStatus = statuses[Math.floor(Math.random() * statuses.length)];
+          const finalStatus = statuses[i % statuses.length];
           const quotationData = {
             customerName: customerNames[i],
             contactPerson: `Contact Person ${i + 1}`,
@@ -12603,6 +12605,7 @@
               });
             }
 
+            await logDummyCreationHistory(quotationId, 'Outsourcing quotation created');
             await applyOutsourcingStatusPath(quotationId, finalStatus);
           }
         }
@@ -12632,7 +12635,8 @@
     }
 
     async function generateQuotationDummyData() {
-      const statuses = ['pending', 'send to customer', 'price confirmed', 'sampling', 'sample delivered'];
+      // All 9 quotation statuses (including terminal states) so the 10 rows show varied actions
+      const statuses = ['pending', 'send to customer', 'price confirmed', 'sampling', 'sample delivered', 'await approval', 'approved', 'rejected', 'complete'];
       const productTypes = ['hang-tag', 'woven-label', 'heat-transfer', 'printed-label'];
 
       const customerNames = [
@@ -12688,7 +12692,7 @@
           const unitPrice = Math.floor(10 + Math.random() * 90);
           const total = quantity * unitPrice;
 
-          const finalStatus = statuses[Math.floor(Math.random() * statuses.length)];
+          const finalStatus = statuses[i % statuses.length];
           const quotationData = {
             customerName: customerNames[i],
             contactPerson: `Contact ${i + 1}`,
@@ -12726,6 +12730,7 @@
               console.warn('Failed to set dummy image for quotation', result.quotation.id, imgErr);
             }
 
+            await logDummyCreationHistory(result.quotation.id);
             await applyQuotationStatusPath(result.quotation.id, finalStatus);
           }
         }
@@ -12740,11 +12745,37 @@
     }
 
     async function putQuotationStatus(id, status, extra = {}) {
+      // PUT /api/quotations/:id runs a full-row UPDATE, so a status-only payload would
+      // bind customerName/productType/quantity/unitPrice/total as NULL and hit the NOT NULL
+      // constraints (silent 500 -> status never persists). Fetch the full record first and
+      // merge, the same way every real status change in the UI does (see updateOutsourcingStatus).
+      let base = {};
+      try {
+        const res = await fetch(`/api/quotations/${id}`);
+        const data = await res.json();
+        if (data.success && data.quotation) base = data.quotation;
+      } catch (e) {
+        console.warn('putQuotationStatus: could not load quotation', id, e);
+      }
       await fetch(`/api/quotations/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...extra, status })
+        body: JSON.stringify({ ...base, ...extra, status })
       });
+    }
+
+    // Log an initial "created" history event so every dummy record has a status history
+    // (records left at 'pending' would otherwise have an empty history)
+    async function logDummyCreationHistory(id, note = 'Quotation created') {
+      try {
+        await fetch(`/api/quotations/${id}/log-history`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fromStatus: null, toStatus: 'pending', note })
+        });
+      } catch (e) {
+        console.warn('Failed to log creation history for', id, e);
+      }
     }
 
     function buildQuotationPath(finalStatus) {
@@ -12753,7 +12784,11 @@
         'send to customer': ['send to customer'],
         'price confirmed': ['send to customer', 'price confirmed'],
         'sampling': ['send to customer', 'price confirmed', 'sampling'],
-        'sample delivered': ['send to customer', 'price confirmed', 'sampling', 'sample delivered']
+        'sample delivered': ['send to customer', 'price confirmed', 'sampling', 'sample delivered'],
+        'await approval': ['send to customer', 'price confirmed', 'sampling', 'await approval'],
+        'approved': ['send to customer', 'price confirmed', 'sampling', 'await approval', 'approved'],
+        'rejected': ['send to customer', 'price confirmed', 'sampling', 'await approval', 'rejected'],
+        'complete': ['send to customer', 'price confirmed', 'sampling', 'await approval', 'approved', 'complete']
       };
       return map[finalStatus] || [];
     }
@@ -12766,7 +12801,18 @@
     }
 
     function buildOutsourcingPath(finalStatus) {
-      const order = ['send to outsourcing supplier', 'await quotation', 'compare quotation', 'send to customer', 'await customer confirm price', 'price confirmed', 'sampling', 'await sample ready date', 'sample delivered'];
+      const order = ['send to outsourcing supplier', 'await quotation', 'compare quotation', 'send to customer', 'await customer confirm price', 'price confirmed', 'sampling', 'await sample ready date', 'await approval', 'approved', 'complete'];
+      if (finalStatus === 'pending') return [];
+      // 'sample delivered' branches off 'await sample ready date' (not part of the await-approval chain)
+      if (finalStatus === 'sample delivered') {
+        const idx = order.indexOf('await sample ready date');
+        return [...order.slice(0, idx + 1), 'sample delivered'];
+      }
+      // 'rejected' branches off 'await approval'
+      if (finalStatus === 'rejected') {
+        const idx = order.indexOf('await approval');
+        return [...order.slice(0, idx + 1), 'rejected'];
+      }
       const idx = order.indexOf(finalStatus);
       if (idx === -1) return [];
       return order.slice(0, idx + 1);
@@ -19567,18 +19613,22 @@
       function syncBaseFromTiers() {
         const first = rowsWrap.querySelector('.tier-row');
         if (!first || !qty || !unit || !tot) return;
-        const q = parseInt(first.querySelector('.tier-qty')?.value || '0', 10) || 0;
-        const u = parseFloat(first.querySelector('.tier-unit')?.value || '0') || 0;
-        const t = q * u;
-        qty.value = q > 0 ? String(q) : '';
-        unit.value = u > 0 ? u.toFixed(2) : '';
-        tot.value = (q > 0 && u >= 0) ? t.toFixed(2) : '';
+        const qRaw = String(first.querySelector('.tier-qty')?.value || '');
+        const uRaw = String(first.querySelector('.tier-unit')?.value || '');
+        const q = parseInt(qRaw || '0', 10) || 0;
+        const u = parseFloat(uRaw || '0') || 0;
+        qty.value = qRaw !== '' ? String(q) : '';
+        unit.value = uRaw !== '' ? u.toFixed(2) : '';
+        tot.value = (qRaw !== '' && uRaw !== '') ? (q * u).toFixed(2) : '';
       }
 
       function recalcRowTotal(row) {
-        const q = parseInt(row.querySelector('.tier-qty')?.value || '0', 10) || 0;
-        const u = parseFloat(row.querySelector('.tier-unit')?.value || '0') || 0;
-        row.querySelector('.tier-total').value = (q * u).toFixed(2);
+        const qRaw = String(row.querySelector('.tier-qty')?.value || '');
+        const uRaw = String(row.querySelector('.tier-unit')?.value || '');
+        const q = parseInt(qRaw || '0', 10) || 0;
+        const u = parseFloat(uRaw || '0') || 0;
+        const totalEl = row.querySelector('.tier-total');
+        if (totalEl) totalEl.value = (qRaw !== '' && uRaw !== '') ? (q * u).toFixed(2) : '';
         syncBaseFromTiers();
       }
 
@@ -19737,7 +19787,7 @@
           if (custWrap) custWrap.style.display = '';
           await refreshCustomerPicker();
         }
-        if (!rowsWrap.querySelector('.tier-row')) addTierRow(qty ? qty.value : '', unit ? unit.value : '');
+        if (!rowsWrap.querySelector('.tier-row')) addTierRow();
         syncBaseFromTiers();
       }
       modeSel.onchange = onModeChange;
