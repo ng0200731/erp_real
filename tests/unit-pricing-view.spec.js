@@ -191,3 +191,45 @@ test('inline-edit seeds saved brand tier, edits persist on save', async ({ page,
   expect(Number(pd.tiers[0].quantity)).toBe(1000);
   expect(Number(pd.tiers[0].unitPrice)).toBeCloseTo(0.77, 2);
 });
+
+test('old quotation without pricing block shows flat fields only', async ({ page, request: req }) => {
+  // Create a flat-only quotation directly via API (no pricing block), simulating a pre-tier quotation.
+  // dateCreated is required by the DB INSERT (db/tasksDb.js:1385 passes it positionally with no
+  // default) even though routes/quotations.js:99 only validates customerName/productType/quantity.
+  const customerName = uniq('OldCust');
+  const createRes = await req.post('/api/quotations', {
+    data: {
+      customerName,
+      email: `${uniq('buyer')}@example.com`,
+      productType: 'hang-tag',
+      productDetails: { material: 'Cotton', size: '5x5 cm', printingMethod: 'Screen' },
+      quantity: 1000,
+      unitPrice: 0.5,
+      total: 500,
+      status: 'draft',
+      dateCreated: new Date().toISOString(),
+    },
+  });
+  // POST /api/quotations responds with { success, quotation } (see routes/quotations.js:105).
+  const created = (await createRes.json()).quotation;
+  expect(created).toBeTruthy();
+
+  await page.goto('/');
+  await page.waitForLoadState('networkidle');
+  await page.evaluate(async (id) => { await window.viewQuotationDetails(id); }, created.id);
+  await page.waitForSelector('#quotationViewFormContainer #pricingModeSelect');
+
+  const vc = page.locator('#quotationViewFormContainer');
+  // No pricing block -> flat fields visible, tier section hidden, mode disabled at none
+  await expect(vc.locator('#pricingModeSelect')).toHaveValue('none');
+  await expect(vc.locator('#flatPricingSection')).toBeVisible();
+  await expect(vc.locator('#tierPricingSection')).toBeHidden();
+  await expect(vc.locator('#viewTierTableLabel')).toBeHidden();
+
+  // Edit mode -> defaults to none; user is not forced into a tier mode.
+  // Scope the Edit button to .quotation-view-overlay — a bare "Edit" selector
+  // matches a hidden unrelated #ws-editDetailBtn first and times out.
+  await page.locator('.quotation-view-overlay').locator('button', { hasText: /^Edit$/ }).click();
+  await expect(vc.locator('#pricingModeSelect')).toHaveValue('none');
+  await expect(vc.locator('#flatPricingSection')).toBeVisible();
+});
