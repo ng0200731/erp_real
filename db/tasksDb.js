@@ -1427,6 +1427,15 @@ export async function getQuotationById(id) {
 
   if (quotation) {
     quotation.productDetails = JSON.parse(quotation.productDetails || '{}');
+    {
+      const p = quotation.productDetails && quotation.productDetails.pricing;
+      if (p && !p.tierScopeMode && p.pricingMode === 'tier' && p.selectedTierTemplateId != null) {
+        const scopeMap = await getPricingTierTableScopeMap([Number(p.selectedTierTemplateId)]);
+        quotation.productDetails = normalizePricingForRead(quotation.productDetails, scopeMap);
+      } else {
+        quotation.productDetails = normalizePricingForRead(quotation.productDetails, {});
+      }
+    }
     quotation.attachmentPaths = JSON.parse(quotation.attachmentPaths || '[]');
   }
 
@@ -1436,7 +1445,7 @@ export async function getQuotationById(id) {
 export async function getAllQuotations() {
   const db = await getTasksDb();
   // Exclude profileImageBlob from general queries to avoid transferring large BLOB data
-  const quotations = await db.all(
+  let quotations = await db.all(
     `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, dateRevised, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, height_mm, width_mm, variable, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations ORDER BY dateCreated DESC`
   );
 
@@ -1445,6 +1454,16 @@ export async function getAllQuotations() {
     quotation.productDetails = JSON.parse(quotation.productDetails || '{}');
     quotation.attachmentPaths = JSON.parse(quotation.attachmentPaths || '[]');
   }
+
+  const templateIds = quotations
+    .map((q) => q.productDetails && q.productDetails.pricing)
+    .filter((p) => p && !p.tierScopeMode && p.pricingMode === 'tier' && p.selectedTierTemplateId != null)
+    .map((p) => Number(p.selectedTierTemplateId));
+  const scopeMap = await getPricingTierTableScopeMap(templateIds);
+  quotations = quotations.map((q) => ({
+    ...q,
+    productDetails: normalizePricingForRead(q.productDetails, scopeMap),
+  }));
 
   return quotations;
 }
@@ -2161,6 +2180,59 @@ export async function getPricingTierTablesByFilter({ scope, brandId, customerId,
     out.push(await hydratePricingTierTable(db, row));
   }
   return out;
+}
+
+export async function getPricingTierTableScopeMap(ids = []) {
+  const db = await getTasksDb();
+  const valid = ids.filter((id) => id != null).map(Number);
+  if (valid.length === 0) return {};
+  const placeholders = valid.map(() => '?').join(',');
+  const rows = await db.all(
+    `SELECT id, scope FROM pricing_tier_tables WHERE id IN (${placeholders})`,
+    valid
+  );
+  const map = {};
+  for (const row of rows) map[row.id] = row.scope;
+  return map;
+}
+
+export function normalizePricingForRead(productDetails = {}, scopeMap = {}) {
+  const pd = productDetails || {};
+  const pricing = pd.pricing;
+  if (!pricing || typeof pricing !== 'object') return pd;
+  if (pricing.tierScopeMode) return pd; // already new shape
+
+  const tiersFromOld = Array.isArray(pricing.pricingTiers)
+    ? pricing.pricingTiers.map((t) => ({
+        quantity: Number(t.quantity) || 0,
+        unitPrice: Number(t.unitPrice) || 0,
+      }))
+    : [];
+
+  const next = {
+    tierScopeMode: 'none',
+    brandTierTableId: null,
+    customerTierTableId: null,
+    tiers: tiersFromOld,
+  };
+
+  if (pricing.pricingMode === 'tier') {
+    const templateId = pricing.selectedTierTemplateId != null ? Number(pricing.selectedTierTemplateId) : null;
+    const scope = templateId != null ? scopeMap[templateId] : undefined;
+    if (scope === 'brand') {
+      next.tierScopeMode = 'brand';
+      next.brandTierTableId = templateId;
+    } else if (scope === 'customer') {
+      next.tierScopeMode = 'customer';
+      next.customerTierTableId = templateId;
+    } else {
+      next.tierScopeMode = 'none';
+      next.legacyTiers = tiersFromOld;
+      if (templateId != null) next.legacyTierTemplateId = templateId;
+    }
+  }
+
+  return { ...pd, pricing: next };
 }
 
 export async function updatePricingTierTable(id, data) {
