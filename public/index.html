@@ -11348,9 +11348,8 @@
         return;
       }
 
-      // Save customer data
+      // Save customer data (no ID — let DB generate it on POST)
       currentCustomerData = {
-        id: Date.now(), // Simple ID based on timestamp
         companyName,
         emailDomain,
         companyAddress,
@@ -11689,8 +11688,9 @@
           throw new Error(result.error || 'Failed to save customer');
         }
 
-        // Update customer ID if it was created
-        if (result.customer && result.customer.id && !customer.id) {
+        // Sync customer ID to the server's authoritative ID after any save
+        // (covers new creation, update, and 404-fallback-to-create cases)
+        if (result.customer && result.customer.id) {
           customer.id = result.customer.id;
         }
 
