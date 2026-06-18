@@ -16898,6 +16898,15 @@
         quotation = outsourcingQuotations.find(q => q.id === quotationId);
       }
       window.originalQuotationData = quotation;
+
+      // Wire pricing controls and seed with the saved selection (view → edit).
+      // Pricing is stored FLAT at the top level of productDetails (tierScopeMode,
+      // brandTierTableId/customerTierTableId, tiers) — see tests/unit-pricing-persist.spec.js.
+      const vLabel = formContainer.querySelector('#viewTierTableLabel');
+      if (vLabel) vLabel.style.display = 'none';
+      const pd = (quotation && quotation.productDetails) || null;
+      const savedPricing = (pd && pd.tierScopeMode ? pd : null) || (pd && pd.pricing) || null;
+      initPricingMode(formContainer, savedPricing);
     }
 
     // Initialize profile image drag-and-drop for the view/edit modal
@@ -19523,7 +19532,7 @@
     }
 
     // Pricing mode (flat vs tier) with dynamic tiers
-    function initPricingMode(scope) {
+    function initPricingMode(scope, seedPricing = null) {
       const s = scope || document;
       const modeSel = s.querySelector('#pricingModeSelect');
       const flatSec = s.querySelector('#flatPricingSection');
@@ -19720,9 +19729,53 @@
       if (brandSel) brandSel.onchange = () => loadTierTableIntoGrid(brandSel.value);
       if (custSel) custSel.onchange = () => loadTierTableIntoGrid(custSel.value);
 
+      // Seed saved pricing into the grid using the private helpers (view→edit).
+      // Runs entirely inside the closure so addTierRow/refresh*Picker/syncBaseFromTiers
+      // are available. Synchronous display toggles run BEFORE any await so the picker
+      // is visible the moment initPricingMode returns (no race with the caller's asserts).
+      async function seedPricingIntoGrid(seed) {
+        const uiMode = seed.tierScopeMode === 'customer' ? 'factory' : seed.tierScopeMode;
+        // Flip visibility synchronously first.
+        if (brandWrap) brandWrap.style.display = (uiMode === 'brand') ? '' : 'none';
+        if (custWrap) custWrap.style.display = (uiMode === 'factory') ? '' : 'none';
+        flatSec.style.display = 'none';
+        tierSec.style.display = 'block';
+        // populateModeOptions() only adds the brand/factory option when #quotationBrandId /
+        // #quotationCustomerName have values. The view form lacks those fields, so the saved
+        // mode's option may be absent — inject it (mirrors populateViewPricing's view-mode path).
+        await populateModeOptions();
+        if (uiMode !== 'none' && !Array.from(modeSel.options).some((o) => o.value === uiMode)) {
+          const lbl = uiMode === 'brand' ? 'Brand tier' : (uiMode === 'factory' ? 'Garment-factory tier' : uiMode);
+          const opt = document.createElement('option');
+          opt.value = uiMode;
+          opt.textContent = lbl;
+          modeSel.appendChild(opt);
+        }
+        modeSel.value = uiMode;
+        if (uiMode === 'brand') {
+          await refreshBrandPicker();
+          if (seed.brandTierTableId != null && brandSel) brandSel.value = String(seed.brandTierTableId);
+        } else if (uiMode === 'factory') {
+          await refreshCustomerPicker();
+          if (seed.customerTierTableId != null && custSel) custSel.value = String(seed.customerTierTableId);
+        }
+        // Populate grid from SAVED tiers (source of truth). Clear AFTER the picker refresh —
+        // populateScopePicker auto-loads a single matching table's rows into the grid, which
+        // we must discard in favour of the saved tiers.
+        rowsWrap.innerHTML = '';
+        seed.tiers.forEach((t) => addTierRow(t.quantity || 0, t.unitPrice || 0));
+        syncBaseFromTiers();
+      }
+
       // Initial population (after all functions defined)
-      populateModeOptions();
-      onModeChange();
+      const hasSeed = seedPricing && seedPricing.tierScopeMode && seedPricing.tierScopeMode !== 'none'
+        && Array.isArray(seedPricing.tiers) && seedPricing.tiers.length > 0;
+      if (hasSeed) {
+        seedPricingIntoGrid(seedPricing);
+      } else {
+        populateModeOptions();
+        onModeChange();
+      }
     }
 
     // Initialize Quotation Tier Table settings panel
