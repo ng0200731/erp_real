@@ -4837,14 +4837,16 @@
           const section = document.getElementById(sectionId);
           if (section) section.classList.add('collapsed');
         });
-        // Make sure brands are loaded first for the tier panel
-        if (typeof loadBrandsCache === 'function') {
-          loadBrandsCache().then(() => {
-            if (typeof initQuotationTierPanel === 'function') initQuotationTierPanel();
-          });
-        } else if (typeof initQuotationTierPanel === 'function') {
-          initQuotationTierPanel();
-        }
+        // Init the tier panel once (bindings), then refresh its Brand / Garment
+        // Factory dropdowns every time Profile Config is opened so they stay in
+        // sync with the live Brand / Garment Factory Database lists.
+        (async () => {
+          if (typeof loadBrandsCache === 'function') {
+            try { await loadBrandsCache(); } catch (e) { /* ignore */ }
+          }
+          if (typeof initQuotationTierPanel === 'function') initQuotationTierPanel();
+          if (typeof window.refreshTierPanelDropdowns === 'function') window.refreshTierPanelDropdowns();
+        })();
       }
 
       if (id === 'welcome') {
@@ -19910,8 +19912,11 @@
       scopeSel.onchange = onScopeChange;
       onScopeChange();
 
-      // Populate brands
-      (async () => {
+      // Re-fetch the Brand + Garment Factory dropdowns. Exposed on window so the
+      // Profile Config tab can call it every time the section opens — this keeps
+      // the dropdowns in sync with the Brand / Garment Factory Database lists,
+      // so deleted entities don't linger as selectable, FK-breaking options.
+      async function refreshTierPanelDropdowns() {
         try {
           if (typeof loadBrandsCache === 'function') await loadBrandsCache();
           const brands = (cachedBrands || []);
@@ -19922,7 +19927,7 @@
             brandOptions = '<option value="">Select brand...</option>' + brands.map(b => `<option value="${b.id}">${escapeHtml(b.name)}</option>`).join('');
           }
           brandSel.innerHTML = brandOptions;
-          
+
           // Add "Add Brand" button next to dropdown
           let addBrandBtn = brandWrap.querySelector('.add-brand-btn');
           if (!addBrandBtn) {
@@ -19937,10 +19942,7 @@
             brandWrap.appendChild(addBrandBtn);
           }
         } catch (e) { console.warn('Failed to load brands for tier panel', e); }
-      })();
 
-      // Populate customers
-      (async () => {
         try {
           const res = await fetch('/api/customers');
           const data = await res.json();
@@ -19952,7 +19954,7 @@
             custOptions = '<option value="">Select customer...</option>' + customers.map(c => `<option value="${c.id}">${escapeHtml(c.companyName)}</option>`).join('');
           }
           custSel.innerHTML = custOptions;
-          
+
           // Add "Add Factory" button next to dropdown
           let addBtn = custWrap.querySelector('.add-factory-btn');
           if (!addBtn) {
@@ -19967,7 +19969,8 @@
             custWrap.appendChild(addBtn);
           }
         } catch (e) { console.warn('Failed to load customers for tier panel', e); }
-      })();
+      }
+      window.refreshTierPanelDropdowns = refreshTierPanelDropdowns;
 
       addBtn.onclick = () => addRow();
       resetBtn.onclick = () => { 

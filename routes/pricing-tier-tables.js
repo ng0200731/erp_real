@@ -2,6 +2,37 @@ import express from 'express';
 
 const router = express.Router();
 
+/**
+ * Validates that the tier table's target entity (brand or garment factory)
+ * still exists BEFORE we attempt the INSERT/UPDATE. The pricing_tier_tables
+ * table enforces foreign keys (PRAGMA foreign_keys = ON), so a stale/phantom
+ * brandId/customerId would otherwise throw SQLITE_CONSTRAINT and surface as a
+ * generic "Failed to create pricing tier table" 500. This returns a clear,
+ * user-facing message string, or null when the target is valid.
+ *
+ * Exported so it can be unit-tested without spinning up Express.
+ */
+export async function resolveTierTableTargetError({ scope, brandId, customerId } = {}, lookups) {
+  const getCustomerById = lookups?.getCustomerById;
+  const getBrandById = lookups?.getBrandById;
+  if (scope === 'customer') {
+    const cid = Number(customerId);
+    if (!cid) return 'Please select a garment factory.';
+    const found = getCustomerById ? await getCustomerById(cid) : null;
+    if (!found) {
+      return 'Selected garment factory no longer exists. Reopen this section to refresh the list, then pick a current factory.';
+    }
+    return null;
+  }
+  const bid = Number(brandId);
+  if (!bid) return 'Please select a brand.';
+  const found = getBrandById ? await getBrandById(bid) : null;
+  if (!found) {
+    return 'Selected brand no longer exists. Reopen this section to refresh the list, then pick a current brand.';
+  }
+  return null;
+}
+
 export function createPricingTierTableRoutes(deps) {
   const {
     getAllPricingTierTables,
@@ -9,8 +40,12 @@ export function createPricingTierTableRoutes(deps) {
     getPricingTierTableById,
     createPricingTierTable,
     updatePricingTierTable,
-    deletePricingTierTable
+    deletePricingTierTable,
+    getCustomerById,
+    getBrandById
   } = deps;
+
+  const lookups = { getCustomerById, getBrandById };
 
   router.get('/', async (req, res) => {
     try {
@@ -56,6 +91,10 @@ export function createPricingTierTableRoutes(deps) {
       if (!Array.isArray(tiers) || tiers.length === 0) {
         return res.status(400).json({ success: false, error: 'At least one tier row is required' });
       }
+      const targetError = await resolveTierTableTargetError(req.body, lookups);
+      if (targetError) {
+        return res.status(400).json({ success: false, error: targetError });
+      }
       const id = await createPricingTierTable(req.body);
       const table = await getPricingTierTableById(id);
       res.json({ success: true, table });
@@ -87,6 +126,10 @@ export function createPricingTierTableRoutes(deps) {
       }
       if (!Array.isArray(payload.tiers) || payload.tiers.length === 0) {
         return res.status(400).json({ success: false, error: 'At least one tier row is required' });
+      }
+      const targetError = await resolveTierTableTargetError(payload, lookups);
+      if (targetError) {
+        return res.status(400).json({ success: false, error: targetError });
       }
       await updatePricingTierTable(id, payload);
       const table = await getPricingTierTableById(id);

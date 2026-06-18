@@ -541,7 +541,9 @@ const pricingTierTableRoutes = createPricingTierTableRoutes({
   getPricingTierTableById,
   createPricingTierTable,
   updatePricingTierTable,
-  deletePricingTierTable
+  deletePricingTierTable,
+  getCustomerById,
+  getBrandById
 });
 app.use('/api/pricing-tier-tables', pricingTierTableRoutes);
 
