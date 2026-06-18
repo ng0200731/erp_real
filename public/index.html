@@ -16816,6 +16816,12 @@
           return;
         }
 
+        // If the user already entered edit mode, don't disable — this timer fires
+        // ~300ms after view open (100ms outer + 200ms inner) and would clobber the
+        // fields editQuotationFromView just enabled.
+        const viewModal = formContainer.closest('.qv-modal');
+        if (viewModal && viewModal.getAttribute('data-qv-mode') === 'edit') return;
+
         // Explicitly populate height/width values (belt-and-suspenders)
         const hField = getField('quotationHeightMm');
         if (hField && quotation.height_mm != null) {
@@ -19454,6 +19460,13 @@
       const s = scope || document;
       const modeSel = s.querySelector('#pricingModeSelect');
       if (!modeSel) return;
+
+      // If the user already entered edit mode, skip view-mode population — otherwise
+      // this delayed call (viewQuotationDetails fires it via setTimeout) would re-disable
+      // #pricingModeSelect and re-hide the pickers that editQuotationFromView just enabled.
+      const modal = s.closest ? s.closest('.qv-modal') : null;
+      if (modal && modal.getAttribute('data-qv-mode') === 'edit') return;
+
       const flatSec = s.querySelector('#flatPricingSection');
       const tierSec = s.querySelector('#tierPricingSection');
       const rowsWrap = s.querySelector('#tierRows');
