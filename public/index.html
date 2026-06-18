@@ -19409,15 +19409,61 @@
       function brandIdVal() { const el = brandIdEl(); return el ? String(el.value || '').trim() : ''; }
       function customerNameVal() { const el = custNameEl(); return el ? String(el.value || '').trim() : ''; }
 
-      // ---- conditional pricing-mode dropdown ----
-      function populateModeOptions() {
+      // ---- conditional pricing-mode dropdown (real-time DB check) ----
+      async function populateModeOptions() {
         const opts = ['<option value="none">None (flat)</option>'];
-        if (brandIdVal()) opts.push('<option value="brand">Brand</option>');
-        if (customerNameVal()) opts.push('<option value="factory">Garment Factory</option>');
+        const bid = brandIdVal();
+        const cn = customerNameVal();
+
+        // Check brand tier tables in real-time
+        if (bid) {
+          try {
+            const res = await fetch('/api/pricing-tier-tables?scope=brand&brandId=' + encodeURIComponent(bid));
+            const data = await res.json();
+            const tables = data && data.success ? (data.tables || []) : [];
+            const label = tables.length > 0 ? 'Brand' : 'Brand (no tier tables)';
+            opts.push(`<option value="brand">${label}</option>`);
+          } catch (e) {
+            opts.push('<option value="brand">Brand</option>');
+          }
+        }
+
+        // Check customer/factory tier tables in real-time
+        if (cn) {
+          try {
+            const res = await fetch('/api/pricing-tier-tables?scope=customer&customerName=' + encodeURIComponent(cn));
+            const data = await res.json();
+            const tables = data && data.success ? (data.tables || []) : [];
+            const label = tables.length > 0 ? 'Garment Factory' : 'Garment Factory (no tier tables)';
+            opts.push(`<option value="factory">${label}</option>`);
+          } catch (e) {
+            opts.push('<option value="factory">Garment Factory</option>');
+          }
+        }
+
         const prev = modeSel.value;
         modeSel.innerHTML = opts.join('');
         modeSel.value = Array.from(modeSel.options).some((o) => o.value === prev) ? prev : 'none';
       }
+
+      // ---- re-evaluate when customer/brand change ----
+      async function onCustomerOrBrandChange() {
+        const before = modeSel.value;
+        await populateModeOptions();
+        if (before === 'brand' && !brandIdVal()) { modeSel.value = 'none'; return onModeChange(); }
+        if (before === 'factory' && !customerNameVal()) { modeSel.value = 'none'; return onModeChange(); }
+        if (modeSel.value === 'brand') refreshBrandPicker();
+        else if (modeSel.value === 'factory') refreshCustomerPicker();
+      }
+      const bEl = brandIdEl();
+      const cEl = custNameEl();
+      if (bEl) bEl.addEventListener('change', () => onCustomerOrBrandChange());
+      if (cEl) {
+        cEl.addEventListener('change', () => onCustomerOrBrandChange());
+        cEl.addEventListener('input', () => onCustomerOrBrandChange());
+      }
+
+      // Initial population setup (deferred until after all functions are defined)
 
       // ---- load one tier table's breakpoints into the grid ----
       async function loadTierTableIntoGrid(tableId) {
@@ -19491,27 +19537,11 @@
         syncBaseFromTiers();
       }
       modeSel.onchange = onModeChange;
-      modeSel.addEventListener('focus', populateModeOptions);
+      modeSel.addEventListener('focus', () => populateModeOptions());
       if (brandSel) brandSel.onchange = () => loadTierTableIntoGrid(brandSel.value);
       if (custSel) custSel.onchange = () => loadTierTableIntoGrid(custSel.value);
 
-      // ---- re-evaluate when customer/brand change ----
-      function onCustomerOrBrandChange() {
-        const before = modeSel.value;
-        populateModeOptions();
-        if (before === 'brand' && !brandIdVal()) { modeSel.value = 'none'; return onModeChange(); }
-        if (before === 'factory' && !customerNameVal()) { modeSel.value = 'none'; return onModeChange(); }
-        if (modeSel.value === 'brand') refreshBrandPicker();
-        else if (modeSel.value === 'factory') refreshCustomerPicker();
-      }
-      const bEl = brandIdEl();
-      const cEl = custNameEl();
-      if (bEl) bEl.addEventListener('change', onCustomerOrBrandChange);
-      if (cEl) {
-        cEl.addEventListener('change', onCustomerOrBrandChange);
-        cEl.addEventListener('input', onCustomerOrBrandChange);
-      }
-
+      // Initial population (after all functions defined)
       populateModeOptions();
       onModeChange();
     }
