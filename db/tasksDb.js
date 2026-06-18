@@ -517,6 +517,14 @@ async function ensureSchema(db) {
   }
 
   try {
+    await db.exec(`ALTER TABLE supplier_quotation_responses ADD COLUMN tierPrices TEXT;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding tierPrices column:', err);
+    }
+  }
+
+  try {
     await db.exec(`
       CREATE TABLE IF NOT EXISTS supplier_sampling_tokens (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
