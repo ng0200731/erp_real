@@ -19458,7 +19458,7 @@
       // convention (see commits 357a454 / 140a10e). Fall back to a nested
       // .pricing block for forward-compat with later tasks.
       const pd = (quotation && quotation.productDetails) || null;
-      const pricing = (pd && pd.pricing) || (pd && pd.tierScopeMode ? pd : null);
+      const pricing = (pd && pd.tierScopeMode ? pd : null) || (pd && pd.pricing) || null;
       const mode = pricing ? pricing.tierScopeMode : 'none';
       const hasTiers = pricing && Array.isArray(pricing.tiers) && pricing.tiers.length > 0;
 
