@@ -106,11 +106,14 @@ an empty state with a link to create one in the tier-table editor.
 ### 5.4 Persistence
 
 Collected by the existing `collectProductDetailsFromForm()` path, extended so
-**every** product type includes the `...pricing` block (today only PU Patch and
-the generic/Outsource branch do). Stored in `productDetails.pricing` (JSON):
+**every** product type spreads the pricing fields **FLAT at the `productDetails`
+top level** (today only PU Patch and the generic/Outsource branch do). Stored
+FLAT in `productDetails` (top-level JSON keys), matching the historical
+`...pricing` spread convention — **not** nested under a `pricing` key:
 
 ```json
 {
+  "material": "...",
   "tierScopeMode": "none | brand | customer",
   "brandTierTableId": 12,
   "customerTierTableId": 7,
@@ -158,7 +161,7 @@ copy of the blank tier table is an optional add-on if later requested.
 ### 6.3 Supplier portal fill page (`public/supplier-portal.html`)
 
 The existing `GET /supplier-portal/:token` already returns the quotation and
-parses `productDetails`. Branch on `pricing.tierScopeMode`:
+parses `productDetails`. Branch on `productDetails.tierScopeMode`:
 
 - **Tier mode (brand or factory):** render the tier grid with **quantities
   pre-filled (read-only)** and a blank **Unit Price** input per row, plus the
@@ -190,11 +193,14 @@ displayed on each response so the linkage is visible.
 
 ## 7. Data model changes
 
-### 7.1 Quotation pricing (JSON in `productDetails.pricing`)
+### 7.1 Quotation pricing (FLAT JSON keys in `productDetails`)
 
 Replace the current `{pricingMode, pricingTiers, selectedTierTemplateId}` shape
 with the §5.4 shape (`tierScopeMode`, `brandTierTableId`,
-`customerTierTableId`, `tiers`). See §8 for migration of existing values.
+`customerTierTableId`, `tiers`), stored **FLAT at the `productDetails` top
+level — not nested under a `pricing` key**. This matches the existing
+`collectProductDetailsFromForm()` `...pricing` spread convention. See §8 for
+migration of existing values.
 
 ### 7.2 New column on `supplier_quotation_responses`
 
@@ -214,12 +220,17 @@ Everything else reuses existing tables (`pricing_tier_tables`,
 
 ## 8. Migration & backward compatibility
 
-- `pricingMode: 'flat'` → `tierScopeMode: 'none'`. No data loss.
-- `pricingMode: 'tier'` with `selectedTierTemplateId` → resolve that
-  template's `scope` (brand/customer) and map to
-  `tierScopeMode: 'brand'`/`'customer'`, keeping its `tiers`. If scope cannot
-  be resolved, fall back to `'none'` (flat) and preserve the old tiers in a
-  legacy field (e.g. `legacyTiers`) so nothing is lost.
+**No runtime migration is performed.** The tier feature is brand-new, and real
+quotation data has always stored pricing FLAT on `productDetails` (via the
+`collectProductDetailsFromForm()` `...pricing` spread), so no nested
+`productDetails.pricing` data ever existed to migrate. The on-read
+`normalizePricingForRead()` shim prototyped in Phase 1 was a no-op on real data
+and has been removed (see final review, C-1).
+
+- The old `{pricingMode, pricingTiers, selectedTierTemplateId}` shape is
+  superseded by the new FLAT keys (`tierScopeMode`, `tiers`, etc.). Any
+  hypothetical legacy `pricingMode='tier'` quotation would simply be read as
+  flat (mode `none`) and edited anew; none are known to exist.
 - `supplier_quotation_responses.tierPrices` is additive (§7.2).
 - Old `tierTemplateSelect` + Apply button UI removed; replaced by scope-aware
   pickers.
@@ -255,8 +266,8 @@ Everything else reuses existing tables (`pricing_tier_tables`,
   quotations; rejects a flat payload on a tier quotation and vice versa.
 - `GET /supplier-portal/responses/:quotationId` returns `tierPrices` + the
   IP/OS code.
-- Migration mapping for old `flat`/`tier` quotations (including the
-  unresolvable-scope fallback).
+- No runtime migration of old `flat`/`tier` quotations (see §8 — the feature is
+  brand-new and no legacy tier data exists).
 
 ### 10.2 E2E (Playwright — already in repo)
 
@@ -289,5 +300,5 @@ Everything else reuses existing tables (`pricing_tier_tables`,
 - A simultaneous "Both" mode (send brand + factory tables together) — explicitly
   dropped per §3; can be revisited.
 - Excel/PDF attachment of the blank tier table in the email (optional add-on).
-- Promoting `productDetails.pricing` from JSON to real columns on `quotations`
-  (kept as JSON for now to match the existing pattern).
+- Promoting the FLAT `productDetails` pricing keys from JSON to real columns on
+  `quotations` (kept as JSON for now to match the existing pattern).

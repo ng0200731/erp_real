@@ -41,3 +41,7 @@ build/
 uploads/
 nul
 
+# Playwright test artifacts
+playwright-report/
+test-results/
+

@@ -15345,8 +15345,8 @@
       const itemRow = quotation.customerItemName ? `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer Item</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerItemName}</td></tr>` : '';
       const detailRows = emailProductDetailsRows(productDetails);
       let tiersHtml = '';
-      if (productDetails && productDetails.pricingMode === 'tier' && Array.isArray(productDetails.pricingTiers) && productDetails.pricingTiers.length > 0) {
-        const rows = productDetails.pricingTiers.map(t => {
+      if (productDetails && productDetails.tierScopeMode && productDetails.tierScopeMode !== 'none' && Array.isArray(productDetails.tiers) && productDetails.tiers.length > 0) {
+        const rows = productDetails.tiers.map(t => {
           const q = t.quantity || 0;
           const u = t.unitPrice != null ? Number(t.unitPrice).toFixed(2) : '0.00';
           const z = (q * (parseFloat(u) || 0)).toFixed(2);
@@ -21306,11 +21306,11 @@
 
         // Get product-specific fields
         let productDetails = collectProductDetailsFromForm(tagType);
-        if (productDetails && productDetails.pricingMode === 'tier' && Array.isArray(productDetails.pricingTiers) && productDetails.pricingTiers.length > 0) {
-          const firstTier = productDetails.pricingTiers[0];
+        if (productDetails && productDetails.tierScopeMode && productDetails.tierScopeMode !== 'none' && Array.isArray(productDetails.tiers) && productDetails.tiers.length > 0) {
+          const firstTier = productDetails.tiers[0];
           quantity = String(firstTier.quantity || 0);
           unitPrice = String(firstTier.unitPrice || 0);
-          total = String(firstTier.total || 0);
+          total = String(((Number(firstTier.quantity) || 0) * (Number(firstTier.unitPrice) || 0)).toFixed(2));
         }
 
         // If saving from outsourcing panel, override productType so it appears in outsourcing view
