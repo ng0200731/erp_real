@@ -14,7 +14,7 @@ import {
   // Customer functions
   getAllCustomers, getCustomerById, createCustomer, updateCustomer, deleteCustomer, createCustomerMember, findCustomerByEmail,
   // Supplier functions
-  getAllSuppliers, getSupplierById, createSupplier, updateSupplier, deleteSupplier, createSupplierMember, updateSupplierMember, findSupplierByEmail,
+  getAllSuppliers, getSupplierById, createSupplier, updateSupplier, deleteSupplier, createSupplierMember, updateSupplierMember, deleteSupplierMember, findSupplierByEmail,
   // Quotation functions
   getAllQuotations, getQuotationById, createQuotation, updateQuotation, deleteQuotation,
   // Quotation-Supplier linking functions
@@ -451,7 +451,8 @@ const supplierRoutes = createSupplierRoutes({
   updateSupplier,
   deleteSupplier,
   createSupplierMember,
-  updateSupplierMember
+  updateSupplierMember,
+  deleteSupplierMember
 });
 app.use('/api/suppliers', supplierRoutes);
 

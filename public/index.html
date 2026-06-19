@@ -13641,14 +13641,72 @@
         const content = document.createElement('div');
         content.className = 'modal-body';
 
-        const listHtml = (supplier.members && supplier.members.length > 0) ? supplier.members.map((m, idx) => {
-          return `<div style="display:flex; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid #eee;">
-                    <div style="flex:1;"><strong>${escapeHtml(m.name)}</strong><br><small>${escapeHtml(m.emailPrefix)}@${escapeHtml(supplier.emailDomain)}</small></div>
-                    <div><button class="btn edit-supplier-member-btn" data-member-index="${idx}">Edit</button></div>
-                  </div>`;
-        }).join('') : '<div style="color:#666;">No members</div>';
+        // Render the member list into the modal body from the current supplier data
+        const drawMemberList = () => {
+          const html = (supplier.members && supplier.members.length > 0) ? supplier.members.map((m, idx) => {
+            return `<div style="display:flex; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid #eee;">
+                      <div style="flex:1;"><strong>${escapeHtml(m.name)}</strong><br><small>${escapeHtml(m.emailPrefix)}@${escapeHtml(supplier.emailDomain)}</small></div>
+                      <div style="display:flex; gap:4px;">
+                        <button class="btn edit-supplier-member-btn" data-member-index="${idx}">Edit</button>
+                        <button class="btn delete-supplier-member-btn" data-member-index="${idx}">Delete</button>
+                      </div>
+                    </div>`;
+          }).join('') : '<div style="color:#666;">No members</div>';
+          content.innerHTML = `<div>${html}</div>`;
+          bindMemberButtons();
+        };
 
-        content.innerHTML = `<div>${listHtml}</div>`;
+        // Re-fetch the supplier and redraw the list (used after edit/delete)
+        const reloadMemberList = async () => {
+          const updatedSuppliers = await loadSuppliersFromStorage();
+          const updatedSupplier = updatedSuppliers[suppIndex];
+          supplier.members = updatedSupplier ? (updatedSupplier.members || []) : (supplier.members || []);
+          drawMemberList();
+        };
+
+        // Delete a single supplier member via the API, with confirmation
+        const deleteMember = async (memberIndex) => {
+          const member = supplier.members[memberIndex];
+          if (!member) return;
+
+          const confirmed = await showModal({
+            title: 'Delete Member',
+            body: `Are you sure you want to delete <strong>${escapeHtml(member.name)}</strong>?<br>This action cannot be undone.`,
+            okText: 'Delete',
+            cancelText: 'Cancel'
+          });
+          if (!confirmed) return;
+
+          try {
+            const resp = await fetch(`/api/suppliers/members/${member.id}`, { method: 'DELETE' });
+            const result = await resp.json();
+            if (!result.success) {
+              showModal({ title: 'Error', body: 'Failed to delete member: ' + (result.error || 'Unknown error') });
+              return;
+            }
+            showModal({ title: 'Success', body: 'Member deleted successfully.' });
+            await reloadMemberList();
+          } catch (err) {
+            showModal({ title: 'Error', body: 'Failed to delete member: ' + (err.message || err) });
+          }
+        };
+
+        // Bind Edit + Delete buttons currently in the DOM
+        const bindMemberButtons = () => {
+          content.querySelectorAll('.edit-supplier-member-btn').forEach(btn => {
+            btn.onclick = async () => {
+              const memberIndex = parseInt(btn.getAttribute('data-member-index'), 10);
+              await showSupplierMemberEditForm(supplier, memberIndex);
+              await reloadMemberList();
+            };
+          });
+          content.querySelectorAll('.delete-supplier-member-btn').forEach(btn => {
+            btn.onclick = async () => {
+              const memberIndex = parseInt(btn.getAttribute('data-member-index'), 10);
+              await deleteMember(memberIndex);
+            };
+          });
+        };
 
         const actions = document.createElement('div');
         actions.className = 'modal-actions';
@@ -13664,31 +13722,7 @@
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
 
-        // attach handlers to edit buttons
-        content.querySelectorAll('.edit-supplier-member-btn').forEach(btn => {
-          btn.onclick = async (e) => {
-            const memberIndex = parseInt(btn.getAttribute('data-member-index'), 10);
-            await showSupplierMemberEditForm(supplier, memberIndex);
-            // refresh list UI
-            const updatedSuppliers = await loadSuppliersFromStorage();
-            const updatedSupplier = updatedSuppliers[suppIndex];
-            supplier.members = updatedSupplier.members || [];
-            content.querySelector('div').innerHTML = (supplier.members.length > 0) ? supplier.members.map((m, idx) => {
-              return `<div style="display:flex; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid #eee;">
-                        <div style="flex:1;"><strong>${escapeHtml(m.name)}</strong><br><small>${escapeHtml(m.emailPrefix)}@${escapeHtml(supplier.emailDomain)}</small></div>
-                        <div><button class="btn edit-supplier-member-btn" data-member-index="${idx}">Edit</button></div>
-                      </div>`;
-            }).join('') : '<div style="color:#666;">No members</div>';
-
-            // re-bind new buttons
-            content.querySelectorAll('.edit-supplier-member-btn').forEach(btn2 => {
-              btn2.onclick = async () => {
-                const mi = parseInt(btn2.getAttribute('data-member-index'), 10);
-                await showSupplierMemberEditForm(supplier, mi);
-              };
-            });
-          };
-        });
+        drawMemberList();
       });
     }
 

@@ -11,9 +11,10 @@ const router = express.Router();
  * @param {Function} deps.updateSupplier - Update supplier function
  * @param {Function} deps.deleteSupplier - Delete supplier function
  * @param {Function} deps.createSupplierMember - Create supplier member function
+ * @param {Function} deps.deleteSupplierMember - Delete supplier member function
  */
 export function createSupplierRoutes(deps) {
-  const { getAllSuppliers, getSupplierById, createSupplier, updateSupplier, deleteSupplier, createSupplierMember } = deps;
+  const { getAllSuppliers, getSupplierById, createSupplier, updateSupplier, deleteSupplier, createSupplierMember, deleteSupplierMember } = deps;
 
   // Get all suppliers
   router.get('/', async (req, res) => {
@@ -41,6 +42,24 @@ export function createSupplierRoutes(deps) {
     } catch (error) {
       console.error('Error updating supplier member:', error);
       res.status(500).json({ success: false, error: 'Failed to update supplier member' });
+    }
+  });
+
+  // Delete supplier member (must be before /:id to avoid "members" being captured as id)
+  router.delete('/members/:memberId', async (req, res) => {
+    try {
+      const memberId = Number(req.params.memberId);
+
+      await deleteSupplierMember(memberId);
+      res.json({ success: true, message: 'Member deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting supplier member:', error);
+      // FOREIGN KEY constraints (e.g. a member still referenced by a sampling
+      // token) surface here — report a clear message rather than a bare 500.
+      const message = /foreign key/i.test(error.message)
+        ? 'Cannot delete this member because it is still referenced by other records.'
+        : 'Failed to delete supplier member';
+      res.status(500).json({ success: false, error: message });
     }
   });
 
