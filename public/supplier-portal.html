@@ -105,6 +105,12 @@
       text-align: center;
       font-size: 14px;
     }
+    .tier-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 14px; }
+    .tier-table th, .tier-table td { padding: 8px 10px; border: 1px solid #000; vertical-align: middle; }
+    .tier-table th { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .tier-table input { width: 100%; padding: 8px 10px; border: 1px solid #000; font-size: 14px; font-family: inherit; outline: none; background: #fff; }
+    .tier-table input:focus { box-shadow: 0 0 0 1px #000; }
+    .tier-total-cell { font-weight: 500; text-align: left; }
     .loading { text-align: center; padding: 60px 20px; font-size: 14px; }
   </style>
 </head>
@@ -137,15 +143,14 @@
       <form id="submitForm" style="display:none;">
         <div class="form-section">
           <h2>Your Quotation</h2>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="unitPrice">Unit Price</label>
-              <input type="number" id="unitPrice" step="0.01" min="0" required placeholder="0.00">
-            </div>
-            <div class="form-group">
-              <label for="totalPrice">Total Price</label>
-              <input type="number" id="totalPrice" step="0.01" min="0" required placeholder="0.00">
-            </div>
+          <div class="form-group">
+            <label>Pricing Tiers — enter your unit price per quantity</label>
+            <table class="tier-table">
+              <thead>
+                <tr><th style="text-align:left;">Quantity</th><th style="text-align:left;">Unit Price (HKD)</th><th style="text-align:left;">Total</th></tr>
+              </thead>
+              <tbody id="tierInputBody"></tbody>
+            </table>
           </div>
           <div class="form-group">
             <label for="deliveryDays">Delivery Days</label>
@@ -210,10 +215,60 @@
     }
 
     function dummyFill() {
-      document.getElementById('unitPrice').value = (Math.random() * 9 + 1).toFixed(2);
-      document.getElementById('totalPrice').value = (Math.random() * 900 + 100).toFixed(2);
+      const unitInputs = document.querySelectorAll('#tierInputBody .tier-unit');
+      unitInputs.forEach((el) => {
+        el.value = (Math.random() * 9 + 1).toFixed(2);
+        el.dispatchEvent(new Event('input'));
+      });
       document.getElementById('deliveryDays').value = Math.floor(Math.random() * 24) + 7;
       document.getElementById('supplierNotes').value = 'Dummy text ' + Math.floor(Math.random() * 10000);
+    }
+
+    // Render one input row per requested pricing tier. Buyer-fixed quantities are
+    // read-only; the supplier enters a unit price and the total is derived. For legacy
+    // flat quotations with no requested tiers, a single editable row is shown.
+    function renderTierInputs(requestedTiers, fallbackQuantity) {
+      const body = document.getElementById('tierInputBody');
+      if (!body) return;
+      body.innerHTML = '';
+      const tiers = (Array.isArray(requestedTiers) && requestedTiers.length > 0)
+        ? requestedTiers
+        : [{ quantity: (fallbackQuantity || '') }];
+      tiers.forEach((t, idx) => {
+        const tr = document.createElement('tr');
+        tr.dataset.index = String(idx);
+        const rawQty = (t && t.quantity != null && t.quantity !== '') ? Number(t.quantity) : '';
+        const qtyLocked = (rawQty !== '' && Number(rawQty) > 0);
+        const qtyCell = qtyLocked
+          ? '<input type="number" class="tier-qty" value="' + rawQty + '" readonly style="background:#f5f5f5;">'
+          : '<input type="number" class="tier-qty" min="1" required placeholder="Qty">';
+        tr.innerHTML =
+          '<td>' + qtyCell + '</td>' +
+          '<td><input type="number" class="tier-unit" step="0.01" min="0" required placeholder="0.00"></td>' +
+          '<td class="tier-total-cell">0.00</td>';
+        body.appendChild(tr);
+        const qtyEl = tr.querySelector('.tier-qty');
+        const unitEl = tr.querySelector('.tier-unit');
+        const totalCell = tr.querySelector('.tier-total-cell');
+        const recalc = () => {
+          const q = parseFloat(qtyEl.value) || 0;
+          const u = parseFloat(unitEl.value) || 0;
+          totalCell.textContent = (q * u).toFixed(2);
+        };
+        qtyEl.addEventListener('input', recalc);
+        unitEl.addEventListener('input', recalc);
+      });
+    }
+
+    function collectTierPrices() {
+      const rows = Array.from(document.querySelectorAll('#tierInputBody tr'));
+      return rows.map((r) => {
+        const qEl = r.querySelector('.tier-qty');
+        const uEl = r.querySelector('.tier-unit');
+        const q = parseFloat(qEl && qEl.value) || 0;
+        const u = parseFloat(uEl && uEl.value) || 0;
+        return { quantity: q, unitPrice: u, total: Number((q * u).toFixed(2)) };
+      });
     }
 
     const token = window.location.pathname.split('/supplier-portal/')[1]?.split('/')[0]
@@ -249,6 +304,14 @@
         // Format product details as HTML rows
         renderProductDetails(data.quotation.productDetails, data.quotation.productType);
 
+        // Render per-tier price inputs (buyer-fixed quantities; supplier fills unit price).
+        const requestedTiers = (Array.isArray(data.requestedTiers) && data.requestedTiers.length > 0)
+          ? data.requestedTiers
+          : (data.quotation && data.quotation.productDetails && Array.isArray(data.quotation.productDetails.tiers) && data.quotation.productDetails.tiers.length > 0
+              ? data.quotation.productDetails.tiers
+              : []);
+        renderTierInputs(requestedTiers, data.quotation && data.quotation.quantity);
+
         // Show profile image if available
         if (data.quotation.hasProfileImage) {
           document.getElementById('profileImageSection').style.display = 'block';
@@ -269,12 +332,21 @@
           document.getElementById('alreadySubmitted').style.display = 'block';
           if (data.existingResponse) {
             const r = data.existingResponse;
+            const submittedTiersHtml = (Array.isArray(r.tiers) && r.tiers.length > 0)
+              ? '<div style="margin-top:10px;"><strong style="font-size:13px;">Pricing Tiers</strong>' +
+                '<table class="tier-table" style="margin-top:6px;"><thead><tr><th style="text-align:left;">Quantity</th><th style="text-align:left;">Unit Price</th><th style="text-align:left;">Total</th></tr></thead><tbody>' +
+                r.tiers.map(function (t) {
+                  return '<tr><td>' + Number(t.quantity || 0) + '</td><td>' + Number(t.unitPrice || 0).toFixed(2) + '</td><td>' + Number(t.total || 0).toFixed(2) + '</td></tr>';
+                }).join('') +
+                '</tbody></table></div>'
+              : '';
             document.getElementById('submittedDetails').innerHTML = `
               <div style="border-top:1px solid #ccc; padding-top:10px;">
                 <div class="info-row"><span class="info-label">Unit Price</span><span class="info-value">${r.unitPrice != null ? Number(r.unitPrice).toFixed(2) : '-'}</span></div>
                 <div class="info-row"><span class="info-label">Total Price</span><span class="info-value">${r.totalPrice != null ? Number(r.totalPrice).toFixed(2) : '-'}</span></div>
                 <div class="info-row"><span class="info-label">Delivery Days</span><span class="info-value">${r.deliveryDays || '-'}</span></div>
                 <div class="info-row"><span class="info-label">Notes</span><span class="info-value">${r.notes || '-'}</span></div>
+                ${submittedTiersHtml}
               </div>
             `;
           }
@@ -297,12 +369,18 @@
         const res = await fetch(`/api/supplier-portal/${token}/submit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            unitPrice: parseFloat(document.getElementById('unitPrice').value),
-            totalPrice: parseFloat(document.getElementById('totalPrice').value),
-            deliveryDays: parseInt(document.getElementById('deliveryDays').value),
-            notes: document.getElementById('supplierNotes').value
-          })
+          body: JSON.stringify((function () {
+            const tierPrices = collectTierPrices();
+            const firstUnit = tierPrices.length > 0 ? tierPrices[0].unitPrice : null;
+            const sumTotal = tierPrices.reduce(function (a, t) { return a + (Number(t.total) || 0); }, 0);
+            return {
+              tierPrices: tierPrices,
+              unitPrice: firstUnit,
+              totalPrice: Number(sumTotal.toFixed(2)),
+              deliveryDays: parseInt(document.getElementById('deliveryDays').value),
+              notes: document.getElementById('supplierNotes').value
+            };
+          })())
         });
         const data = await res.json();
 

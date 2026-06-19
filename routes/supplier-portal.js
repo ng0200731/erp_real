@@ -1,5 +1,5 @@
 import express from 'express';
-import { getTasksDb, getProfiles, getQuotationProfileImage, logStatusChange } from '../db/tasksDb.js';
+import { getTasksDb, getProfiles, getQuotationProfileImage, logStatusChange, createSupplierQuotationResponseTiers, getSupplierQuotationResponseTiers, getSupplierQuotationResponseTiersByQuotation } from '../db/tasksDb.js';
 import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -216,6 +216,19 @@ router.get('/responses/:quotationId', async (req, res) => {
        ORDER BY r.submittedAt DESC`,
       [req.params.quotationId]
     );
+
+    // Attach normalized per-tier prices to each response for the comparison matrix.
+    const allTiers = await getSupplierQuotationResponseTiersByQuotation(req.params.quotationId);
+    const tiersByResponse = {};
+    for (const t of allTiers) {
+      (tiersByResponse[t.responseId] = tiersByResponse[t.responseId] || []).push({
+        tierIndex: t.tierIndex, quantity: t.quantity, unitPrice: t.unitPrice, total: t.total
+      });
+    }
+    for (const r of responses) {
+      r.tiers = tiersByResponse[r.id] || [];
+    }
+
     res.json({ success: true, responses });
   } catch (error) {
     console.error('Error fetching responses:', error);
@@ -478,6 +491,20 @@ router.get('/:token', async (req, res) => {
       [tokenData.id]
     );
 
+    // Requested pricing tiers come from the quotation's productDetails (buyer-fixed
+    // quantities). The supplier fills a unit price per tier; total is derived.
+    const requestedTiers = Array.isArray(parsedProductDetails && parsedProductDetails.tiers)
+      ? parsedProductDetails.tiers
+      : [];
+
+    // Attach the supplier's previously-submitted per-tier prices (normalized table).
+    if (existingResponse) {
+      const tierRows = await getSupplierQuotationResponseTiers(existingResponse.id);
+      existingResponse.tiers = tierRows.map((t) => ({
+        tierIndex: t.tierIndex, quantity: t.quantity, unitPrice: t.unitPrice, total: t.total
+      }));
+    }
+
     res.json({
       success: true,
       quotation: {
@@ -486,6 +513,7 @@ router.get('/:token', async (req, res) => {
         customerItemName: quotation.customerItemName,
         productType: quotation.productType,
         productDetails: parsedProductDetails,
+        requestedTiers,
         hasProfileImage: quotation.hasProfileImage,
         quantity: quotation.quantity,
         notes: quotation.notes
@@ -507,8 +535,34 @@ router.get('/:token', async (req, res) => {
 router.post('/:token/submit', async (req, res) => {
   try {
     const { token } = req.params;
-    const { unitPrice, totalPrice, deliveryDays, notes } = req.body;
+    const { unitPrice, totalPrice, deliveryDays, notes, tierPrices } = req.body;
     const db = await getTasksDb();
+
+    // Normalize submitted per-tier prices (supplier enters a unit price per requested
+    // tier; total is derived). Back-fill the flat top-level fields from the tiers when
+    // only tiers were sent, so existing reports/lists keep working.
+    let sanitizedTiers = [];
+    if (Array.isArray(tierPrices) && tierPrices.length > 0) {
+      sanitizedTiers = tierPrices.map((t, idx) => {
+        const quantity = Number(t.quantity) || 0;
+        const unit = Number(t.unitPrice);
+        const u = Number.isFinite(unit) ? unit : 0;
+        const total = Number(t.total != null ? t.total : quantity * u) || 0;
+        return { tierIndex: idx, quantity, unitPrice: u, total };
+      });
+    }
+    let finalUnitPrice = unitPrice;
+    let finalTotalPrice = totalPrice;
+    if (sanitizedTiers.length > 0) {
+      if (finalUnitPrice == null || Number.isNaN(Number(finalUnitPrice))) {
+        finalUnitPrice = sanitizedTiers[0].unitPrice;
+      }
+      const sumTotal = sanitizedTiers.reduce((acc, t) => acc + (Number(t.total) || 0), 0);
+      if (finalTotalPrice == null || Number.isNaN(Number(finalTotalPrice))) {
+        finalTotalPrice = sumTotal;
+      }
+    }
+    const tierPricesJson = sanitizedTiers.length > 0 ? JSON.stringify(sanitizedTiers) : null;
 
     // Validate token
     const tokenData = await db.get(
@@ -539,20 +593,26 @@ router.post('/:token/submit', async (req, res) => {
     const submittedAt = new Date().toISOString();
     const result = await db.run(
       `INSERT INTO supplier_quotation_responses
-       (tokenId, quotationId, supplierId, supplierMemberId, unitPrice, totalPrice, deliveryDays, notes, submittedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (tokenId, quotationId, supplierId, supplierMemberId, unitPrice, totalPrice, deliveryDays, notes, tierPrices, submittedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         tokenData.id,
         tokenData.quotationId,
         tokenData.supplierId,
         tokenData.supplierMemberId,
-        unitPrice,
-        totalPrice,
+        finalUnitPrice != null ? finalUnitPrice : unitPrice,
+        finalTotalPrice != null ? finalTotalPrice : totalPrice,
         deliveryDays,
         notes,
+        tierPricesJson,
         submittedAt
       ]
     );
+
+    // Persist normalized per-tier rows for structured cross-supplier comparison.
+    if (sanitizedTiers.length > 0) {
+      await createSupplierQuotationResponseTiers(result.lastID, sanitizedTiers);
+    }
 
     // Mark token as used
     await db.run(

@@ -15837,6 +15837,56 @@
           </div>
         `;
 
+        // Per-tier comparison matrix — shown when at least one supplier submitted tiers.
+        // Quantities are buyer-fixed, so tier indexes align 1:1 across suppliers.
+        const anyTiers = responses.some((r) => Array.isArray(r.tiers) && r.tiers.length > 0);
+        if (anyTiers) {
+          const requestedTiers = Array.isArray(productDetails.tiers) ? productDetails.tiers : [];
+          const maxLen = responses.reduce((m, r) => Math.max(m, Array.isArray(r.tiers) ? r.tiers.length : 0), 0);
+          const rowCount = Math.max(requestedTiers.length, maxLen);
+          const qtyLabel = (i) => {
+            if (requestedTiers[i] && requestedTiers[i].quantity != null) return Number(requestedTiers[i].quantity).toLocaleString();
+            for (const r of responses) { if (r.tiers && r.tiers[i] && r.tiers[i].quantity != null) return Number(r.tiers[i].quantity).toLocaleString(); }
+            return 'Tier ' + (i + 1);
+          };
+          const tierUnit = (r, i) => (r.tiers && r.tiers[i] && r.tiers[i].unitPrice != null) ? Number(r.tiers[i].unitPrice) : null;
+
+          tableHtml += `
+            <h3 style="margin:20px 0 10px 0;">Per-tier Pricing Comparison (HKD)</h3>
+            <div style="max-height:320px; overflow:auto; margin-bottom:10px;">
+              <table style="width:100%; border-collapse:collapse;">
+                <thead style="position:sticky; top:0; background:#f8f8f8;">
+                  <tr>
+                    <th style="border:1px solid #000; padding:8px; text-align:left;">Quantity</th>
+          `;
+          responses.forEach((r) => {
+            tableHtml += `<th style="border:1px solid #000; padding:8px; text-align:right;">${escapeHtml(r.companyName || 'Supplier')}</th>`;
+          });
+          tableHtml += `</tr></thead><tbody>`;
+          for (let i = 0; i < rowCount; i++) {
+            const vals = responses.map((r) => tierUnit(r, i)).filter((v) => v != null);
+            const mn = vals.length ? Math.min(...vals) : null;
+            const mx = vals.length ? Math.max(...vals) : null;
+            const equal = mn !== null && mn === mx;
+            tableHtml += `<tr><td style="border:1px solid #ccc; padding:8px; font-weight:600;">${qtyLabel(i)}</td>`;
+            responses.forEach((r) => {
+              const u = tierUnit(r, i);
+              let bg = '';
+              if (!equal && u != null) { if (u === mn) bg = 'background:#d4edda;'; else if (u === mx) bg = 'background:#f8d7da;'; }
+              tableHtml += `<td style="border:1px solid #ccc; padding:8px; text-align:right; ${bg}">${u != null ? u.toFixed(2) : '-'}</td>`;
+            });
+            tableHtml += `</tr>`;
+          }
+          // Tier-total row (sum of each supplier's tier totals).
+          tableHtml += `<tr><td style="border:1px solid #ccc; padding:8px; font-weight:600;">Tier total</td>`;
+          responses.forEach((r) => {
+            const has = Array.isArray(r.tiers) && r.tiers.length > 0;
+            const sum = has ? r.tiers.reduce((a, t) => a + (Number(t.total) || 0), 0) : 0;
+            tableHtml += `<td style="border:1px solid #ccc; padding:8px; text-align:right; font-weight:600;">${has ? sum.toFixed(2) : '-'}</td>`;
+          });
+          tableHtml += `</tr></tbody></table></div>`;
+        }
+
         // 4. Create modal
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
@@ -19264,7 +19314,7 @@
             '<div style="margin-bottom:16px;">' +
               '<h4>Pricing Mode</h4>' +
               '<select id="pricingModeSelect" style="width:220px; padding:4px; font-size:12px; border:1px solid #ccc;">' +
-                '<option value="none" selected>None (flat)</option>' +
+                '<option value="free" selected>Free mode</option>' +
               '</select>' +
               '<div id="brandTierWrap" style="margin-top:10px; display:none;">' +
                 '<label style="font-size:12px; display:block; margin-bottom:4px;">Brand tier table</label>' +
@@ -19359,28 +19409,31 @@
       const container = getActiveQuotationContainer();
       const el = (id) => (container ? container.querySelector('#' + id) : document.getElementById(id))?.value || '';
 
-      // Pricing (new tierScopeMode shape) — collected for every product type
+      // Pricing (tierScopeMode shape) — collected for every product type.
+      // Pricing Mode option encodes the choice directly: 'free' | 'brand:<id>' | 'customer:<id>'.
       const pricing = {};
       const modeSel = container ? container.querySelector('#pricingModeSelect') : document.getElementById('pricingModeSelect');
       if (modeSel) {
-        const uiMode = modeSel.value || 'none';                 // 'none' | 'brand' | 'factory'
-        pricing.tierScopeMode = uiMode === 'factory' ? 'customer' : uiMode; // -> 'none' | 'brand' | 'customer'
-        if (uiMode === 'brand' || uiMode === 'factory') {
-          const pickerSel = uiMode === 'brand' ? '#brandTierTableSelect' : '#customerTierTableSelect';
-          const selEl = container ? container.querySelector(pickerSel) : document.querySelector(pickerSel);
-          const tableId = selEl && selEl.value ? Number(selEl.value) : null;
-          if (uiMode === 'brand') pricing.brandTierTableId = tableId;
-          else pricing.customerTierTableId = tableId;
-          const rowsContainer = container ? container.querySelector('#tierRows') : document.getElementById('tierRows');
-          const rows = rowsContainer ? Array.from(rowsContainer.querySelectorAll('.tier-row')) : [];
-          pricing.tiers = rows.map((r) => {
-            const q = parseInt(r.querySelector('.tier-qty')?.value || '0', 10) || 0;
-            const u = parseFloat(r.querySelector('.tier-unit')?.value || '0') || 0;
-            return { quantity: q, unitPrice: u };
-          }).filter((t) => t.quantity > 0);
+        const v = String(modeSel.value || 'free');
+        const colon = v.indexOf(':');
+        const kind = colon > 0 ? v.slice(0, colon) : '';
+        const tableId = colon > 0 ? Number(v.slice(colon + 1)) : null;
+        if (kind === 'brand' && tableId > 0) {
+          pricing.tierScopeMode = 'brand';
+          pricing.brandTierTableId = tableId;
+        } else if (kind === 'customer' && tableId > 0) {
+          pricing.tierScopeMode = 'customer';
+          pricing.customerTierTableId = tableId;
         } else {
-          pricing.tiers = [];
+          pricing.tierScopeMode = 'free';
         }
+        const rowsContainer = container ? container.querySelector('#tierRows') : document.getElementById('tierRows');
+        const rows = rowsContainer ? Array.from(rowsContainer.querySelectorAll('.tier-row')) : [];
+        pricing.tiers = rows.map((r) => {
+          const q = parseInt(r.querySelector('.tier-qty')?.value || '0', 10) || 0;
+          const u = parseFloat(r.querySelector('.tier-unit')?.value || '0') || 0;
+          return { quantity: q, unitPrice: u };
+        }).filter((t) => t.quantity > 0);
       }
 
       if (tagType === 'hang-tag') {
@@ -19532,54 +19585,61 @@
       // .pricing block for forward-compat with later tasks.
       const pd = (quotation && quotation.productDetails) || null;
       const pricing = (pd && pd.tierScopeMode ? pd : null) || (pd && pd.pricing) || null;
-      const mode = pricing ? pricing.tierScopeMode : 'none';
-      const hasTiers = pricing && Array.isArray(pricing.tiers) && pricing.tiers.length > 0;
 
-      if (!pricing || mode === 'none' || !hasTiers) {
-        modeSel.value = 'none';
-        modeSel.disabled = true;
-        return; // flat section already populated; tier section stays hidden (display:none)
+      // Determine the tiers to display and the saved scope mode.
+      let tiers = (pricing && Array.isArray(pricing.tiers) && pricing.tiers.length > 0) ? pricing.tiers : null;
+      let scopeMode = pricing ? pricing.tierScopeMode : null;
+      // Legacy flat quotation (no saved tiers): synthesize one tier from the top-level fields.
+      if (!tiers) {
+        const q = Number(quotation && quotation.quantity) || 0;
+        const u = Number(quotation && quotation.unitPrice) || 0;
+        tiers = (q > 0 || u > 0) ? [{ quantity: q, unitPrice: u }] : [];
+        scopeMode = 'free';
       }
 
-      const uiMode = mode === 'customer' ? 'factory' : mode;
-      // The view form's #pricingModeSelect ships with only the "none" option
-      // (initPricingMode is intentionally NOT invoked in view mode). Inject a
-      // matching read-only option so setting .value reflects the saved mode.
-      const modeLabel = uiMode === 'brand' ? 'Brand tier' : (uiMode === 'factory' ? 'Garment-factory tier' : uiMode);
-      if (uiMode !== 'none' && !Array.from(modeSel.options).some((o) => o.value === uiMode)) {
-        const opt = document.createElement('option');
-        opt.value = uiMode;
-        opt.textContent = modeLabel;
-        modeSel.appendChild(opt);
+      // Flat mode is removed — always show the tier grid in view mode.
+      modeSel.innerHTML = '';
+      const viewOpt = document.createElement('option');
+      const tableId = scopeMode === 'brand' ? (pricing && pricing.brandTierTableId)
+        : scopeMode === 'customer' ? (pricing && pricing.customerTierTableId) : null;
+      let tableName = '';
+      if (tableId != null) {
+        try {
+          const res = await fetch('/api/pricing-tier-tables/' + encodeURIComponent(tableId));
+          const data = await res.json();
+          tableName = (data && data.success && data.table && data.table.name) ? data.table.name : '';
+        } catch (e) { tableName = ''; }
       }
-      modeSel.value = uiMode;
+      if (scopeMode === 'brand') viewOpt.textContent = (tableName ? tableName + ' ' : '') + '(Brand tier)';
+      else if (scopeMode === 'customer') viewOpt.textContent = (tableName ? tableName + ' ' : '') + '(Garment-factory tier)';
+      else viewOpt.textContent = 'Free mode';
+      viewOpt.value = 'view';
+      modeSel.appendChild(viewOpt);
+      modeSel.value = 'view';
       modeSel.disabled = true;
+
       if (flatSec) flatSec.style.display = 'none';
       if (tierSec) tierSec.style.display = 'block';
       if (brandWrap) brandWrap.style.display = 'none';
       if (custWrap) custWrap.style.display = 'none';
       if (addBtn) addBtn.style.display = 'none';
 
-      // Fetch the saved tier-table name for the read-only label
-      const tableId = uiMode === 'brand' ? pricing.brandTierTableId : pricing.customerTierTableId;
-      let nameText = '';
-      if (tableId != null) {
-        try {
-          const res = await fetch('/api/pricing-tier-tables/' + encodeURIComponent(tableId));
-          const data = await res.json();
-          nameText = (data && data.success && data.table && data.table.name) ? data.table.name : '';
-        } catch (e) { nameText = ''; }
-      }
-      const scopeLabel = uiMode === 'brand' ? 'Brand tier table' : 'Garment-factory tier table';
       if (label) {
-        label.textContent = nameText ? (scopeLabel + ': ' + nameText) : (scopeLabel + ': (table no longer available)');
-        label.style.display = 'block';
+        if (scopeMode === 'brand') {
+          label.textContent = 'Brand tier table' + (tableName ? ': ' + tableName : ': (table no longer available)');
+          label.style.display = 'block';
+        } else if (scopeMode === 'customer') {
+          label.textContent = 'Garment-factory tier table' + (tableName ? ': ' + tableName : ': (table no longer available)');
+          label.style.display = 'block';
+        } else {
+          label.style.display = 'none';
+        }
       }
 
       // Render read-only tier rows from saved tiers (source of truth)
       if (rowsWrap) {
         rowsWrap.innerHTML = '';
-        pricing.tiers.forEach((t) => {
+        tiers.forEach((t) => {
           const q = Number(t.quantity || 0);
           const u = Number(t.unitPrice || 0);
           const row = document.createElement('div');
@@ -19666,50 +19726,49 @@
       function customerNameVal() { const el = custNameEl(); return el ? String(el.value || '').trim() : ''; }
 
       // ---- conditional pricing-mode dropdown (real-time DB check) ----
+      // Options encode the choice directly: 'brand:<id>' / 'customer:<id>' / 'free'.
       async function populateModeOptions() {
-        const opts = ['<option value="none">None (flat)</option>'];
+        const opts = [];
         const bid = brandIdVal();
         const cn = customerNameVal();
 
-        // Check brand tier tables in real-time
+        // Brand tier tables → one option per table, labeled by source.
         if (bid) {
           try {
             const res = await fetch('/api/pricing-tier-tables?scope=brand&brandId=' + encodeURIComponent(bid));
             const data = await res.json();
             const tables = data && data.success ? (data.tables || []) : [];
-            const label = tables.length > 0 ? 'Brand' : 'Brand (no tier tables)';
-            opts.push(`<option value="brand">${label}</option>`);
-          } catch (e) {
-            opts.push('<option value="brand">Brand</option>');
-          }
+            for (const t of tables) {
+              opts.push(`<option value="brand:${t.id}">${escapeHtml(t.name || 'Untitled')} (Brand)</option>`);
+            }
+          } catch (e) { /* ignore — free mode still available */ }
         }
 
-        // Check customer/factory tier tables in real-time
+        // Customer / garment-factory tier tables → one option per table.
         if (cn) {
           try {
             const res = await fetch('/api/pricing-tier-tables?scope=customer&customerName=' + encodeURIComponent(cn));
             const data = await res.json();
             const tables = data && data.success ? (data.tables || []) : [];
-            const label = tables.length > 0 ? 'Garment Factory' : 'Garment Factory (no tier tables)';
-            opts.push(`<option value="factory">${label}</option>`);
-          } catch (e) {
-            opts.push('<option value="factory">Garment Factory</option>');
-          }
+            for (const t of tables) {
+              opts.push(`<option value="customer:${t.id}">${escapeHtml(t.name || 'Untitled')} (Garment Factory)</option>`);
+            }
+          } catch (e) { /* ignore */ }
         }
+
+        // Free mode is always available: an empty grid the user fills manually.
+        opts.push('<option value="free">Free mode</option>');
 
         const prev = modeSel.value;
         modeSel.innerHTML = opts.join('');
-        modeSel.value = Array.from(modeSel.options).some((o) => o.value === prev) ? prev : 'none';
+        // Preserve the current selection if still valid; otherwise default to free mode.
+        modeSel.value = Array.from(modeSel.options).some((o) => o.value === prev) ? prev : 'free';
       }
 
       // ---- re-evaluate when customer/brand change ----
       async function onCustomerOrBrandChange() {
-        const before = modeSel.value;
         await populateModeOptions();
-        if (before === 'brand' && !brandIdVal()) { modeSel.value = 'none'; return onModeChange(); }
-        if (before === 'factory' && !customerNameVal()) { modeSel.value = 'none'; return onModeChange(); }
-        if (modeSel.value === 'brand') refreshBrandPicker();
-        else if (modeSel.value === 'factory') refreshCustomerPicker();
+        await onModeChange();
       }
       const bEl = brandIdEl();
       const cEl = custNameEl();
@@ -19770,24 +19829,26 @@
 
       // ---- mode change drives which picker + grid show ----
       async function onModeChange() {
-        const mode = modeSel.value || 'none';
+        const v = String(modeSel.value || 'free');
+        // Flat mode is removed; the flat inputs remain in the DOM as hidden carriers
+        // for the top-level quantity/unitPrice/total (kept in sync by syncBaseFromTiers).
+        if (flatSec) flatSec.style.display = 'none';
         if (brandWrap) brandWrap.style.display = 'none';
         if (custWrap) custWrap.style.display = 'none';
-        if (mode === 'none') {
-          flatSec.style.display = 'grid';
-          tierSec.style.display = 'none';
-          rowsWrap.innerHTML = '';
+        if (tierSec) tierSec.style.display = 'block';
+        rowsWrap.innerHTML = '';
+
+        if (v === 'free') {
+          addTierRow();                 // one empty row — a flat price is just free mode with one row
+          syncBaseFromTiers();
           return;
         }
-        flatSec.style.display = 'none';
-        tierSec.style.display = 'block';
-        rowsWrap.innerHTML = '';
-        if (mode === 'brand') {
-          if (brandWrap) brandWrap.style.display = '';
-          await refreshBrandPicker();
-        } else if (mode === 'factory') {
-          if (custWrap) custWrap.style.display = '';
-          await refreshCustomerPicker();
+        const colon = v.indexOf(':');
+        if (colon > 0) {
+          const tableId = Number(v.slice(colon + 1));
+          if (tableId > 0) {
+            await loadTierTableIntoGrid(tableId);
+          }
         }
         if (!rowsWrap.querySelector('.tier-row')) addTierRow();
         syncBaseFromTiers();
@@ -19798,40 +19859,36 @@
       if (custSel) custSel.onchange = () => loadTierTableIntoGrid(custSel.value);
 
       // Seed saved pricing into the grid using the private helpers (view→edit).
-      // Runs entirely inside the closure so addTierRow/refresh*Picker/syncBaseFromTiers
-      // are available. Synchronous display toggles run BEFORE any await so the picker
-      // is visible the moment initPricingMode returns (no race with the caller's asserts).
+      // Runs entirely inside the closure so addTierRow/syncBaseFromTiers are available.
+      // Synchronous display toggles run BEFORE any await so the grid is visible the
+      // moment initPricingMode returns (no race with the caller's asserts).
       async function seedPricingIntoGrid(seed) {
-        const uiMode = seed.tierScopeMode === 'customer' ? 'factory' : seed.tierScopeMode;
+        // Map saved pricing to the new option-value scheme ('brand:<id>' / 'customer:<id>' / 'free').
+        let optValue = 'free';
+        if (seed.tierScopeMode === 'brand' && seed.brandTierTableId) optValue = 'brand:' + seed.brandTierTableId;
+        else if (seed.tierScopeMode === 'customer' && seed.customerTierTableId) optValue = 'customer:' + seed.customerTierTableId;
+
         // Flip visibility synchronously first.
-        if (brandWrap) brandWrap.style.display = (uiMode === 'brand') ? '' : 'none';
-        if (custWrap) custWrap.style.display = (uiMode === 'factory') ? '' : 'none';
         flatSec.style.display = 'none';
         tierSec.style.display = 'block';
-        // populateModeOptions() may not have added the brand/factory option yet (it
-        // runs an async availability fetch and only appends when brand/customer are
-        // set). Defensively inject the saved-mode option if absent, then select it.
+        if (brandWrap) brandWrap.style.display = 'none';
+        if (custWrap) custWrap.style.display = 'none';
+
         await populateModeOptions();
-        if (uiMode !== 'none' && !Array.from(modeSel.options).some((o) => o.value === uiMode)) {
-          const lbl = uiMode === 'brand' ? 'Brand tier' : (uiMode === 'factory' ? 'Garment-factory tier' : uiMode);
-          const opt = document.createElement('option');
-          opt.value = uiMode;
-          opt.textContent = lbl;
-          modeSel.appendChild(opt);
-        }
-        modeSel.value = uiMode;
-        if (uiMode === 'brand') {
-          await refreshBrandPicker();
-          if (seed.brandTierTableId != null && brandSel) brandSel.value = String(seed.brandTierTableId);
-        } else if (uiMode === 'factory') {
-          await refreshCustomerPicker();
-          if (seed.customerTierTableId != null && custSel) custSel.value = String(seed.customerTierTableId);
-        }
-        // Populate grid from SAVED tiers (source of truth). Clear AFTER the picker refresh —
-        // populateScopePicker auto-loads a single matching table's rows into the grid, which
-        // we must discard in favour of the saved tiers.
+        // If the named table no longer exists (deleted/renamed), fall back to free mode
+        // but keep the saved tiers visible/editable.
+        if (!Array.from(modeSel.options).some((o) => o.value === optValue)) optValue = 'free';
+        modeSel.value = optValue;
+
+        // Populate grid from SAVED tiers (source of truth — do not re-fetch, to preserve
+        // any edits captured at save time).
         rowsWrap.innerHTML = '';
-        seed.tiers.forEach((t) => addTierRow(t.quantity || 0, t.unitPrice || 0));
+        const savedTiers = Array.isArray(seed.tiers) ? seed.tiers : [];
+        if (savedTiers.length > 0) {
+          savedTiers.forEach((t) => addTierRow(t.quantity || 0, t.unitPrice || 0));
+        } else {
+          addTierRow();
+        }
         syncBaseFromTiers();
       }
 
@@ -19841,8 +19898,23 @@
       if (hasSeed) {
         seedPricingIntoGrid(seedPricing);
       } else {
-        populateModeOptions();
-        onModeChange();
+        // No saved tiers: show the tier grid immediately (flat mode is removed) and
+        // populate options + one free row. For a legacy flat quotation whose top-level
+        // quantity/unit price were prefilled, mirror them into the first tier row so
+        // the existing data is not lost.
+        if (flatSec) flatSec.style.display = 'none';
+        if (tierSec) tierSec.style.display = 'block';
+        populateModeOptions().then(async () => {
+          await onModeChange();
+          const firstRow = rowsWrap.querySelector('.tier-row');
+          if (firstRow && qty && unit && qty.value && unit.value) {
+            const qEl = firstRow.querySelector('.tier-qty');
+            const uEl = firstRow.querySelector('.tier-unit');
+            if (qEl) qEl.value = qty.value;
+            if (uEl) uEl.value = unit.value;
+            recalcRowTotal(firstRow);
+          }
+        });
       }
     }
 

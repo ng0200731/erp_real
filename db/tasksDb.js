@@ -248,6 +248,21 @@ async function ensureSchema(db) {
     CREATE INDEX IF NOT EXISTS idx_sqr_quotationId ON supplier_quotation_responses(quotationId);
     CREATE INDEX IF NOT EXISTS idx_sqr_tokenId ON supplier_quotation_responses(tokenId);
 
+    -- Normalized per-tier supplier pricing, so multiple suppliers can be compared
+    -- tier-by-tier via a structured join (see getSupplierQuotationResponseTiersByQuotation).
+    -- tierIndex aligns rows across suppliers because the buyer fixes the quantities.
+    CREATE TABLE IF NOT EXISTS supplier_quotation_response_tiers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      responseId INTEGER NOT NULL,
+      tierIndex INTEGER NOT NULL,
+      quantity INTEGER NOT NULL,
+      unitPrice REAL NOT NULL,
+      total REAL NOT NULL,
+      FOREIGN KEY (responseId) REFERENCES supplier_quotation_responses(id) ON DELETE CASCADE,
+      UNIQUE(responseId, tierIndex)
+    );
+    CREATE INDEX IF NOT EXISTS idx_sqrt_responseId ON supplier_quotation_response_tiers(responseId);
+
     CREATE TABLE IF NOT EXISTS brands (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -542,6 +557,44 @@ async function ensureSchema(db) {
     `);
   } catch (err) {
     console.warn('Error creating supplier_sampling_tokens table:', err);
+  }
+
+  // supplier_quotation_response_tiers is created in the main schema above; ensure it
+  // exists for older DB files too, then back-fill any legacy flat responses that have
+  // no normalized tier rows so the comparison grid is uniform (one synthetic tier each).
+  try {
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS supplier_quotation_response_tiers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        responseId INTEGER NOT NULL,
+        tierIndex INTEGER NOT NULL,
+        quantity INTEGER NOT NULL,
+        unitPrice REAL NOT NULL,
+        total REAL NOT NULL,
+        FOREIGN KEY (responseId) REFERENCES supplier_quotation_responses(id) ON DELETE CASCADE,
+        UNIQUE(responseId, tierIndex)
+      );
+      CREATE INDEX IF NOT EXISTS idx_sqrt_responseId ON supplier_quotation_response_tiers(responseId);
+    `);
+  } catch (err) {
+    console.warn('Error creating supplier_quotation_response_tiers table:', err);
+  }
+
+  try {
+    const backfilled = await db.run(`
+      INSERT INTO supplier_quotation_response_tiers (responseId, tierIndex, quantity, unitPrice, total)
+      SELECT r.id, 0, COALESCE(q.quantity, 0), COALESCE(r.unitPrice, 0), COALESCE(r.totalPrice, 0)
+      FROM supplier_quotation_responses r
+      LEFT JOIN quotations q ON q.id = r.quotationId
+      WHERE NOT EXISTS (
+        SELECT 1 FROM supplier_quotation_response_tiers t WHERE t.responseId = r.id
+      );
+    `);
+    if (backfilled && backfilled.changes > 0) {
+      console.log(`Back-filled ${backfilled.changes} legacy supplier response(s) with a single pricing tier.`);
+    }
+  } catch (err) {
+    console.warn('Error back-filling supplier_quotation_response_tiers:', err);
   }
 
   try {
@@ -2161,6 +2214,59 @@ export async function getPricingTierTablesByFilter({ scope, brandId, customerId,
     out.push(await hydratePricingTierTable(db, row));
   }
   return out;
+}
+
+// === Supplier quotation response tiers (normalized per-tier pricing) ===
+// Enables structured, per-tier comparison of multiple suppliers' quotations
+// (see getSupplierQuotationResponseTiersByQuotation). tierIndex aligns rows
+// across suppliers because the buyer fixes the quantities in the request.
+
+export async function createSupplierQuotationResponseTiers(responseId, tiers = []) {
+  const db = await getTasksDb();
+  const valid = Number(responseId);
+  if (!valid || !Array.isArray(tiers) || tiers.length === 0) return [];
+  // Idempotent: clear any prior rows so re-submit/admin paths never duplicate.
+  await db.run(`DELETE FROM supplier_quotation_response_tiers WHERE responseId = ?`, [valid]);
+  const inserted = [];
+  tiers.forEach((t, idx) => {
+    const quantity = Number(t.quantity) || 0;
+    const unitPrice = Number(t.unitPrice) || 0;
+    const total = Number(t.total != null ? t.total : quantity * unitPrice) || 0;
+    inserted.push({ responseId: valid, tierIndex: idx, quantity, unitPrice, total });
+  });
+  for (const row of inserted) {
+    const res = await db.run(
+      `INSERT INTO supplier_quotation_response_tiers (responseId, tierIndex, quantity, unitPrice, total)
+       VALUES (?, ?, ?, ?, ?)`,
+      [row.responseId, row.tierIndex, row.quantity, row.unitPrice, row.total]
+    );
+    row.id = res.lastID;
+  }
+  return inserted;
+}
+
+export async function getSupplierQuotationResponseTiers(responseId) {
+  const db = await getTasksDb();
+  const valid = Number(responseId);
+  if (!valid) return [];
+  return await db.all(
+    `SELECT * FROM supplier_quotation_response_tiers WHERE responseId = ? ORDER BY tierIndex ASC`,
+    [valid]
+  );
+}
+
+export async function getSupplierQuotationResponseTiersByQuotation(quotationId) {
+  const db = await getTasksDb();
+  const valid = Number(quotationId);
+  if (!valid) return [];
+  return await db.all(
+    `SELECT t.*, r.supplierId, r.supplierMemberId, r.id AS responseId
+     FROM supplier_quotation_response_tiers t
+     JOIN supplier_quotation_responses r ON r.id = t.responseId
+     WHERE r.quotationId = ?
+     ORDER BY t.tierIndex ASC, r.id ASC`,
+    [valid]
+  );
 }
 
 export async function getPricingTierTableScopeMap(ids = []) {
