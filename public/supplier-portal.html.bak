@@ -206,7 +206,6 @@
       }
       for (const [key, value] of Object.entries(details)) {
         if (key.startsWith('_')) continue; // skip internal fields
-        if (key === 'tiers' || key === 'tierScopeMode') continue; // internal tier config — not a display spec
         const label = detailLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
         const displayValue = (value !== null && value !== undefined && value !== '') ? value : '-';
         html += '<div class="info-row"><span class="info-label">' + label + '</span><span class="info-value">' + displayValue + '</span></div>';
@@ -377,10 +376,12 @@
           document.getElementById('success').style.display = 'block';
           document.getElementById('success').textContent = 'Thank you! Your quotation has been submitted successfully.';
         } else {
+          alert(data.error || 'Submission failed. Please try again.');
           btn.disabled = false;
           btn.textContent = 'Submit Quotation';
         }
       } catch (err) {
+        alert('Failed to connect to server. Please try again.');
         btn.disabled = false;
         btn.textContent = 'Submit Quotation';
       }

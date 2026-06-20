@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import nodemailer from 'nodemailer';
-import { buildSupplierConfirmationHtml } from '../shared/quotationEmailHtml.js';
+import { buildSupplierConfirmationHtml, generateSupplierResponseTiersHtml, PRODUCT_DETAILS_LABELS, formatProductDetailValue, emailProductTypeDisplay } from '../shared/quotationEmailHtml.js';
 
 const router = express.Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -302,6 +302,26 @@ router.get('/sampling/:token', async (req, res) => {
       try { samplingProductDetails = JSON.parse(samplingProductDetails); } catch (e) { /* keep as-is */ }
     }
 
+    // Attach the supplier's previously-submitted pricing (last submitted price) so the
+    // sampling page can show what the supplier quoted for reference.
+    let responseSummary = null;
+    try {
+      const response = await db.get(
+        `SELECT * FROM supplier_quotation_responses WHERE quotationId = ? AND supplierId = ? ORDER BY submittedAt DESC LIMIT 1`,
+        [tokenData.quotationId, tokenData.supplierId]
+      );
+      if (response) {
+        const tierRows = await getSupplierQuotationResponseTiers(response.id);
+        responseSummary = {
+          unitPrice: response.unitPrice,
+          totalPrice: response.totalPrice,
+          deliveryDays: response.deliveryDays,
+          notes: response.notes,
+          tiers: tierRows.map((t) => ({ quantity: t.quantity, unitPrice: t.unitPrice, total: t.total }))
+        };
+      }
+    } catch (e) { /* ignore — sampling can proceed without prior response data */ }
+
     res.json({
       success: true,
       quotation: {
@@ -311,6 +331,7 @@ router.get('/sampling/:token', async (req, res) => {
         quantity: quotation.quantity, outsourcingSeq: quotation.outsourcingSeq, sampleReadyDate: quotation.sampleReadyDate
       },
       supplier: { companyName: supplier.companyName, memberName: member.name },
+      response: responseSummary,
       alreadySubmitted: !!tokenData.usedAt
     });
   } catch (error) {
@@ -383,6 +404,40 @@ router.post('/sampling/:token/submit', async (req, res) => {
             }
           } catch (e) { /* ignore */ }
 
+          // Parse product details for display
+          let samplingProductDetails = quotation.productDetails;
+          if (typeof samplingProductDetails === 'string') {
+            try { samplingProductDetails = JSON.parse(samplingProductDetails || '{}'); } catch (e) { samplingProductDetails = {}; }
+          }
+
+          // Build product detail rows (all specs, skip internal fields)
+          let productDetailRowsHtml = '';
+          const pd = (samplingProductDetails && typeof samplingProductDetails === 'object') ? samplingProductDetails : {};
+          for (const [key, raw] of Object.entries(pd)) {
+            if (key.startsWith('_')) continue;
+            if (key === 'tiers' || key === 'tierScopeMode') continue;
+            if (raw === null || raw === undefined || raw === '') continue;
+            if (Array.isArray(raw) || (raw !== null && typeof raw === 'object')) continue;
+            const label = PRODUCT_DETAILS_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+            const value = formatProductDetailValue(key, raw);
+            if (value === null || value === undefined) continue;
+            productDetailRowsHtml += `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">${label}</td><td style="padding:8px; border:1px solid #ccc;">${value}</td></tr>`;
+          }
+
+          // Fetch the supplier's submitted pricing tiers (last submitted price)
+          let responseTiersHtml = '';
+          try {
+            const response = await db.get(
+              `SELECT id FROM supplier_quotation_responses WHERE quotationId = ? AND supplierId = ? ORDER BY submittedAt DESC LIMIT 1`,
+              [tokenData.quotationId, tokenData.supplierId]
+            );
+            if (response) {
+              const tierRows = await getSupplierQuotationResponseTiers(response.id);
+              const tiers = tierRows.map(t => ({ quantity: t.quantity, unitPrice: t.unitPrice, total: t.total }));
+              responseTiersHtml = generateSupplierResponseTiersHtml(tiers);
+            }
+          } catch (e) { /* ignore — sampling email proceeds without prior response data */ }
+
           const html = `
             <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
               <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Sample Ready Date Confirmed</h2>
@@ -396,10 +451,12 @@ router.post('/sampling/:token/submit', async (req, res) => {
               <table style="width:100%; border-collapse:collapse; margin:20px 0;">
                 <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Supplier</td><td style="padding:8px; border:1px solid #ccc;">${supplier.companyName}</td></tr>
                 <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerName || 'N/A'}</td></tr>
-                <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${quotation.productType || 'N/A'}</td></tr>
+                <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${emailProductTypeDisplay(quotation.productType, samplingProductDetails)}</td></tr>
+                ${productDetailRowsHtml}
                 <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">OS Ref</td><td style="padding:8px; border:1px solid #ccc;">${quotation.outsourcingSeq || 'N/A'}</td></tr>
                 <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Sample Ready Date</td><td style="padding:8px; border:1px solid #ccc;">${sampleReadyDate}</td></tr>
               </table>
+              ${responseTiersHtml}
               <p style="font-size:12px; color:#666;">This is an automated notification.</p>
             </div>`;
 

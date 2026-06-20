@@ -117,13 +117,6 @@
         <div class="info-row"><span class="info-label">Quantity</span><span class="info-value" id="quantity"></span></div>
         <div class="info-row"><span class="info-label">OS Ref</span><span class="info-value" id="osRef"></span></div>
       </div>
-      <div class="info-section" id="responseTiersSection" style="display:none;">
-        <h2>Your Quoted Pricing</h2>
-        <table style="width:100%; border-collapse:collapse; font-size:14px;">
-          <thead><tr><th style="text-align:left; padding:8px 10px; border:1px solid #000;">Quantity</th><th style="text-align:left; padding:8px 10px; border:1px solid #000;">Unit Price (HKD)</th></tr></thead>
-          <tbody id="responseTiersBody"></tbody>
-        </table>
-      </div>
       <div id="alreadySubmitted" class="already-submitted" style="display:none;">
         <p style="font-weight:600; margin-bottom:10px;">You have already submitted the sample ready date.</p>
         <div id="submittedDate"></div>
@@ -180,9 +173,7 @@
       }
       for (const [key, value] of Object.entries(details)) {
         if (key.startsWith('_')) continue;
-        if (key === 'tiers' || key === 'tierScopeMode') continue; // internal tier config — not a display spec
         if (value === null || value === undefined || value === '') continue;
-        if (Array.isArray(value) || (value !== null && typeof value === 'object')) continue; // structured value — skip, never [object Object]
         const label = detailLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
         html += '<div class="info-row"><span class="info-label">' + label + '</span><span class="info-value">' + value + '</span></div>';
       }
@@ -228,15 +219,6 @@
         // Render product details as HTML
         renderProductDetails(data.quotation.productDetails, data.quotation.productType);
 
-        // Render the supplier's previously-submitted pricing tiers (last submitted price)
-        if (data.response && Array.isArray(data.response.tiers) && data.response.tiers.length > 0) {
-          const tiersHtml = data.response.tiers.map(function (t) {
-            return '<tr><td style="padding:8px 10px; border:1px solid #000;">' + Number(t.quantity || 0) + '</td><td style="padding:8px 10px; border:1px solid #000;">' + Number(t.unitPrice || 0).toFixed(2) + '</td></tr>';
-          }).join('');
-          document.getElementById('responseTiersSection').style.display = 'block';
-          document.getElementById('responseTiersBody').innerHTML = tiersHtml;
-        }
-
         // Show profile image if available
         if (data.quotation.hasProfileImage) {
           document.getElementById('profileImageSection').style.display = 'block';
@@ -279,10 +261,12 @@
           document.getElementById('success').style.display = 'block';
           document.getElementById('success').textContent = 'Thank you! Sample ready date has been submitted successfully.';
         } else {
+          alert(data.error || 'Submission failed. Please try again.');
           btn.disabled = false;
           btn.textContent = 'Submit Sample Ready Date';
         }
       } catch (err) {
+        alert('Failed to connect to server. Please try again.');
         btn.disabled = false;
         btn.textContent = 'Submit Sample Ready Date';
       }

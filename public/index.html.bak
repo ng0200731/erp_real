@@ -5645,6 +5645,7 @@
         URL.revokeObjectURL(url);
       } catch (err) {
         console.error('Order drilldown export failed:', err);
+        alert('Export failed: ' + err.message);
       } finally {
         btn.textContent = originalText;
         btn.disabled = false;
@@ -10187,10 +10188,12 @@
         if (data.success) {
           await load(true);
         } else {
+          alert('Failed to mark all as read: ' + (data.error || 'Unknown error'));
         }
         btn.disabled = false;
         btn.textContent = 'Read All';
       } catch (err) {
+        alert('Failed to mark all as read: ' + err.message);
         const btn = document.getElementById('readAllEmailsBtn');
         btn.disabled = false;
         btn.textContent = 'Read All';
@@ -12347,8 +12350,10 @@
               const res = await fetch('/api/customers/' + encodeURIComponent(id), { method: 'DELETE' });
               if (res.ok) deleted++;
             }
+            alert(`Deleted ${deleted} customer(s).`);
             await displayCustomers();
           } catch (e) {
+            alert('Error deleting customers: ' + e.message);
           }
         };
       }
@@ -12475,87 +12480,13 @@
       }
     }
 
-    // Random data generators for Supplier form
-    function getRandomCompanyName() {
-      const prefixes = ['Global', 'Prime', 'Metro', 'Apex', 'Summit', 'Elite', 'Diamond', 'Phoenix', 'Crown', 'Royal', 'Pacific', 'Atlantic', 'Central', 'Eastern', 'Western', 'Northern', 'Southern', 'Star', 'Sun', 'Moon'];
-      const cores = ['Tech', 'Industrial', 'Manufacturing', 'Enterprise', 'Corporation', 'Group', 'Trading', 'Holdings', 'Solutions', 'Systems', 'Works', 'Factory', 'Industries', 'Materials', 'Components', 'Products', 'Supplies', 'Resources', 'Services', 'Mfg'];
-      const suffixes = ['Co.', 'Ltd.', 'Inc.', 'LLC', 'Corp.', 'Pte.', 'S.A.', 'B.V.', 'GmbH', 'K.K.'];
-      return `SUPPLIER-${prefixes[Math.floor(Math.random() * prefixes.length)]} ${cores[Math.floor(Math.random() * cores.length)]} ${suffixes[Math.floor(Math.random() * suffixes.length)]}`;
-    }
-
-    function getRandomEmailDomain() {
-      const names = ['globaltech', 'primeind', 'metroent', 'apexcorp', 'summit', 'elite', 'diamond', 'phoenix', 'crowntex', 'royal', 'pacificmfg', 'atlantic', 'centralsup', 'eastern', 'western', 'starind', 'suntex', 'moonfactory'];
-      const tlds = ['.com', '.net', '.co', '.io', '.cn', '.hk', '.tw', '.sg', '.my', '.vn'];
-      return `${names[Math.floor(Math.random() * names.length)]}${Math.floor(Math.random() * 100)}${tlds[Math.floor(Math.random() * tlds.length)]}`;
-    }
-
-    function getRandomAddress() {
-      const streets = ['Industrial Park', 'Tech Park', 'Manufacturing Zone', 'Business District', 'Commerce Street', 'Factory Road', 'Enterprise Avenue', 'Production Lane', 'Supply Center', 'Trade Hub'];
-      const cities = ['Shenzhen', 'Guangzhou', 'Dongguan', 'Foshan', 'Shanghai', 'Ningbo', 'Hangzhou', 'Xiamen', 'Qingdao', 'Tianjin', 'Hong Kong', 'Taipei', 'Bangkok', 'Ho Chi Minh', 'Jakarta', 'Manila', 'Singapore', 'Kuala Lumpur'];
-      const countries = ['China', 'Taiwan', 'Thailand', 'Vietnam', 'Indonesia', 'Philippines', 'Singapore', 'Malaysia', 'India', 'Bangladesh'];
-      const nums = Math.floor(Math.random() * 500) + 1;
-      return `${nums} ${streets[Math.floor(Math.random() * streets.length)]}, ${cities[Math.floor(Math.random() * cities.length)]}, ${countries[Math.floor(Math.random() * countries.length)]}`;
-    }
-
-    function getRandomTel() {
-      const countryCode = ['+86', '+852', '+886', '+66', '+84', '+62', '+63', '+65', '+60', '+91'];
-      const areaCode = Math.floor(Math.random() * 900) + 100;
-      const mainNum = Math.floor(Math.random() * 90000000) + 10000000;
-      return `${countryCode[Math.floor(Math.random() * countryCode.length)]}-${areaCode}-${mainNum}`;
-    }
-
-    function getRandomCompanyTypes() {
-      const types = ['hang_tag', 'woven_label', 'printed_label', 'transfer', 'other'];
-      const count = Math.floor(Math.random() * 3) + 1; // 1-3 types
-      const shuffled = types.sort(() => Math.random() - 0.5);
-      return shuffled.slice(0, count).join(',');
-    }
-
-    function getRandomWebsite(domain) {
-      return `https://www.${domain}`;
-    }
-
     function fillSupplierDummyData() {
-      const companyName = getRandomCompanyName();
-      const emailDomain = getRandomEmailDomain();
-      document.getElementById('supplierCompanyName').value = companyName;
-      document.getElementById('supplierEmailDomain').value = emailDomain;
-      document.getElementById('supplierCompanyAddress').value = getRandomAddress();
-      document.getElementById('supplierCompanyTel').value = getRandomTel();
-      msSetSelected(document.getElementById('supplierTypeMs'), getRandomCompanyTypes());
-      document.getElementById('supplierCompanyWebsite').value = getRandomWebsite(emailDomain);
-    }
-
-    // Random data generators for Supplier Member form
-    function getRandomMemberName() {
-      const firstNames = ['John', 'Jane', 'Michael', 'Sarah', 'David', 'Emily', 'Robert', 'Lisa', 'William', 'Anna', 'James', 'Mary', 'Thomas', 'Patricia', 'Charles', 'Jennifer', 'Daniel', 'Linda', 'Matthew', 'Barbara', 'Anthony', 'Elizabeth', 'Mark', 'Susan', 'Steven', 'Jessica', 'Paul', 'Karen', 'Andrew', 'Nancy', 'Kevin', 'Betty', 'Brian', 'Margaret', 'George', 'Sandra', 'Timothy', 'Ashley', 'Ronald', 'Doris', 'Edward', 'Kimberly', 'Jason', 'Michelle', 'Jeffrey', 'Emily', 'Ryan', 'Carol', 'Jacob', 'Amanda'];
-      const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson', 'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson', 'Walker', 'Young', 'Allen', 'King', 'Wright', 'Scott', 'Torres', 'Nguyen', 'Hill', 'Flores', 'Green', 'Adams', 'Nelson', 'Baker', 'Hall', 'Rivera', 'Campbell', 'Mitchell', 'Carter', 'Roberts'];
-      return `SUPPLIER-${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
-    }
-
-    function getRandomEmailPrefix() {
-      const names = ['john', 'jane', 'michael', 'sarah', 'david', 'emily', 'robert', 'lisa', 'william', 'anna', 'james', 'mary', 'thomas', 'patricia', 'charles', 'jennifer', 'daniel', 'linda', 'matthew', 'barbara', 'anthony', 'elizabeth', 'mark', 'susan', 'steven', 'jessica', 'paul', 'karen', 'andrew', 'nancy', 'kevin', 'betty', 'brian', 'margaret', 'george', 'sandra', 'timothy', 'ashley', 'ronald', 'dorris', 'edward', 'kimberly', 'jason', 'michelle', 'jeffrey', 'emily', 'ryan', 'carol', 'jacob', 'amanda'];
-      const formats = [
-        () => names[Math.floor(Math.random() * names.length)],
-        () => `${names[Math.floor(Math.random() * names.length)]}.${names[Math.floor(Math.random() * names.length)]}`,
-        () => `${names[Math.floor(Math.random() * names.length)]}${Math.floor(Math.random() * 100)}`,
-        () => `${names[Math.floor(Math.random() * names.length)]}_${names[Math.floor(Math.random() * names.length)]}`,
-      ];
-      return formats[Math.floor(Math.random() * formats.length)]();
-    }
-
-    function getRandomTitle() {
-      const titles = ['Sales Manager', 'Account Manager', 'Business Development', 'Sales Director', 'Marketing Manager', 'Product Manager', 'Quality Manager', 'Operations Manager', 'Supply Chain Manager', 'Customer Service', 'Technical Support', 'Export Manager', 'Import Manager', 'Logistics Coordinator', 'Purchasing Manager', 'Procurement Officer', 'Sales Representative', 'Senior Sales', 'Regional Manager', 'Country Manager'];
-      return titles[Math.floor(Math.random() * titles.length)];
-    }
-
-    function addDummySupplierMember() {
-      addNewSupplierMember();
-      const memberDiv = document.getElementById('supplierMembersList').lastElementChild;
-      memberDiv.querySelector('.supplier-member-name').value = getRandomMemberName();
-      memberDiv.querySelector('.supplier-member-email-prefix').value = getRandomEmailPrefix();
-      memberDiv.querySelector('.supplier-member-title').value = getRandomTitle();
-      memberDiv.querySelector('.supplier-member-tel').value = getRandomTel();
+      document.getElementById('supplierCompanyName').value = 'SUPPLIER-ABC Manufacturing Co.';
+      document.getElementById('supplierEmailDomain').value = 'abcmfg.com';
+      document.getElementById('supplierCompanyAddress').value = '123 Industrial Park, Shenzhen, China';
+      document.getElementById('supplierCompanyTel').value = '+86-755-12345678';
+      msSetSelected(document.getElementById('supplierTypeMs'), 'hang_tag,woven_label');
+      document.getElementById('supplierCompanyWebsite').value = 'https://www.abcmfg.com';
     }
 
     // Generate 10 outsourcing dummy data with supplier distribution
@@ -12771,6 +12702,7 @@
           if (brandsData.success) brands = brandsData.brands;
         } catch (e) { console.error('Error fetching brands for dummy:', e); }
 
+        alert('Creating 10 quotations...');
 
         for (let i = 0; i < 10; i++) {
           const quantity = Math.floor(100 + Math.random() * 9900);
@@ -12820,10 +12752,12 @@
           }
         }
 
+        alert('Generated 10 quotations successfully!');
         await displayQuotations();
         await displayOutsourcingQuotations();
       } catch (error) {
         console.error('Error generating quotation dummy data:', error);
+        alert('Failed to generate quotation data. Please try again.');
       }
     }
 
@@ -13035,6 +12969,15 @@
         title: '',
         tel: ''
       });
+    }
+
+    function addDummySupplierMember() {
+      addNewSupplierMember();
+      const memberDiv = document.getElementById('supplierMembersList').lastElementChild;
+      memberDiv.querySelector('.supplier-member-name').value = 'SUPPLIER-John Smith';
+      memberDiv.querySelector('.supplier-member-email-prefix').value = 'john.smith';
+      memberDiv.querySelector('.supplier-member-title').value = 'Sales Manager';
+      memberDiv.querySelector('.supplier-member-tel').value = '+86-755-87654321';
     }
 
     async function saveSupplierMember(index) {
@@ -13382,6 +13325,7 @@
         pendingDeleteSupplierId = null;
         await displaySuppliers();
       } catch (error) {
+        alert('Failed to delete supplier: ' + error.message);
       }
     };
 
@@ -14065,6 +14009,7 @@
       const selectedIds = Array.from(checkboxes).map(cb => cb.dataset.quotationId);
 
       if (selectedIds.length === 0) {
+        alert('Please select at least one quotation to delete.');
         return;
       }
 
@@ -14091,10 +14036,12 @@
         hideDeletingOverlay();
 
         if (failCount > 0) {
+          alert(`Deleted ${successCount}, failed ${failCount}.`);
         }
       } catch (error) {
         hideDeletingOverlay();
         console.error('Batch delete error:', error);
+        alert('Error during batch delete: ' + error.message);
       }
     }
 
@@ -15064,6 +15011,7 @@
           });
         } catch (e) { console.warn('Failed to log history:', e); }
 
+        alert(`Rejected - status updated to "${newStatus}"`);
 
         // Refresh both views
         if (typeof displayOutsourcingQuotations === 'function') {
@@ -15074,6 +15022,7 @@
         }
       } catch (error) {
         console.error('Error handling rejection:', error);
+        alert('Failed to reject. Please try again.');
       }
     };
 
@@ -15133,6 +15082,7 @@
 
           if (!tokenData.success) {
             if (loadingOverlay) document.body.removeChild(loadingOverlay);
+            alert(tokenData.error || 'Failed to generate supplier tokens.');
             return;
           }
 
@@ -15179,6 +15129,7 @@
 
           if (sentCount === 0) {
             if (loadingOverlay) document.body.removeChild(loadingOverlay);
+            alert('No emails were sent. Status will not be updated. Please check SMTP settings.');
             return;
           }
 
@@ -15202,6 +15153,7 @@
         // Handle "Start Sampling" - send email to selected supplier with sampling link
         if (newStatus === 'sampling') {
           if (!quotation.selectedSupplierId) {
+            alert('No supplier was selected for this quotation. Cannot start sampling.');
             if (loadingOverlay) document.body.removeChild(loadingOverlay);
             return;
           }
@@ -15224,38 +15176,13 @@
             const samplingTokenData = await samplingTokenRes.json();
 
             if (!samplingTokenData.success) {
+              alert(samplingTokenData.error || 'Failed to generate sampling token.');
               if (loadingOverlay) document.body.removeChild(loadingOverlay);
               return;
             }
 
             const baseUrl = window.location.origin;
             const samplingLink = `${baseUrl}/supplier-sampling/${samplingTokenData.token}`;
-
-            // Enrich the email with full product details + the selected supplier's
-            // last-submitted tier pricing (for reference).
-            let productDetailsRowsHtml = '';
-            let responseTiersHtml = '';
-            try {
-              const pd = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
-              productDetailsRowsHtml = emailProductDetailsRows(pd);
-              const responsesRes = await fetch(`/api/supplier-portal/responses/${quotation.id}`);
-              const responsesData = await responsesRes.json();
-              const responses = (responsesData && responsesData.success) ? (responsesData.responses || []) : [];
-              const sel = responses.find(rv => Number(rv.supplierId) === Number(quotation.selectedSupplierId));
-              if (sel && Array.isArray(sel.tiers) && sel.tiers.length > 0) {
-                const rows = sel.tiers.map(t => {
-                  const q = Number(t.quantity) || 0;
-                  const u = t.unitPrice != null ? Number(t.unitPrice).toFixed(2) : '0.00';
-                  return `<tr><td style="padding:8px; border:1px solid #ccc;">${q.toLocaleString()}</td><td style="padding:8px; border:1px solid #ccc;">${u}</td></tr>`;
-                }).join('');
-                responseTiersHtml = `
-                  <h3 style="margin-top:20px;">Your Quoted Pricing</h3>
-                  <table style="width:100%; border-collapse:collapse; margin:20px 0;">
-                    <thead><tr><th style="padding:8px; border:1px solid #ccc; text-align:left;">Quantity</th><th style="padding:8px; border:1px solid #ccc; text-align:left;">Unit Price (HKD)</th></tr></thead>
-                    <tbody>${rows}</tbody>
-                  </table>`;
-              }
-            } catch (e) { console.warn('Could not enrich sampling email:', e); }
 
             // Get active profile domain
             let activeProfileDomain = 'longriver.com';
@@ -15279,12 +15206,10 @@
                 <p>We are ready to proceed with sampling for the following quotation:</p>
                 <table style="width:100%; border-collapse:collapse; margin:20px 0;">
                   <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerName || 'N/A'}</td></tr>
-                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${emailProductTypeDisplay(quotation.productType, quotation.productDetails)}</td></tr>
-                  ${productDetailsRowsHtml}
+                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${quotation.productType || 'N/A'}</td></tr>
                   <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity ? quotation.quantity.toLocaleString() : 'N/A'}</td></tr>
                   <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">OS Ref</td><td style="padding:8px; border:1px solid #ccc;">${quotation.outsourcingSeq || 'N/A'}</td></tr>
                 </table>
-                ${responseTiersHtml}
                 <p>Please click the link below to confirm and provide the expected sample ready date:</p>
                 <table cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;"><tr><td align="center" bgcolor="#000000" style="padding:12px 24px; border-radius:4px;"><a href="${samplingLink}" style="color:#ffffff; text-decoration:none; font-weight:500; font-size:14px;" target="_blank">Submit Sample Ready Date</a></td></tr></table>
                 <p style="font-size:13px; color:#333; margin-bottom:4px; font-weight:600;">📋 Copy this link to open in your browser:</p>
@@ -15301,6 +15226,7 @@
               });
               const sendResult = await sendRes.json();
               if (!sendResult.success) {
+                alert('Failed to send sampling email to supplier. Status will still be updated.');
               } else {
                 showModal({
                   title: 'Sampling Request Sent',
@@ -15313,6 +15239,7 @@
                 });
               }
             } else {
+              alert('Supplier email not found. Status will be updated but no sampling email sent.');
               // Log the missing email in history
               try {
                 await fetch(`/api/quotations/${quotationId}/log-history`, {
@@ -15328,6 +15255,7 @@
             }
           } catch (e) {
             console.error('Error sending sampling email:', e);
+            alert('Error sending sampling email: ' + e.message);
             // Log the error in history
             try {
               await fetch(`/api/quotations/${quotationId}/log-history`, {
@@ -15346,6 +15274,7 @@
         // Handle "await sample ready date" — send chase email to supplier (no status change)
         if (newStatus === 'await sample ready date') {
           if (!quotation.selectedSupplierId) {
+            alert('No supplier was selected for this quotation. Cannot chase sample date.');
             if (loadingOverlay) document.body.removeChild(loadingOverlay);
             return;
           }
@@ -15451,6 +15380,7 @@
               });
               const sendResult = await sendRes.json();
               if (!sendResult.success) {
+                alert('Failed to send chase email: ' + (sendResult.error || 'Unknown error'));
               } else {
                 // Log in history
                 try {
@@ -15476,6 +15406,7 @@
                 });
               }
             } else {
+              alert('Supplier email not found. Cannot send reminder.');
               // Still log in history
               try {
                 await fetch(`/api/quotations/${quotationId}/log-history`, {
@@ -15491,6 +15422,7 @@
             }
           } catch (e) {
             console.error('Error sending chase email:', e);
+            alert('Error sending chase email: ' + e.message);
           }
 
           // Refresh and return — NO status change, stays at 'sampling'
@@ -15514,6 +15446,7 @@
           throw new Error('Failed to update status');
         }
 
+        alert(`Status updated to "${finalStatus}" successfully!`);
 
         // Show sample submission card when submitting for approval
         if (newStatus === 'await approval') {
@@ -15526,6 +15459,7 @@
       } catch (error) {
         if (loadingOverlay) document.body.removeChild(loadingOverlay);
         console.error('Error updating outsourcing status:', error);
+        alert('Failed to update status. Please try again.');
       }
     };
 
@@ -15572,9 +15506,7 @@
       let rows = '';
       for (const [key, value] of Object.entries(pd)) {
         if (key.startsWith('_')) continue;
-        if (key === 'tiers' || key === 'tierScopeMode') continue; // internal tier config — not a display spec
         if (value === null || value === undefined || value === '') continue;
-        if (Array.isArray(value) || (value !== null && typeof value === 'object')) continue; // structured value — skip, never [object Object]
         const label = PRODUCT_DETAILS_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
         rows += `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">${label}</td><td style="padding:8px; border:1px solid #ccc;">${value}</td></tr>`;
       }
@@ -15630,21 +15562,6 @@
       const imageHtml = profileImageBase64 ? `<div style="text-align:center; margin:15px 0;"><img src="${profileImageBase64}" style="max-width:150px; max-height:150px; object-fit:contain; border:1px solid #ddd; padding:3px;" alt="Product Image"></div>` : '';
       const itemRow = quotation.customerItemName ? `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer Item</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerItemName}</td></tr>` : '';
       const detailRows = emailProductDetailsRows(productDetails);
-      let tiersHtml = '';
-      if (productDetails && productDetails.tierScopeMode && productDetails.tierScopeMode !== 'none' && Array.isArray(productDetails.tiers) && productDetails.tiers.length > 0) {
-        const rows = productDetails.tiers.map(t => {
-          const q = t.quantity || 0;
-          const u = t.unitPrice != null ? Number(t.unitPrice).toFixed(2) : '0.00';
-          return `<tr><td style="padding:6px; border:1px solid #ccc;">${q.toLocaleString()}</td><td style="padding:6px; border:1px solid #ccc;">${u}</td></tr>`;
-        }).join('');
-        tiersHtml = `
-          <h3 style="margin:20px 0 8px 0;">Requested Pricing Tiers</h3>
-          <table style="width:100%; border-collapse:collapse; margin:8px 0;">
-            <thead><tr><th style="padding:6px; border:1px solid #ccc; text-align:left;">Quantity</th><th style="padding:6px; border:1px solid #ccc; text-align:left;">Unit Price (HKD)</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        `;
-      }
       return `
         <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
           <h2 style="border-bottom:2px solid #f00; padding-bottom:10px;">${reminderLabel}: Quotation Request</h2>
@@ -15658,7 +15575,6 @@
             ${detailRows}
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity ? quotation.quantity.toLocaleString() : 'N/A'}</td></tr>
           </table>
-          ${tiersHtml}
           <p><strong>Please submit your quotation as soon as possible:</strong></p>
           <table cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;"><tr><td align="center" bgcolor="#ff0000" style="padding:12px 24px; border-radius:4px;"><a href="${portalLink}" style="color:#ffffff; text-decoration:none; font-weight:500; font-size:14px;" target="_blank">Submit Your Quotation Now</a></td></tr></table>
           <p style="font-size:13px; color:#333; margin-bottom:4px; font-weight:600;">📋 Copy this link to open in your browser:</p>
@@ -15685,6 +15601,7 @@
         const quotationRes = await fetch(`/api/quotations/${quotationId}`);
         const quotationData = await quotationRes.json();
         if (!quotationData.success) {
+          alert('Failed to get quotation details.');
           return;
         }
         const quotation = quotationData.quotation;
@@ -15695,6 +15612,7 @@
         const linkedSuppliers = linkedData.success ? (linkedData.suppliers || []) : [];
 
         if (linkedSuppliers.length === 0) {
+          alert('No suppliers linked to this quotation.');
           return;
         }
 
@@ -15708,6 +15626,7 @@
         const nonResponders = linkedSuppliers.filter(s => !respondedSupplierIds.has(s.id));
 
         if (nonResponders.length === 0) {
+          alert('All suppliers have already responded!');
           return;
         }
 
@@ -15837,6 +15756,7 @@
           } else {
             errorMsg += 'Please check SMTP settings and supplier email configurations.';
           }
+          alert(errorMsg);
         } else if (failCount > 0) {
           showModal({ title: 'Partially Sent', body: `<p>Reminder sent to ${sentCount} supplier contact(s), failed ${failCount}.</p><p style="font-size:12px; color:#999;">Errors: ${errors.slice(0, 3).join(', ')}</p>${linksHtml}` });
         } else {
@@ -15861,6 +15781,7 @@
       } catch (error) {
         if (document.body.contains(loadingOverlay)) document.body.removeChild(loadingOverlay);
         console.error('Error sending reminders:', error);
+        alert('Failed to send reminders: ' + error.message);
       }
     };
 
@@ -15871,6 +15792,7 @@
         const quotationRes = await fetch(`/api/quotations/${quotationId}`);
         const quotationData = await quotationRes.json();
         if (!quotationData.success) {
+          alert('Failed to get quotation details.');
           return;
         }
         const quotation = quotationData.quotation;
@@ -15881,6 +15803,7 @@
         const responses = responsesData.success ? (responsesData.responses || []) : [];
 
         if (responses.length === 0) {
+          alert('No supplier responses available yet.');
           return;
         }
 
@@ -16025,6 +15948,7 @@
           sendBtn.onclick = async () => {
             const selected = content.querySelector('input[name="selectedSupplier"]:checked');
             if (!selected) {
+              alert('Please select a supplier.');
               return;
             }
             const selectedResponse = responses[parseInt(selected.value)];
@@ -16107,6 +16031,7 @@
 
       } catch (error) {
         console.error('Error showing comparison popup:', error);
+        alert('Failed to load supplier responses');
       }
     };
 
@@ -16115,20 +16040,7 @@
       const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
       const r = selectedResponse;
       const markupMultiplier = 1 + (markupPercent / 100);
-      const hasTiers = Array.isArray(r.tiers) && r.tiers.length > 0;
-      // Marked-up per-tier pricing — the customer sees the supplier's unit prices with
-      // the markup applied (flat Unit Price row below is omitted when tiers exist).
-      const tierRowsHtml = hasTiers ? r.tiers.map(t => {
-        const q = Number(t.quantity) || 0;
-        const rawU = t.unitPrice != null ? Number(t.unitPrice) : 0;
-        return `<tr><td style="padding:8px; border:1px solid #ccc;">${q.toLocaleString()}</td><td style="padding:8px; border:1px solid #ccc; text-align:right;">${(rawU * markupMultiplier).toFixed(2)}</td></tr>`;
-      }).join('') : '';
-      const tierTableHtml = hasTiers ? `
-          <h3 style="margin-top:30px;">Pricing Tiers</h3>
-          <table style="width:100%; border-collapse:collapse; margin:20px 0;">
-            <thead><tr><th style="padding:8px; border:1px solid #ccc; text-align:left;">Quantity</th><th style="padding:8px; border:1px solid #ccc; text-align:left;">Unit Price (HKD)</th></tr></thead>
-            <tbody>${tierRowsHtml}</tbody>
-          </table>` : '';
+      const markedUpUnitPrice = r.unitPrice ? (r.unitPrice * markupMultiplier) : null;
 
       let html = `
         <div style="font-family:Arial,sans-serif; max-width:800px; margin:0 auto; color:#000;">
@@ -16142,20 +16054,19 @@
 
           <h3 style="margin-top:30px;">Your Request Details:</h3>
           <table style="width:100%; border-collapse:collapse; margin:20px 0;">
-            ${(quotation.outsourcingSeq || quotation.quotationSeq) ? `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold; width:200px;">Reference</td><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">${quotation.outsourcingSeq || quotation.quotationSeq}</td></tr>` : ''}
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold; width:200px;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${emailProductTypeDisplay(quotation.productType, productDetails)}</td></tr>
             ${quotation.customerItemName ? `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Item Name</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerItemName}</td></tr>` : ''}
             ${emailProductDetailsRows(productDetails)}
-            ${hasTiers ? '' : `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity.toLocaleString()}</td></tr>`}
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity.toLocaleString()}</td></tr>
           </table>
 
           <h3 style="margin-top:30px;">Quotation Details:</h3>
           <table style="width:100%; border-collapse:collapse; margin:20px 0;">
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold; width:200px;">Supplier</td><td style="padding:8px; border:1px solid #ccc;">${r.companyName}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Unit Price (HKD)</td><td style="padding:8px; border:1px solid #ccc;">${markedUpUnitPrice ? markedUpUnitPrice.toFixed(2) : 'N/A'}</td></tr>
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Delivery Days</td><td style="padding:8px; border:1px solid #ccc;">${r.deliveryDays || 'N/A'}</td></tr>
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Notes</td><td style="padding:8px; border:1px solid #ccc;">${r.notes || '-'}</td></tr>
           </table>
-          ${tierTableHtml}
 
           <p style="margin-top:30px;">Please review the quotation and let us know if you would like to proceed or if you have any questions.</p>
           <p style="margin-top:20px;">Best regards,<br>Your Team</p>
@@ -16170,6 +16081,7 @@
     window.sendQuotationToCustomer = async function(quotationId, quotation, selectedResponse, markupPercent = 0) {
       try {
         if (!quotation.email) {
+          alert('Customer email not found in quotation.');
           return;
         }
 
@@ -16282,12 +16194,10 @@
         // Generate email HTML for the selected supplier (with markup applied)
         const emailHtml = generateCustomerComparisonEmailHtml(quotation, selectedResponse, profileImageCid, markupPercent) + originalEmailHtml;
 
-        // Build subject as reply to original email if available; include the OS/quotation ref.
-        const refSeq = quotation.outsourcingSeq || quotation.quotationSeq || '';
-        const refSuffix = refSeq ? ` [${refSeq}]` : '';
+        // Build subject as reply to original email if available
         const emailSubject = originalSubject
-          ? `Re: ${originalSubject} - Quotation${refSuffix}`
-          : `Supplier Quotation - ${quotation.productType} - ${quotation.customerName}${refSuffix}`;
+          ? `Re: ${originalSubject} - Quotation`
+          : `Supplier Quotation - ${quotation.productType} - ${quotation.customerName}`;
 
         // Send email
         const sendPayload = {
@@ -16312,6 +16222,7 @@
         const sendResult = await sendRes.json();
 
         if (!sendResult.success) {
+          alert('Failed to send email to customer. Please check SMTP settings.');
           return;
         }
 
@@ -16329,6 +16240,7 @@
         });
 
         if (!updateRes1.ok) {
+          alert('Email sent but failed to update status to "send to customer"');
           return;
         }
 
@@ -16346,6 +16258,7 @@
         });
 
         if (!updateRes2.ok) {
+          alert('Email sent but failed to update status to "await customer confirm price"');
           return;
         }
 
@@ -16364,10 +16277,12 @@
           });
         } catch (e) { console.warn('Failed to log supplier selection history:', e); }
 
+        alert(`Quotation comparison sent to customer successfully!\nMarkup: ${markupPercent}%\nStatus updated to "Await Customer Confirm Price".`);
         await displayOutsourcingQuotations();
 
       } catch (error) {
         console.error('Error sending quotation to customer:', error);
+        alert('Failed to send quotation to customer. Please try again.');
       }
     };
 
@@ -16822,6 +16737,7 @@
       }
 
       if (!quotation) {
+        alert('Quotation not found.');
         return;
       }
 
@@ -17823,9 +17739,11 @@
         await displayOutsourcingQuotations();
 
         hideDeletingOverlay();
+        alert('Quotation deleted successfully.');
       } catch (error) {
         hideDeletingOverlay();
         console.error('Error deleting quotation:', error);
+        alert('Failed to delete quotation. Please try again.');
       }
     }
 
@@ -18938,7 +18856,7 @@
         const result = await resp.json();
         if (result.success) quotation = result.quotation;
       } catch (e) { console.error('Failed to fetch quotation for sample card:', e); }
-      if (!quotation) { return; }
+      if (!quotation) { alert('Quotation not found.'); return; }
 
       // Determine product type
       const effectiveProductType = (quotation.productType === 'outsource' && quotation.productDetails?._productTag)
@@ -20294,9 +20212,11 @@
           const nextName = (overlay.querySelector('.tier-modal-name')?.value || '').trim();
           const nextTiers = collectTierRows(rowsContainer);
           if (!nextName) {
+            alert('Table name is required.');
             return;
           }
           if (nextTiers.length === 0) {
+            alert('Please add at least one tier.');
             return;
           }
 
@@ -20317,8 +20237,10 @@
             });
             closeModal();
             refreshList();
+            alert('Tier table updated.');
           } catch (err) {
             console.error('Failed to update tier table', err);
+            alert('Failed to save tier table changes.');
           }
         };
       }
@@ -20402,6 +20324,7 @@
               refreshList();
             } catch (err) {
               console.error('Failed to toggle tier table', err);
+              alert('Failed to update tier table status.');
             }
             return;
           }
@@ -20417,6 +20340,7 @@
               await refreshList();
             } catch (err) {
               console.error('Failed to delete tier table', err);
+              alert('Failed to delete tier table.');
             }
           }
         });
@@ -20429,6 +20353,7 @@
         const scope = scopeSel.value;
         const tiers = collectTierRows(rowsWrap);
         if (tiers.length === 0) {
+          alert('Please add at least one tier.');
           return;
         }
         let name = (nameInput.value || '').trim();
@@ -20436,13 +20361,13 @@
         const specs = { scope, tiers, disabled: !!disabledCb.checked };
         if (scope === 'brand') {
           const bid = brandSel.value;
-          if (!bid) { return; }
+          if (!bid) { alert('Please select a Brand.'); return; }
           specs.brandId = Number(bid);
           specs.brandName = (cachedBrands || []).find(b => String(b.id) === String(bid))?.name || '';
           if (!name) name = `Tiers — ${specs.brandName} — ${nowStr}`;
         } else {
           const cid = custSel.value;
-          if (!cid) { return; }
+          if (!cid) { alert('Please select a Garment Factory.'); return; }
           // Fetch customer name from select text
           specs.customerId = Number(cid);
           specs.customerName = custSel.options[custSel.selectedIndex]?.text || '';
@@ -20482,8 +20407,10 @@
           rowsWrap.innerHTML = '';
           disabledCb.checked = false;
           await refreshList();
+          alert('Saved.');
         } catch (e) {
           console.error('Failed to save tier table', e);
+          alert('Failed to save tier table: ' + (e.message || 'Unknown error'));
         }
       };
     }
@@ -23244,6 +23171,7 @@
             if (typeof loadBrandsCache === 'function') loadBrandsCache();
             loadBrands();
           } else {
+            alert('Error: ' + data.error);
           }
         })
         .catch(err => console.error('Error deleting brand:', err));
@@ -23413,6 +23341,7 @@
       console.log('Brand save:', { editId, name, address, hasLogo: !!logoFile });
 
       if (!name) {
+        alert('Brand name is required.');
         return;
       }
 
@@ -23439,10 +23368,12 @@
             ensureTab('brand-view', 'Brand (view)');
             activateTab('brand-view');
           } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
           }
         })
         .catch(err => {
           console.error('Error saving brand:', err);
+          alert('Failed to save brand: ' + err.message);
         });
     };
 
@@ -23637,6 +23568,7 @@
     // Export status history to Excel
     window.exportStatusHistoryExcel = async function() {
       if (!_currentHistoryQuotationId) {
+        alert('No history to export.');
         return;
       }
 
@@ -23652,6 +23584,7 @@
         const history = hData.success ? hData.history : [];
 
         if (history.length === 0) {
+          alert('No history records to export.');
           return;
         }
 
@@ -23758,6 +23691,7 @@
 
       } catch (err) {
         console.error('Export history error:', err);
+        alert('Export failed: ' + err.message);
       }
     };
 
@@ -24273,7 +24207,7 @@
         filteredQuotations = quotations.filter(q => idSet.has(String(q.id)));
       }
 
-      if (filteredQuotations.length === 0) { return; }
+      if (filteredQuotations.length === 0) { alert('No data to export.'); return; }
 
       const timestamp = new Date().toISOString().slice(0, 10);
 
@@ -24287,6 +24221,7 @@
         }
       } catch (err) {
         console.error('Export error:', err);
+        alert('Export failed: ' + err.message);
       }
     };
 
@@ -24302,7 +24237,7 @@
         filteredQuotations = quotations.filter(q => idSet.has(String(q.id)));
       }
 
-      if (filteredQuotations.length === 0) { return; }
+      if (filteredQuotations.length === 0) { alert('No data to export.'); return; }
 
       const timestamp = new Date().toISOString().slice(0, 10);
 
@@ -24316,6 +24251,7 @@
         }
       } catch (err) {
         console.error('Export error:', err);
+        alert('Export failed: ' + err.message);
       }
     };
 
@@ -24649,6 +24585,7 @@
 
       } catch (err) {
         console.error('Excel export error:', err);
+        alert('Export failed: ' + err.message);
       } finally {
         btn.textContent = originalText;
         btn.disabled = false;
@@ -25037,6 +24974,7 @@
     async function wsSaveWorkshop(status) {
       const data = wsGatherData();
       if (status === 'active' && !data.fullCompanyName) {
+        alert('Company Name is required.');
         wsSetStep(1);
         return;
       }
@@ -25049,10 +24987,13 @@
         });
         const result = await res.json();
         if (result.success) {
+          alert(status === 'draft' ? 'Draft saved!' : 'Workshop submitted successfully!');
           initializeWorkshopPanel();
         } else {
+          alert('Error: ' + result.error);
         }
       } catch (err) {
+        alert('Failed to save: ' + err.message);
       }
     }
 
@@ -25298,7 +25239,7 @@
       try {
         const res = await fetch('/api/workshops/' + id);
         const data = await res.json();
-        if (!data.success) { return; }
+        if (!data.success) { alert('Not found'); return; }
         const w = data.workshop;
 
         document.getElementById('workshopListView').style.display = 'none';
@@ -25431,6 +25372,7 @@
         document.getElementById('ws-deleteDetailBtn').onclick = () => wsConfirmDelete(w.id, w.fullCompanyName);
 
       } catch (err) {
+        alert('Error loading workshop: ' + err.message);
       }
     }
 
@@ -25510,7 +25452,7 @@
           await fetch('/api/workshops/' + wsDeleteTargetId, { method: 'DELETE' });
           modal.style.display = 'none';
           await wsLoadWorkshops();
-        } catch (err) {}
+        } catch (err) { alert('Delete failed: ' + err.message); }
       };
       document.getElementById('workshopDeleteCancelBtn').onclick = () => { modal.style.display = 'none'; };
     }
@@ -25546,14 +25488,17 @@
         });
         const data = await response.json();
         if (data.success) {
+          alert(`Order created: ${data.order.orderSeq}`);
           // Navigate to Order (Created)
           ensureTab('order-created', 'Order (Created)');
           activateTab('order-created');
           displayOrders();
         } else {
+          alert('Error: ' + data.error);
         }
       } catch (err) {
         console.error('Error converting to order:', err);
+        alert('Failed to create order');
       }
     };
 
@@ -25779,15 +25724,17 @@
         if (data.success) {
           displayOrders();
         } else {
+          alert('Failed: ' + data.error);
         }
       } catch (err) {
+        alert('Error: ' + err.message);
       }
     }
 
     // Bulk delete selected orders
     async function bulkDeleteOrders() {
       const ids = getSelectedOrderIds();
-      if (ids.length === 0) return;
+      if (ids.length === 0) return alert('No orders selected.');
       if (!confirm(`Cancel ${ids.length} selected order(s)?`)) return;
 
       // Collect PO#s from selected rows before cancelling
@@ -25815,8 +25762,10 @@
           }
           displayOrders();
         } else {
+          alert('Failed: ' + data.error);
         }
       } catch (err) {
+        alert('Error: ' + err.message);
       }
     }
 
@@ -25859,12 +25808,13 @@
     // Bulk QR scan to update status
     async function bulkScanUpdateStatus() {
       const ids = getSelectedOrderIds();
-      if (ids.length === 0) return;
+      if (ids.length === 0) return alert('No orders selected.');
 
       // Show department selection
       const departments = ['CS Team', 'PMC', 'Material', 'Production', 'Cut and Fold', 'QC', 'Shipment', 'Account'];
       const dept = prompt(`Select department for ${ids.length} order(s).\n\nDepartments:\n${departments.map((d,i) => `${i+1}. ${d}`).join('\n')}\n\nEnter department name:`);
       if (!dept || !departments.includes(dept)) {
+        if (dept) alert('Invalid department.');
         return;
       }
 
@@ -25876,17 +25826,20 @@
         });
         const data = await res.json();
         if (data.success) {
+          alert(`Updated ${data.updatedCount} order(s).` + (data.errors.length > 0 ? `\n\nErrors:\n${data.errors.map(e => `${e.orderSeq}: ${e.error}`).join('\n')}` : ''));
           displayOrders();
         } else {
+          alert('Failed: ' + data.error);
         }
       } catch (err) {
+        alert('Error: ' + err.message);
       }
     }
 
     // Generate bulk red QR code for selected orders
     async function generateBulkQr() {
       const ids = getSelectedOrderIds();
-      if (ids.length === 0) return;
+      if (ids.length === 0) return alert('No orders selected.');
 
       // Get order sequences for selected orders
       const poNumbers = [];
@@ -26070,6 +26023,7 @@
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       } catch (err) {
+        alert('Export failed: ' + err.message);
       }
     }
 
@@ -26094,6 +26048,7 @@
     async function showFactorySelectionModal() {
       const selectedIds = Array.from(document.querySelectorAll('.order-checkbox:checked')).map(cb => Number(cb.dataset.orderId));
       if (selectedIds.length === 0) {
+        alert('Please select at least one order.');
         return;
       }
 
@@ -26124,6 +26079,7 @@
     async function generateBulkPdf() {
       const workshopId = Number(document.getElementById('orderFactorySelect').value);
       if (!workshopId) {
+        alert('Please select a factory.');
         return;
       }
 
@@ -26151,6 +26107,7 @@
         }, 2000);
       } catch (err) {
         console.error('Error generating PDF:', err);
+        alert('Failed to generate PDF');
       }
     }
 
@@ -26252,6 +26209,7 @@
         // PDF button for single order
         document.getElementById('orderViewPdfBtn').onclick = () => {
           if (!order.workshopId) {
+            alert('Please assign a factory first via the Created panel (select order → Create PDF).');
             return;
           }
           // Download the PDF
@@ -26260,6 +26218,7 @@
 
       } catch (err) {
         console.error('Error viewing order:', err);
+        alert('Failed to load order details');
       }
     };
 
@@ -26403,11 +26362,13 @@
     // Submit scan from web scanner
     document.getElementById('qrScanSubmitBtn').onclick = async () => {
       if (!_scannedOrderData) {
+        alert('No QR code scanned yet. Point camera at a QR code first.');
         return;
       }
 
       const department = document.getElementById('qrScanDepartment').value;
       if (!department) {
+        alert('Please select a department.');
         return;
       }
 
@@ -26438,6 +26399,7 @@
           document.getElementById('qrScanResult').innerHTML = `<strong style="color:#dc3545;">✗ ${data.error || 'Failed'}</strong>${data.nextExpected ? '<br><em>Next expected: ' + data.nextExpected + '</em>' : ''}`;
         }
       } catch (err) {
+        alert('Network error: ' + err.message);
       }
     };
 
