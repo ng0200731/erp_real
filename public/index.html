@@ -19283,7 +19283,7 @@
             <strong>Sample Submission Card — #${submitCount} (${submitCount === 1 ? 'Submit for Approval' : submitCount === 2 ? '1st Resubmit' : submitCount === 3 ? '2nd Resubmit' : (submitCount - 1) + 'th Resubmit'})</strong>
             <div>
               <button onclick="printSampleCard();" style="padding:6px 16px; background:#000; color:#fff; border:1px solid #000; cursor:pointer; margin-right:8px;">Print</button>
-              <button onclick="document.getElementById('sampleCardModal').remove();" style="padding:6px 16px; background:#fff; border:1px solid #000; cursor:pointer;">Close</button>
+              <button id="sampleCardCloseBtn" style="padding:6px 16px; background:#fff; border:1px solid #000; cursor:pointer;">Close</button>
             </div>
           </div>
           <div style="overflow-y:auto; flex:1; background:#e0e0e0; display:flex; justify-content:center; padding:20px;">
@@ -19295,7 +19295,108 @@
         </div>
       `;
       document.body.appendChild(modalEl);
+
+      // On close of the sample submission card, prompt for the AWB # (only for a
+      // real Submit-for-Approval / resubmit, not a reprint) and log it to history.
+      const closeBtn = modalEl.querySelector('#sampleCardCloseBtn');
+      if (closeBtn) {
+        closeBtn.onclick = () => {
+          modalEl.remove();
+          if (!isReprint) {
+            const submitLabel = submitCount === 1 ? 'Submit for Approval'
+              : submitCount === 2 ? '1st Resubmit'
+              : submitCount === 3 ? '2nd Resubmit'
+              : (submitCount - 1) + 'th Resubmit';
+            showAwbInputPopup(quotationId, submitLabel);
+          }
+        };
+      }
     }
+
+    // Prompt for the AWB # after a Submit-for-Approval / resubmit, then log it to
+    // quotation history. Includes a dummy-fill that generates a courier-specific
+    // tracking number with a sequence # (UPS / FedEx / DHL / SF).
+    window.showAwbInputPopup = function (quotationId, submitLabel) {
+      // Remove any existing AWB modal first
+      const existing = document.getElementById('awbModal');
+      if (existing) existing.remove();
+
+      const overlay = document.createElement('div');
+      overlay.id = 'awbModal';
+      overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:10001;';
+      overlay.innerHTML = `
+        <div style="background:#fff; width:min(460px,92vw); border:1px solid #000; box-shadow:0 10px 30px rgba(0,0,0,0.3);">
+          <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #ccc;">
+            <strong>Enter AWB # — ${escapeHtml(submitLabel || 'Submit for Approval')}</strong>
+            <button type="button" class="awb-cancel" style="border:1px solid #ccc; background:#fff; padding:4px 10px; cursor:pointer;">×</button>
+          </div>
+          <div style="padding:16px;">
+            <div style="margin-bottom:12px;">
+              <label style="display:block; font-weight:600; margin-bottom:6px; font-size:13px;">Courier</label>
+              <select class="awb-courier" style="width:100%; padding:6px; border:1px solid #ccc;">
+                <option value="UPS">UPS</option>
+                <option value="FedEx">FedEx</option>
+                <option value="DHL">DHL</option>
+                <option value="SF">SF Express</option>
+              </select>
+            </div>
+            <div style="margin-bottom:12px;">
+              <label style="display:block; font-weight:600; margin-bottom:6px; font-size:13px;">AWB #</label>
+              <input type="text" class="awb-number" style="width:100%; padding:6px; border:1px solid #ccc;" placeholder="Tracking number">
+            </div>
+            <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+              <button type="button" class="awb-dummy page-btn">Dummy Fill</button>
+              <button type="button" class="awb-cancel page-btn">Cancel</button>
+              <button type="button" class="awb-save page-btn" style="background:#000; color:#fff;">Save to History</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+
+      const courierSel = overlay.querySelector('.awb-courier');
+      const numberInput = overlay.querySelector('.awb-number');
+
+      const close = () => overlay.remove();
+
+      // Dummy-fill: courier-specific tracking number with a sequence #
+      const dummyAwb = (courier) => {
+        const seq = Math.floor(100000 + Math.random() * 900000); // 6-digit sequence #
+        const rand = (n) => Array.from({ length: n }, () => Math.floor(Math.random() * 10)).join('');
+        switch (courier) {
+          case 'UPS': return '1Z' + rand(6) + String(seq).slice(0, 2) + rand(8);
+          case 'FedEx': return rand(12);
+          case 'DHL': return rand(10);
+          case 'SF': return 'SF' + rand(12);
+          default: return 'AWB' + seq;
+        }
+      };
+
+      overlay.querySelector('.awb-dummy').onclick = () => {
+        // Pick a random courier and generate a matching AWB for it
+        const couriers = ['UPS', 'FedEx', 'DHL', 'SF'];
+        const pick = couriers[Math.floor(Math.random() * couriers.length)];
+        courierSel.value = pick;
+        numberInput.value = dummyAwb(pick);
+      };
+
+      overlay.querySelectorAll('.awb-cancel').forEach(b => b.onclick = close);
+
+      overlay.querySelector('.awb-save').onclick = async () => {
+        const courier = courierSel.value;
+        const awb = numberInput.value.trim();
+        if (!awb) { alert('Please enter an AWB # (or click Dummy Fill).'); return; }
+        const note = `AWB # (${courier}): ${awb} — ${submitLabel || 'Submit for Approval'}`;
+        try {
+          await fetch(`/api/quotations/${quotationId}/log-history`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fromStatus: 'await approval', toStatus: 'await approval', note })
+          });
+        } catch (e) { console.error('Failed to log AWB to history:', e); }
+        close();
+      };
+    };
 
     function generateQuotationContentForView(tagType, tagName, quotation) {
       // Determine the effective product type for display
