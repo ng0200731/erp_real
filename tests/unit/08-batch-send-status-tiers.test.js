@@ -77,12 +77,12 @@ const compSec = generateStatusTierSectionHtml({
 ok(compSec.includes('ABC Mfg'), 'comparison shows supplier A');
 ok(compSec.includes('XYZ Co'), 'comparison shows supplier B');
 ok(compSec.includes('2.00'), 'comparison shows supplier A raw unit price');
-ok(compSec.includes('200.00'), 'comparison shows supplier A raw total');
+ok(!compSec.includes('200.00'), 'comparison omits supplier A total column');
 ok(compSec.includes('3.00'), 'comparison shows supplier B raw unit price');
 ok(!compSec.includes('✓ Selected'), 'comparison has no selected badge when nothing selected');
 ok(!compSec.includes('markup'), 'comparison has no markup text when markupPercent 0');
 ok(compSec.includes('1,000') && compSec.includes('5,000'), 'comparison per-tier matrix shows quantities');
-ok(compSec.includes('Tier total'), 'comparison per-tier matrix has a Tier total row');
+ok(!compSec.includes('Tier total'), 'comparison per-tier matrix omits Tier total row');
 
 // --- selected + markup mode ---
 const selSec = generateStatusTierSectionHtml({
@@ -94,7 +94,7 @@ const selSec = generateStatusTierSectionHtml({
 });
 ok(selSec.includes('✓ Selected'), 'selected mode marks the selected supplier');
 ok(selSec.includes('2.30'), 'selected supplier unit price marked up (2.00 * 1.15 = 2.30)');
-ok(selSec.includes('230.00'), 'selected supplier total marked up (200 * 1.15 = 230.00)');
+ok(!selSec.includes('230.00'), 'selected supplier total column omitted');
 ok(selSec.includes('1.15'), 'selected supplier tier unit price marked up (1.00 * 1.15 = 1.15)');
 ok(selSec.includes('3.00'), 'non-selected supplier keeps raw price (no markup)');
 ok(selSec.includes('line-through'), 'non-selected supplier row is struck through');

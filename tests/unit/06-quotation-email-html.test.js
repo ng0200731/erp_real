@@ -40,7 +40,7 @@ const twoTiers = generateSupplierResponseTiersHtml([
 ok(twoTiers.includes('Supplier Quoted Pricing'), 'tier table has heading');
 ok(twoTiers.includes('1,000'), 'tier table renders quantity with locale formatting');
 ok(twoTiers.includes('0.50'), 'tier table renders unit price to 2 decimals');
-ok(twoTiers.includes('500.00'), 'tier table renders total to 2 decimals');
+ok(!twoTiers.includes('500.00'), 'tier table omits total column');
 ok((twoTiers.match(/<tr><td/g) || []).length === 2, 'tier table has exactly 2 body rows');
 
 const { generateQuotationCardHtml } = await import('../../shared/quotationEmailHtml.js');
@@ -158,9 +158,10 @@ const confEsc = buildSupplierConfirmationHtml(
 ok(confEsc.includes('&lt;img src=x onerror=alert(1)&gt;'), 'confirmation escapes notes HTML');
 ok(!confEsc.includes('<img src=x onerror'), 'confirmation does not emit raw notes markup');
 
-// tier table prefers the persisted t.total over qty * unitPrice
+// tier table no longer shows total (data still persisted for downstream use)
 const tierTotalPref = generateSupplierResponseTiersHtml([{ quantity: 1000, unitPrice: 0.50, total: 1234.5 }]);
-ok(tierTotalPref.includes('1234.50'), 'tier table uses persisted total (1234.50), not computed qty*unitPrice');
+ok(!tierTotalPref.includes('1234.50'), 'tier table omits total even when persisted');
+ok(tierTotalPref.includes('0.50'), 'tier table still shows unit price');
 
 // --- productDetails.tiers: render as a quantity list, never [object Object] ---
 const { formatProductDetailValue } = await import('../../shared/quotationEmailHtml.js');

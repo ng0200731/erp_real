@@ -3690,10 +3690,9 @@
                 <div style="font-weight:600;">Tiers</div>
                 <button type="button" id="tierAddRowBtn" class="btn" style="padding:4px 8px; font-size:12px;">+ Add Tier</button>
               </div>
-              <div style="display:grid; grid-template-columns:1fr 1fr 1fr 80px; gap:8px; font-size:12px; margin-bottom:6px;">
+              <div style="display:grid; grid-template-columns:1fr 1fr 80px; gap:8px; font-size:12px; margin-bottom:6px;">
                 <div style="font-weight:600;">Quantity</div>
                 <div style="font-weight:600;">Unit Price</div>
-                <div style="font-weight:600;">Total</div>
                 <div></div>
               </div>
               <div id="tierEditorRows"></div>
@@ -14557,18 +14556,17 @@
             const body = mode.responses.map((r) => {
               const sel = isSel(r);
               const up = (sel && mode.markupPercent > 0) ? Number(r.unitPrice) * mk : Number(r.unitPrice);
-              const tp = (sel && mode.markupPercent > 0) ? Number(r.totalPrice) * mk : Number(r.totalPrice);
               const name = (sel ? '✓ ' : '') + String(r.companyName || 'Supplier');
               const unitCell = fmtMoney(up) + (sel && mode.markupPercent > 0 ? ` (+${mode.markupPercent}%)` : '');
-              return [name, unitCell, fmtMoney(tp), String(r.deliveryDays != null ? r.deliveryDays : 'N/A'), String(r.notes || '-')];
+              return [name, unitCell, String(r.deliveryDays != null ? r.deliveryDays : 'N/A'), String(r.notes || '-')];
             });
             doc.autoTable({
               startY: y, theme: 'grid',
-              head: [['Supplier', 'Unit Price (HKD)', 'Total (HKD)', 'Delivery', 'Notes']],
+              head: [['Supplier', 'Unit Price (HKD)', 'Delivery', 'Notes']],
               body,
               styles: { fontSize: 7.5, cellPadding: 1.3, textColor: [51, 51, 51], overflow: 'linebreak' },
               headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255], fontSize: 7.5 },
-              columnStyles: { 0: { cellWidth: 45 }, 4: { cellWidth: 45 } },
+              columnStyles: { 0: { cellWidth: 45 }, 3: { cellWidth: 45 } },
               margin: { left: margin, right: margin },
             });
             y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 3;
@@ -14595,13 +14593,6 @@
                 });
                 mBody.push(row);
               }
-              const totRow = ['Tier total', ...mode.responses.map((r) => {
-                const has = Array.isArray(r.tiers) && r.tiers.length > 0;
-                let s = has ? r.tiers.reduce((a, t) => a + (Number(t.total) || 0), 0) : 0;
-                if (isSel(r) && mode.markupPercent > 0) s *= mk;
-                return has ? s.toFixed(2) : '-';
-              })];
-              mBody.push(totRow);
               drawHeading('Per-tier Pricing (HKD)');
               doc.autoTable({
                 startY: y, theme: 'grid', head: mHead, body: mBody,
@@ -15532,13 +15523,12 @@
         const rows = productDetails.tiers.map(t => {
           const q = t.quantity || 0;
           const u = t.unitPrice != null ? Number(t.unitPrice).toFixed(2) : '0.00';
-          const z = (q * (parseFloat(u) || 0)).toFixed(2);
-          return `<tr><td style="padding:6px; border:1px solid #ccc;">${q.toLocaleString()}</td><td style="padding:6px; border:1px solid #ccc;">${u}</td><td style="padding:6px; border:1px solid #ccc;">${z}</td></tr>`;
+          return `<tr><td style="padding:6px; border:1px solid #ccc;">${q.toLocaleString()}</td><td style="padding:6px; border:1px solid #ccc;">${u}</td></tr>`;
         }).join('');
         tiersHtml = `
           <h3 style="margin:20px 0 8px 0;">Requested Pricing Tiers</h3>
           <table style="width:100%; border-collapse:collapse; margin:8px 0;">
-            <thead><tr><th style="padding:6px; border:1px solid #ccc; text-align:left;">Quantity</th><th style="padding:6px; border:1px solid #ccc; text-align:left;">Unit Price (HKD)</th><th style="padding:6px; border:1px solid #ccc; text-align:left;">Total</th></tr></thead>
+            <thead><tr><th style="padding:6px; border:1px solid #ccc; text-align:left;">Quantity</th><th style="padding:6px; border:1px solid #ccc; text-align:left;">Unit Price (HKD)</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         `;
@@ -15856,8 +15846,6 @@
                   <th style="border:1px solid #000; padding:8px; text-align:left;">Supplier</th>
                   <th style="border:1px solid #000; padding:8px; text-align:left;">Contact</th>
                   <th style="border:1px solid #000; padding:8px; text-align:left;">Email</th>
-                  <th style="border:1px solid #000; padding:8px; text-align:right;">Unit Price (HKD)</th>
-                  <th style="border:1px solid #000; padding:8px; text-align:right;">Total Price (HKD)</th>
                   <th style="border:1px solid #000; padding:8px; text-align:center;">Delivery Days</th>
                   <th style="border:1px solid #000; padding:8px; text-align:left;">Notes</th>
                 </tr>
@@ -15865,30 +15853,18 @@
               <tbody>
         `;
 
-        const totalPrices = responses.map(r => r.totalPrice).filter(p => p != null && p > 0);
-        const minTotal = totalPrices.length > 0 ? Math.min(...totalPrices) : null;
-        const maxTotal = totalPrices.length > 0 ? Math.max(...totalPrices) : null;
-        const allEqual = minTotal !== null && minTotal === maxTotal;
-
         responses.forEach((r, idx) => {
-          let rowBg = '';
           const isSelected = quotation.selectedSupplierId && r.supplierId === quotation.selectedSupplierId;
           const hasSelection = quotation.selectedSupplierId != null;
-          if (!allEqual && r.totalPrice != null && r.totalPrice > 0) {
-            if (r.totalPrice === minTotal) rowBg = 'background:#d4edda;';
-            else if (r.totalPrice === maxTotal) rowBg = 'background:#f8d7da;';
-          }
           const strikeStyle = hasSelection && !isSelected ? 'opacity:0.4; text-decoration:line-through; color:#999;' : '';
           const selectedBadge = isSelected ? ' <span style="background:#28a745;color:#fff;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:bold;">✓ Selected</span>' : '';
           const supplierEmail = (r.emailPrefix && r.emailDomain) ? r.emailPrefix + '@' + r.emailDomain : '-';
           tableHtml += `
-            <tr style="${rowBg} ${strikeStyle}">
+            <tr style="${strikeStyle}">
               ${!viewOnly ? `<td style="border:1px solid #ccc; padding:8px; text-align:center;"><input type="radio" name="selectedSupplier" value="${idx}" style="cursor:pointer; width:18px; height:18px;" ${isSelected ? 'checked' : ''}></td>` : ''}
               <td style="border:1px solid #ccc; padding:8px;">${r.companyName}${selectedBadge}</td>
               <td style="border:1px solid #ccc; padding:8px;">${r.memberName}</td>
               <td style="border:1px solid #ccc; padding:8px;">${supplierEmail}</td>
-              <td style="border:1px solid #ccc; padding:8px; text-align:right;">${r.unitPrice ? r.unitPrice.toFixed(2) : 'N/A'}</td>
-              <td style="border:1px solid #ccc; padding:8px; text-align:right;">${r.totalPrice ? r.totalPrice.toFixed(2) : 'N/A'}</td>
               <td style="border:1px solid #ccc; padding:8px; text-align:center;">${r.deliveryDays || 'N/A'}</td>
               <td style="border:1px solid #ccc; padding:8px;">${r.notes || '-'}</td>
             </tr>
@@ -15941,14 +15917,7 @@
             });
             tableHtml += `</tr>`;
           }
-          // Tier-total row (sum of each supplier's tier totals).
-          tableHtml += `<tr><td style="border:1px solid #ccc; padding:8px; font-weight:600;">Tier total</td>`;
-          responses.forEach((r) => {
-            const has = Array.isArray(r.tiers) && r.tiers.length > 0;
-            const sum = has ? r.tiers.reduce((a, t) => a + (Number(t.total) || 0), 0) : 0;
-            tableHtml += `<td style="border:1px solid #ccc; padding:8px; text-align:right; font-weight:600;">${has ? sum.toFixed(2) : '-'}</td>`;
-          });
-          tableHtml += `</tr></tbody></table></div>`;
+          tableHtml += `</tbody></table></div>`;
         }
 
         // 4. Create modal
@@ -16072,7 +16041,6 @@
       const r = selectedResponse;
       const markupMultiplier = 1 + (markupPercent / 100);
       const markedUpUnitPrice = r.unitPrice ? (r.unitPrice * markupMultiplier) : null;
-      const markedUpTotalPrice = r.totalPrice ? (r.totalPrice * markupMultiplier) : null;
 
       let html = `
         <div style="font-family:Arial,sans-serif; max-width:800px; margin:0 auto; color:#000;">
@@ -16096,7 +16064,6 @@
           <table style="width:100%; border-collapse:collapse; margin:20px 0;">
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold; width:200px;">Supplier</td><td style="padding:8px; border:1px solid #ccc;">${r.companyName}</td></tr>
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Unit Price (HKD)</td><td style="padding:8px; border:1px solid #ccc;">${markedUpUnitPrice ? markedUpUnitPrice.toFixed(2) : 'N/A'}</td></tr>
-            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Total Price (HKD)</td><td style="padding:8px; border:1px solid #ccc;">${markedUpTotalPrice ? markedUpTotalPrice.toFixed(2) : 'N/A'}</td></tr>
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Delivery Days</td><td style="padding:8px; border:1px solid #ccc;">${r.deliveryDays || 'N/A'}</td></tr>
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Notes</td><td style="padding:8px; border:1px solid #ccc;">${r.notes || '-'}</td></tr>
           </table>
@@ -19192,10 +19159,9 @@
                   '<div style="font-weight:600;">Tiers</div>' +
                   '<button type="button" id="addTierRowBtn" class="btn" style="padding:4px 8px; font-size:12px;">+ Add Tier</button>' +
                 '</div>' +
-                '<div style="display:grid; grid-template-columns:1fr 1fr 1fr 80px; gap:8px; font-size:12px; margin-bottom:6px;">' +
+                '<div style="display:grid; grid-template-columns:1fr 1fr 80px; gap:8px; font-size:12px; margin-bottom:6px;">' +
                   '<div style="font-weight:600;">Quantity</div>' +
                   '<div style="font-weight:600;">Unit Price</div>' +
-                  '<div style="font-weight:600;">Total</div>' +
                   '<div></div>' +
                 '</div>' +
                 '<div id="tierRows"></div>' +
@@ -19411,10 +19377,9 @@
                   '<div style="font-weight:600;">Tiers</div>' +
                   '<button type="button" id="addTierRowBtn" class="btn" style="padding:4px 8px; font-size:12px;">+ Add Tier</button>' +
                 '</div>' +
-                '<div style="display:grid; grid-template-columns:1fr 1fr 1fr 80px; gap:8px; font-size:12px; margin-bottom:6px;">' +
+                '<div style="display:grid; grid-template-columns:1fr 1fr 80px; gap:8px; font-size:12px; margin-bottom:6px;">' +
                   '<div style="font-weight:600;">Quantity</div>' +
                   '<div style="font-weight:600;">Unit Price</div>' +
-                  '<div style="font-weight:600;">Total</div>' +
                   '<div></div>' +
                 '</div>' +
                 '<div id="tierRows"></div>' +
@@ -19708,11 +19673,10 @@
           const u = Number(t.unitPrice || 0);
           const row = document.createElement('div');
           row.className = 'tier-row';
-          row.style.cssText = 'display:grid; grid-template-columns:1fr 1fr 1fr 80px; gap:8px; margin-bottom:6px;';
+          row.style.cssText = 'display:grid; grid-template-columns:1fr 1fr 80px; gap:8px; margin-bottom:6px;';
           row.innerHTML =
             '<input type="number" class="tier-qty" value="' + q + '" disabled style="padding:4px; border:1px solid #ccc; background:#f5f5f5;">' +
             '<input type="number" class="tier-unit" value="' + u.toFixed(2) + '" disabled style="padding:4px; border:1px solid #ccc; background:#f5f5f5;">' +
-            '<input type="text" class="tier-total" value="' + (q * u).toFixed(2) + '" readonly style="padding:4px; border:1px solid #ccc; background:#f5f5f5;">' +
             '<span></span>';
           rowsWrap.appendChild(row);
         });
@@ -19751,21 +19715,16 @@
       function recalcRowTotal(row) {
         const qRaw = String(row.querySelector('.tier-qty')?.value || '');
         const uRaw = String(row.querySelector('.tier-unit')?.value || '');
-        const q = parseInt(qRaw || '0', 10) || 0;
-        const u = parseFloat(uRaw || '0') || 0;
-        const totalEl = row.querySelector('.tier-total');
-        if (totalEl) totalEl.value = (qRaw !== '' && uRaw !== '') ? (q * u).toFixed(2) : '';
         syncBaseFromTiers();
       }
 
       function addTierRow(initQ = '', initU = '') {
         const row = document.createElement('div');
         row.className = 'tier-row';
-        row.style.cssText = 'display:grid; grid-template-columns:1fr 1fr 1fr 80px; gap:8px; margin-bottom:6px;';
+        row.style.cssText = 'display:grid; grid-template-columns:1fr 1fr 80px; gap:8px; margin-bottom:6px;';
         row.innerHTML =
           '<input type="number" class="tier-qty" min="1" placeholder="Qty" style="padding:4px; border:1px solid #ccc;">' +
           '<input type="number" class="tier-unit" min="0" step="0.01" placeholder="Unit Price" style="padding:4px; border:1px solid #ccc;">' +
-          '<input type="text" class="tier-total" readonly placeholder="Total" style="padding:4px; border:1px solid #ccc; background:#f5f5f5;">' +
           '<button type="button" class="btn remove-tier" style="padding:4px 8px;">Remove</button>';
         rowsWrap.appendChild(row);
         const qEl = row.querySelector('.tier-qty');
@@ -20008,24 +19967,20 @@
       function appendTierRow(container, q = '', u = '') {
         const row = document.createElement('div');
         row.className = 'tier-row';
-        row.style.cssText = 'display:grid; grid-template-columns:1fr 1fr 1fr 80px; gap:8px; margin-bottom:6px;';
+        row.style.cssText = 'display:grid; grid-template-columns:1fr 1fr 80px; gap:8px; margin-bottom:6px;';
         row.innerHTML =
           '<input type="number" class="tier-qty" min="1" placeholder="Qty" style="padding:6px; border:1px solid #ccc;">' +
           '<input type="number" class="tier-unit" min="0" step="0.01" placeholder="Unit Price" style="padding:6px; border:1px solid #ccc;">' +
-          '<input type="text" class="tier-total" readonly placeholder="Total" style="padding:6px; border:1px solid #ccc; background:#f5f5f5;">' +
           '<button type="button" class="btn remove-tier" style="padding:4px 8px; font-size:12px;">Remove</button>';
         container.appendChild(row);
         const qtyEl = row.querySelector('.tier-qty');
         const unitEl = row.querySelector('.tier-unit');
-        const totEl = row.querySelector('.tier-total');
         const rm = row.querySelector('.remove-tier');
         qtyEl.value = q !== '' ? q : '';
         unitEl.value = u !== '' ? Number(u).toFixed(2) : '';
-        const recalc = () => { const qv = parseInt(qtyEl.value || '0', 10) || 0; const uv = parseFloat(unitEl.value || '0') || 0; totEl.value = (qv * uv).toFixed(2); };
-        qtyEl.addEventListener('input', recalc);
-        unitEl.addEventListener('input', recalc);
+        qtyEl.addEventListener('input', () => {});
+        unitEl.addEventListener('input', () => {});
         rm.onclick = () => { row.remove(); };
-        recalc();
       }
 
       function addRow(q = '', u = '') {
@@ -20217,10 +20172,9 @@
                   <div style="font-weight:600;">Tiers</div>
                   <button type="button" class="tier-modal-add btn" style="padding:4px 8px; font-size:12px;">+ Add Tier</button>
                 </div>
-                <div style="display:grid; grid-template-columns:1fr 1fr 1fr 80px; gap:8px; font-size:12px; margin-bottom:6px;">
+                <div style="display:grid; grid-template-columns:1fr 1fr 80px; gap:8px; font-size:12px; margin-bottom:6px;">
                   <div style="font-weight:600;">Quantity</div>
                   <div style="font-weight:600;">Unit Price</div>
-                  <div style="font-weight:600;">Total</div>
                   <div></div>
                 </div>
                 <div class="tier-modal-rows"></div>

@@ -120,14 +120,15 @@ function escapeHtml(s) {
 
 // NEW: supplier response tier table for the confirmation email.
 // tiers = [{tierIndex, quantity, unitPrice, total}, ...]. Returns '' when empty.
+// Note: 'total' is kept on the data objects (persisted + used downstream) but is
+// NOT rendered — only Quantity and Unit Price are shown.
 export function generateSupplierResponseTiersHtml(tiers) {
   const arr = Array.isArray(tiers) ? tiers : [];
   if (arr.length === 0) return '';
   const rows = arr.map((t) => {
     const q = Number(t.quantity) || 0;
     const u = t.unitPrice != null ? Number(t.unitPrice).toFixed(2) : '0.00';
-    const z = (t.total != null ? Number(t.total) : (q * (parseFloat(u) || 0))).toFixed(2);
-    return `<tr><td style="padding:6px; border:1px solid #ccc;">${q.toLocaleString()}</td><td style="padding:6px; border:1px solid #ccc;">${u}</td><td style="padding:6px; border:1px solid #ccc;">${z}</td></tr>`;
+    return `<tr><td style="padding:6px; border:1px solid #ccc;">${q.toLocaleString()}</td><td style="padding:6px; border:1px solid #ccc;">${u}</td></tr>`;
   }).join('');
   return `
   <div class="quotation-section" style="margin:20px 0;">
@@ -136,7 +137,6 @@ export function generateSupplierResponseTiersHtml(tiers) {
       <thead><tr>
         <th style="padding:6px; border:1px solid #ccc; text-align:left;">Quantity</th>
         <th style="padding:6px; border:1px solid #ccc; text-align:left;">Unit Price (HKD)</th>
-        <th style="padding:6px; border:1px solid #ccc; text-align:left;">Total</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
@@ -200,30 +200,18 @@ export function generateStatusTierSectionHtml(ctx = {}) {
   const cellLbl = 'padding:8px; border:1px solid #ccc; font-weight:bold; vertical-align:top;';
   const cell = 'padding:8px; border:1px solid #ccc; vertical-align:top;';
 
-  // Summary table — highlight cheapest/dearest by raw totalPrice (like the popup).
-  const totals = responses.map((r) => Number(r.totalPrice)).filter((p) => p != null && !isNaN(p) && p > 0);
-  const minTotal = totals.length ? Math.min(...totals) : null;
-  const maxTotal = totals.length ? Math.max(...totals) : null;
-  const allEqual = minTotal !== null && minTotal === maxTotal;
-
+  // Summary table — Total column removed; only Supplier / Contact / Unit Price /
+  // Delivery Days / Notes are shown.
   const rows = responses.map((r) => {
     const sel = isSelected(r);
     const up = (sel && markupPercent > 0) ? Number(r.unitPrice) * mk : Number(r.unitPrice);
-    const tp = (sel && markupPercent > 0) ? Number(r.totalPrice) * mk : Number(r.totalPrice);
-    let bg = '';
-    if (!allEqual && Number(r.totalPrice) > 0) {
-      if (Number(r.totalPrice) === minTotal) bg = 'background:#d4edda;';
-      else if (Number(r.totalPrice) === maxTotal) bg = 'background:#f8d7da;';
-    }
     const strike = (!sel && hasSelection) ? 'opacity:0.5; text-decoration:line-through; color:#999;' : '';
     const badge = sel ? ' <span style="background:#28a745;color:#fff;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:bold;">✓ Selected</span>' : '';
     const markupNote = (sel && markupPercent > 0) ? ` <span style="font-size:10px; color:#666;">(incl. ${markupPercent}% markup)</span>` : '';
-    const email = (r.emailPrefix && r.emailDomain) ? `${r.emailPrefix}@${r.emailDomain}` : '-';
-    return `<tr style="${bg} ${strike}">
+    return `<tr style="${strike}">
         <td style="${cell}">${escapeHtml(r.companyName || 'Supplier')}${badge}</td>
         <td style="${cell}">${escapeHtml(r.memberName || '-')}</td>
         <td style="${cell} text-align:right;">${money(up)}${markupNote}</td>
-        <td style="${cell} text-align:right;">${money(tp)}</td>
         <td style="${cell} text-align:center;">${r.deliveryDays != null ? r.deliveryDays : 'N/A'}</td>
         <td style="${cell}">${r.notes ? escapeHtml(r.notes) : '-'}</td>
       </tr>`;
@@ -235,7 +223,6 @@ export function generateStatusTierSectionHtml(ctx = {}) {
         <th style="${cellLbl} text-align:left;">Supplier</th>
         <th style="${cellLbl} text-align:left;">Contact</th>
         <th style="${cellLbl} text-align:right;">Unit Price (HKD)</th>
-        <th style="${cellLbl} text-align:right;">Total (HKD)</th>
         <th style="${cellLbl} text-align:center;">Delivery Days</th>
         <th style="${cellLbl} text-align:left;">Notes</th>
       </tr></thead>
@@ -278,20 +265,11 @@ export function generateStatusTierSectionHtml(ctx = {}) {
       bodyRows += `<tr>${cells}</tr>`;
     }
 
-    let totalCells = `<td style="${cell} font-weight:600;">Tier total</td>`;
-    responses.forEach((r) => {
-      const sel = isSelected(r);
-      const has = Array.isArray(r.tiers) && r.tiers.length > 0;
-      let sum = has ? r.tiers.reduce((a, t) => a + (Number(t.total) || 0), 0) : 0;
-      if (sel && markupPercent > 0) sum *= mk;
-      totalCells += `<td style="${cell} text-align:right; font-weight:600;">${has ? sum.toFixed(2) : '-'}</td>`;
-    });
-
     html += `
       ${h3Open.replace('margin-top:0;', 'margin-top:20px;')}Per-tier Pricing (HKD)</h3>
       <table style="width:100%; border-collapse:collapse; margin:8px 0;">
         <thead><tr><th style="${cellLbl} text-align:left;">Quantity</th>${colHeaders}</tr></thead>
-        <tbody>${bodyRows}<tr>${totalCells}</tr></tbody>
+        <tbody>${bodyRows}</tbody>
       </table>`;
   }
 
