@@ -369,6 +369,7 @@ app.use(express.json({ limit: '50mb' })); // Increased limit for batch email att
 
 // serve static UI
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/shared', express.static(path.join(__dirname, 'shared')));
 
 // ---------- SKILL MANAGER ----------
 let skillManager;

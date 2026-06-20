@@ -1,9 +1,10 @@
 import express from 'express';
-import { getTasksDb, getProfiles, getQuotationProfileImage, logStatusChange, createSupplierQuotationResponseTiers, getSupplierQuotationResponseTiers, getSupplierQuotationResponseTiersByQuotation } from '../db/tasksDb.js';
+import { getTasksDb, getProfiles, getQuotationProfileImage, logStatusChange, createSupplierQuotationResponseTiers, getSupplierQuotationResponseTiers, getSupplierQuotationResponseTiersByQuotation, advanceToCompareQuotationWhenAllResponded } from '../db/tasksDb.js';
 import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import nodemailer from 'nodemailer';
+import { buildSupplierConfirmationHtml } from '../shared/quotationEmailHtml.js';
 
 const router = express.Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -53,31 +54,17 @@ async function sendSubmissionNotification(quotation, supplier, supplierMember, s
       console.warn('Failed to fetch profile image for email:', e.message);
     }
 
-    const html = `
-      <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
-        <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Quotation Submission Confirmation</h2>
-        ${profileImageCid ? `
-        <div style="text-align:center; margin:15px 0;">
-          <img src="cid:${profileImageCid}" style="max-width:150px; max-height:150px; object-fit:contain; border:1px solid #ddd; padding:3px;" alt="Product Image">
-        </div>
-        ` : ''}
-        ${quotation.customerItemName ? `
-        <p><strong>Customer Item Name:</strong> ${quotation.customerItemName}</p>
-        ` : ''}
-        <p>A supplier quotation has been submitted with the following details:</p>
-        <table style="width:100%; border-collapse:collapse; margin:20px 0;">
-          <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Supplier</td><td style="padding:8px; border:1px solid #ccc;">${supplier.companyName}</td></tr>
-          <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Contact</td><td style="padding:8px; border:1px solid #ccc;">${supplierMember.name}</td></tr>
-          <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerName || 'N/A'}</td></tr>
-          <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${quotation.productType || 'N/A'}</td></tr>
-          <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Unit Price (HKD)</td><td style="padding:8px; border:1px solid #ccc;">${submittedData.unitPrice != null ? Number(submittedData.unitPrice).toFixed(2) : 'N/A'}</td></tr>
-          <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Total Price (HKD)</td><td style="padding:8px; border:1px solid #ccc;">${submittedData.totalPrice != null ? Number(submittedData.totalPrice).toFixed(2) : 'N/A'}</td></tr>
-          <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Delivery Days</td><td style="padding:8px; border:1px solid #ccc;">${submittedData.deliveryDays || 'N/A'}</td></tr>
-          <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Notes</td><td style="padding:8px; border:1px solid #ccc;">${submittedData.notes || '-'}</td></tr>
-        </table>
-        <p style="font-size:12px; color:#666;">This is an automated notification.</p>
-      </div>
-    `;
+    // Brand name (one small query) — quotation.brandId is already loaded.
+    const db = await getTasksDb();
+    const brand = quotation.brandId
+      ? await db.get('SELECT name FROM brands WHERE id = ?', [quotation.brandId])
+      : null;
+    const brandName = brand ? brand.name : null;
+
+    const html = buildSupplierConfirmationHtml(quotation, supplier, supplierMember, submittedData, {
+      brandName,
+      profileImageCid,
+    });
 
     const recipients = [senderEmail];
     if (supplierEmail && supplierEmail !== senderEmail) {
@@ -614,6 +601,19 @@ router.post('/:token/submit', async (req, res) => {
       await createSupplierQuotationResponseTiers(result.lastID, sanitizedTiers);
     }
 
+    // Auto-advance status to 'compare quotation' once all linked suppliers have responded.
+    // This mirrors the client-side action-button rule (responseCount >= linkedCount), so the
+    // stored status field tracks reality instead of staying "await quotation" forever.
+    const advance = await advanceToCompareQuotationWhenAllResponded(tokenData.quotationId);
+    if (advance && advance.advanced) {
+      logStatusChange(
+        tokenData.quotationId,
+        'await quotation',
+        'compare quotation',
+        `All ${advance.linkedCount} suppliers responded — status set to Compare Quotation`
+      ).catch(err => console.error('History log error:', err));
+    }
+
     // Mark token as used
     await db.run(
       `UPDATE supplier_quotation_tokens SET usedAt = ? WHERE id = ?`,
@@ -625,7 +625,7 @@ router.post('/:token/submit', async (req, res) => {
     const supplier = await db.get(`SELECT * FROM suppliers WHERE id = ?`, [tokenData.supplierId]);
     const supplierMember = await db.get(`SELECT * FROM supplier_members WHERE id = ?`, [tokenData.supplierMemberId]);
     if (quotation && supplier && supplierMember) {
-      sendSubmissionNotification(quotation, supplier, supplierMember, { unitPrice, totalPrice, deliveryDays, notes })
+      sendSubmissionNotification(quotation, supplier, supplierMember, { unitPrice, totalPrice, deliveryDays, notes, sanitizedTiers })
         .catch(err => console.error('Notification error:', err));
 
       // Log supplier response in quotation history

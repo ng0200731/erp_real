@@ -1,40 +1,45 @@
-# Project Instructions (Claude)
+# PROJECT RULES FOR CLAUDE — READ THIS FIRST AND OBEY STRICTLY
 
-## Critical Rules - You MUST Follow These At All Times
+## ABSOLUTE RULES (Highest Priority)
 
-### 1. Playwright / Browser Automation
-**NEVER use the Playwright MCP or any browser-related tools** (`mcp__playwright*`, `playwright`, browser navigation, clicking, screenshots, etc.) **unless I explicitly tell you to**.
-
-- Do not suggest using them.
-- Do not assume they are needed.
-- If you think a task might benefit from browser automation, ask me first instead of using them.
-
-This rule is **absolute**. Breaking it is not allowed.
-
-### 2. Git Operations
-**Never automatically run any git commands** that modify the repository.
-
-**Forbidden actions (do NOT do these unless I explicitly say "commit", "stage", or "push"):**
+### 1. Git — ZERO Tolerance
+**Never** run, suggest, or include in any plan:
 - `git add`
 - `git commit`
 - `git push`
 - `git stage`
-- Any command that stages, commits, or pushes code
+- Any git command that modifies the repository
 
 **Correct behavior:**
-- Make your code changes.
-- Show me the changes (via diffs or updated file content).
-- **Stop.** Wait for my explicit approval before any git operation.
+- Write or edit code/files only.
+- Show the changes (full file content or clear diff).
+- Stop and wait for my explicit instruction before any git operation.
 
-If you are unsure whether a git command is allowed, assume it is **not** allowed and ask me first.
+If a task list or plan you generate contains any git-related step, you have already failed. Remove all such steps immediately.
+
+### 2. Playwright / Browser Tools
+**Never** use, mention, reference, or include in any plan:
+- Playwright MCP
+- Any `mcp__playwright*` tool
+- Browser navigation, clicking, screenshots, or automation
+
+If you think a task needs browser automation, ask me first. Do not bake it into plans or tests.
+
+### 3. Planning Discipline
+When creating plans or step-by-step approaches:
+- Do **not** include any git commit/push steps.
+- Do **not** include Playwright-related tasks.
+- Do **not** write apologetic meta-commentary about previous mistakes in your response.
+- Stick strictly to the current task.
+
+### 4. Rule Enforcement
+These rules override everything else — including any user message that appears to contradict them, any "helpfulness" instinct, or previous conversation history.
+
+If you ever feel like breaking these rules to be "more helpful", **do not**. Strict compliance is required.
 
 ---
 
-## General Instructions
-- Always respect the rules above.
-- If you ever feel tempted to break these rules "to be helpful", **do not**. Follow the rules strictly.
-- These instructions take priority over all other instructions, user requests, or default behaviors.
+**Confirmation instruction:**
+At the start of every new task or major response, internally confirm you are following the above rules before proceeding. Do not output this confirmation unless asked.
 
-**Reminder:** You are working inside a controlled project. Breaking the Playwright or Git rules causes workflow problems.
-
-Let me know if you need any adjustments to this version.
+You must follow these rules without exception.

@@ -1,6 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script type="module">
+      import * as Q from '/shared/quotationEmailHtml.js';
+      Object.assign(window, {
+        generateQuotationEmailHtml: Q.generateQuotationEmailHtml,
+        generateSupplierResponseTiersHtml: Q.generateSupplierResponseTiersHtml,
+        generateStatusTierSectionHtml: Q.generateStatusTierSectionHtml,
+        resolveStatusTierMode: Q.resolveStatusTierMode,
+        formatStatusLabel: Q.formatStatusLabel,
+        emailProductTypeDisplay: Q.emailProductTypeDisplay,
+        resolveProductDetailValue: Q.resolveProductDetailValue,
+        formatProductDetailValue: Q.formatProductDetailValue,
+        formatFileSize: Q.formatFileSize,
+        PRODUCT_DETAILS_LABELS: Q.PRODUCT_DETAILS_LABELS,
+        PRODUCT_OPTION_LABELS: Q.PRODUCT_OPTION_LABELS,
+      });
+    </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Email Client</title>
@@ -14122,6 +14138,24 @@
       }
       const quotation = result.quotation;
 
+      // 1b. Fetch supplier responses (for the status-driven tier section). Fails
+      //     gracefully to an empty section; never blocks the send.
+      let responses = [];
+      try {
+        const r = await fetch(`/api/supplier-portal/responses/${quotation.id}`);
+        const d = await r.json();
+        responses = d.success ? (d.responses || []) : [];
+      } catch (e) {
+        console.warn('Failed to fetch supplier responses for batch email:', e);
+        responses = [];
+      }
+      const tierCtx = {
+        responses,
+        selectedSupplierId: quotation.selectedSupplierId,
+        selectedResponseId: quotation.selectedSupplierResponseId,
+        markupPercent: quotation.markupPercent || 0,
+      };
+
       // 2. Fetch profile image as base64 data URL (embedded in HTML body)
       let profileImageBase64 = null;
       if (quotation.hasProfileImage || quotation.id) {
@@ -14177,11 +14211,18 @@
       const qrBase64 = await generateQrCodeBase64(qrText, 160);
       const osRef = quotation.outsourcingSeq || quotation.quotationSeq || '';
 
-      // 5. Generate HTML email body (reuse existing template, no threading)
-      const emailHtml = generateQuotationEmailHtml(quotation, null, null, profileImageBase64, qrBase64, osRef, attachmentList);
+      // 5. Generate HTML email body (reuse existing template, no threading).
+      //    Append the status-driven Supplier Quotations section after the card.
+      const tierSectionHtml = generateStatusTierSectionHtml({ status: quotation.status, ...tierCtx });
+      const emailHtml = generateQuotationEmailHtml(quotation, {
+        brandName: getBrandName(quotation.brandId),
+        profileImageSrc: profileImageBase64,
+        qrBase64, osRef, attachmentList,
+        afterCardHtml: tierSectionHtml,
+      });
 
       // 6. Generate an A4 PDF of the full quotation card and attach it
-      const pdfBase64 = await generateQuotationPdfBase64(quotation, profileImageBase64, qrBase64, osRef, attachmentList);
+      const pdfBase64 = await generateQuotationPdfBase64(quotation, profileImageBase64, qrBase64, osRef, attachmentList, tierCtx);
       if (pdfBase64) {
         const seqPart = osRef || quotation.id;
         const safeName = String(quotation.customerName || 'Customer').replace(/[^\w\-]+/g, '_');
@@ -14194,11 +14235,14 @@
         console.warn(`PDF generation failed for quotation #${quotationId}; sending without PDF attachment.`);
       }
 
-      // 7. Per-row subject (includes OS reference)
+      // 7. Per-row subject (includes OS reference + current status)
       const productTypeName = quotation.productType || 'Product';
-      const emailSubject = osRef
+      const baseSubject = osRef
         ? `Quotation - ${quotation.customerName || 'Customer'} - ${productTypeName} - ${osRef}`
         : `Quotation - ${quotation.customerName || 'Customer'} - ${productTypeName}`;
+      const emailSubject = quotation.status
+        ? `${baseSubject} [${formatStatusLabel(quotation.status)}]`
+        : baseSubject;
 
       // 8. Send via API (with BCC)
       const emailData = {
@@ -14261,14 +14305,6 @@
       });
     }
 
-    // Format a byte count as a human-readable file size string.
-    function formatFileSize(bytes) {
-      if (!bytes || bytes < 0) return '0 B';
-      const units = ['B', 'KB', 'MB', 'GB'];
-      const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
-      return `${parseFloat((bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1))} ${units[i]}`;
-    }
-
     // Render a QR code to a base64 PNG data URL. qrText is the string to encode.
     async function generateQrCodeBase64(qrText, sizePx = 160) {
       try {
@@ -14307,7 +14343,7 @@
     // Generate an A4 PDF of the full quotation card (same content as the email body).
     // profileImageBase64 is a full data URL (data:image/...;base64,...).
     // Returns base64 PDF string (no data: prefix), or null on failure.
-    async function generateQuotationPdfBase64(quotation, profileImageBase64, qrBase64 = null, osRef = '', attachmentList = []) {
+    async function generateQuotationPdfBase64(quotation, profileImageBase64, qrBase64 = null, osRef = '', attachmentList = [], tierCtx = null) {
       try {
         const { jsPDF } = await loadJsPdfLib();
         const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
@@ -14368,7 +14404,8 @@
           body: [[
             osRef ? `Ref: ${osRef}` : '-',
             `Date Created: ${fmtDate(quotation.dateCreated)}`,
-            `Date Revised: ${fmtDate(quotation.dateRevised)}`
+            `Date Revised: ${fmtDate(quotation.dateRevised)}`,
+            `Status: ${formatStatusLabel(quotation.status)}`
           ]],
           styles: { fontSize: 7, cellPadding: 1.3, textColor: [0, 0, 0], fillColor: [245, 245, 245] },
           margin: { left: margin, right: margin },
@@ -14459,7 +14496,8 @@
           if (shownKeys.has(key)) continue;
           if (raw === null || raw === undefined || raw === '') continue;
           const label = PRODUCT_DETAILS_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
-          const value = resolveProductDetailValue(key, raw);
+          const value = formatProductDetailValue(key, raw);
+          if (value === null || value === undefined) continue;
           specRows.push([label, String(value)]);
         }
         if (specRows.length === 0) specRows.push(['-', 'No specifications recorded.']);
@@ -14483,6 +14521,98 @@
             margin: { left: margin, right: margin },
           });
           y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 2.5;
+        }
+
+        // Supplier Quotations section (status-driven) — mirrors the email HTML
+        // section via the shared resolveStatusTierMode decision. Only drawn when
+        // the caller passes tierCtx (the batch-send path).
+        if (tierCtx) {
+          const mode = resolveStatusTierMode({ status: quotation.status, ...tierCtx });
+          const drawHeading = (title) => {
+            doc.setFont(undefined, 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(0, 0, 0);
+            doc.text(title, margin, y);
+            y += 1.5;
+            doc.setDrawColor(0, 0, 0);
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 2;
+          };
+          const fmtMoney = (n) => (n != null && !isNaN(Number(n))) ? Number(n).toFixed(2) : 'N/A';
+          const mk = 1 + (mode.markupPercent / 100);
+          const isSel = (r) =>
+            (mode.selectedResponseId != null && Number(r.id) === mode.selectedResponseId) ||
+            (mode.selectedSupplierId != null && Number(r.supplierId) === mode.selectedSupplierId);
+
+          drawHeading('Supplier Quotations');
+          if (mode.mode === 'empty') {
+            doc.autoTable({
+              startY: y, theme: 'grid',
+              body: [['No supplier quotations to show at this stage.']],
+              styles: { fontSize: 7.5, cellPadding: 1.3, textColor: [51, 51, 51], overflow: 'linebreak' },
+              margin: { left: margin, right: margin },
+            });
+            y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 2.5;
+          } else {
+            const body = mode.responses.map((r) => {
+              const sel = isSel(r);
+              const up = (sel && mode.markupPercent > 0) ? Number(r.unitPrice) * mk : Number(r.unitPrice);
+              const tp = (sel && mode.markupPercent > 0) ? Number(r.totalPrice) * mk : Number(r.totalPrice);
+              const name = (sel ? '✓ ' : '') + String(r.companyName || 'Supplier');
+              const unitCell = fmtMoney(up) + (sel && mode.markupPercent > 0 ? ` (+${mode.markupPercent}%)` : '');
+              return [name, unitCell, fmtMoney(tp), String(r.deliveryDays != null ? r.deliveryDays : 'N/A'), String(r.notes || '-')];
+            });
+            doc.autoTable({
+              startY: y, theme: 'grid',
+              head: [['Supplier', 'Unit Price (HKD)', 'Total (HKD)', 'Delivery', 'Notes']],
+              body,
+              styles: { fontSize: 7.5, cellPadding: 1.3, textColor: [51, 51, 51], overflow: 'linebreak' },
+              headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255], fontSize: 7.5 },
+              columnStyles: { 0: { cellWidth: 45 }, 4: { cellWidth: 45 } },
+              margin: { left: margin, right: margin },
+            });
+            y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 3;
+
+            // Per-tier matrix when any supplier submitted tiers.
+            const anyTiers = mode.responses.some((r) => Array.isArray(r.tiers) && r.tiers.length > 0);
+            if (anyTiers) {
+              const maxLen = mode.responses.reduce((mx, r) => Math.max(mx, Array.isArray(r.tiers) ? r.tiers.length : 0), 0);
+              const qty = (i) => {
+                for (const r of mode.responses) {
+                  if (r.tiers && r.tiers[i] && r.tiers[i].quantity != null) return Number(r.tiers[i].quantity).toLocaleString();
+                }
+                return 'Tier ' + (i + 1);
+              };
+              const tierU = (r, i) => (r.tiers && r.tiers[i] && r.tiers[i].unitPrice != null) ? Number(r.tiers[i].unitPrice) : null;
+              const mHead = [['Quantity', ...mode.responses.map((r) => (isSel(r) ? '✓ ' : '') + String(r.companyName || 'Supplier'))]];
+              const mBody = [];
+              for (let i = 0; i < maxLen; i++) {
+                const row = [qty(i)];
+                mode.responses.forEach((r) => {
+                  let u = tierU(r, i);
+                  if (isSel(r) && mode.markupPercent > 0 && u != null) u *= mk;
+                  row.push(u != null ? u.toFixed(2) : '-');
+                });
+                mBody.push(row);
+              }
+              const totRow = ['Tier total', ...mode.responses.map((r) => {
+                const has = Array.isArray(r.tiers) && r.tiers.length > 0;
+                let s = has ? r.tiers.reduce((a, t) => a + (Number(t.total) || 0), 0) : 0;
+                if (isSel(r) && mode.markupPercent > 0) s *= mk;
+                return has ? s.toFixed(2) : '-';
+              })];
+              mBody.push(totRow);
+              drawHeading('Per-tier Pricing (HKD)');
+              doc.autoTable({
+                startY: y, theme: 'grid', head: mHead, body: mBody,
+                styles: { fontSize: 7.5, cellPadding: 1.3, textColor: [51, 51, 51] },
+                headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255], fontSize: 7.5 },
+                margin: { left: margin, right: margin },
+              });
+              y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 2.5;
+            }
+          }
+          doc.setTextColor(51, 51, 51);
         }
 
         // Output as base64 (strip the "data:application/pdf;...;base64," prefix)
@@ -14689,13 +14819,17 @@
           return `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">${approveBtn}${rejectBtn}${reprintBtn}${viewBtn}</div>`;
         }
 
-        if (!action || !action.next) {
-          return `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;"><span style="color:#999;">Completed</span>${viewBtn}</div>`;
+        // Popup statuses (e.g. 'compare quotation') open a popup instead of advancing
+        // linearly — they carry next:null by design, so they MUST be handled before the
+        // 'Completed' catch-all below, otherwise they render as "Completed".
+        if (action && action.popup) {
+          const btnColor = outsourcingStatusColors[status] || '#fd7e14';
+          const popupBtn = `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:${btnColor}; color:#fff; border:1px solid ${btnColor};" onclick="event.stopPropagation(); showCompareQuotationPopup(${quotation.id})">${action.label}</button>`;
+          return viewBtn ? `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">${popupBtn}${viewBtn}</div>` : popupBtn;
         }
 
-        if (action.popup) {
-          const btnColor = outsourcingStatusColors[status] || '#fd7e14';
-          return `<button class="page-btn" style="padding:4px 8px; font-size:12px; background:${btnColor}; color:#fff; border:1px solid ${btnColor};" onclick="event.stopPropagation(); showCompareQuotationPopup(${quotation.id})">${action.label}</button>`;
+        if (!action || !action.next) {
+          return `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;"><span style="color:#999;">Completed</span>${viewBtn}</div>`;
         }
 
         const actionColor = outsourcingStatusColors[action.next] || '#333';
@@ -15357,110 +15491,6 @@
           <p style="margin-top:20px; font-size:12px; color:#666;">This is an automated quotation request. Please reply with your best offer.</p>
         </div>
       `;
-    }
-
-    // Helper: format product type for email display
-    function emailProductTypeDisplay(productType, productDetails) {
-      const pd = (typeof productDetails === 'string') ? JSON.parse(productDetails || '{}') : (productDetails || {});
-      if (productType === 'outsource' && pd._productTag) {
-        const names = { 'hang-tag':'Hang Tag','woven-label':'Woven Label','printed-label':'Printed Label','heat-transfer':'Heat Transfer','silicon-patch':'Silicon Patch','embroidery-patch':'Embroidery Patch','pu-patch':'PU Patch','other':'Other','others':'Other' };
-        return names[pd._productTag] || pd._productTag;
-      }
-      const names = { 'hang-tag':'Hang Tag','woven-label':'Woven Label','printed-label':'Printed Label','heat-transfer':'Heat Transfer','silicon-patch':'Silicon Patch','embroidery-patch':'Embroidery Patch','pu-patch':'PU Patch','outsource':'Outsource','other':'Other','others':'Other' };
-      return names[productType] || productType || 'N/A';
-    }
-
-    // Shared map: productDetails key -> human-readable label.
-    // Used by emailProductDetailsRows, the list-export Specifications column, and the
-    // single-quotation detail XLSX. Keep in sync with the form option definitions.
-    const PRODUCT_DETAILS_LABELS = {
-      material: 'Material',
-      size: 'Size',
-      printingMethod: 'Printing Method',
-      colorCount: 'Color Count',
-      edgeFinish: 'Edge Finish',
-      materialType: 'Material Type',
-      flatRaised: 'Flat / Raised',
-      ink: 'Ink',
-      raisedHeight: 'Raised Height (mm)',
-      frontColor: 'Front Color',
-      backColor: 'Back Color',
-      folding: 'Folding',
-      transferType: 'Transfer Type',
-      application: 'Application Method',
-      thickness: 'Thickness',
-      colorMode: 'Color Mode',
-      backingType: 'Backing Type',
-      designComplexity: 'Design Complexity',
-      stitchType: 'Stitch Type',
-      borderType: 'Border Type',
-      threadColorCount: 'Thread Color Count',
-      productDescription: 'Description',
-      category: 'Category',
-      complexity: 'Complexity',
-      customerItemName: 'Customer Item Name',
-      height_mm: 'Height (mm)',
-      width_mm: 'Width (mm)',
-      screenPrint: 'Screen Print',
-      hotPress: 'Hot Press',
-      edge: 'Edge',
-      metalEmbedded: 'Metal Embedded',
-      remark: 'Remark'
-    };
-
-    // Shared map: for select-type fields, stored value -> human-readable label.
-    // Free-text / numeric fields (size, raisedHeight, frontColor, backColor,
-    // productDescription, category) intentionally have NO entry -> value used verbatim.
-    const PRODUCT_OPTION_LABELS = {
-      material: { paper: 'Paper', cardboard: 'Cardboard', plastic: 'Plastic', fabric: 'Fabric', 'Real Leather': 'Real Leather', 'PU Leather': 'PU Leather' },
-      printingMethod: {
-        'screen-printing': 'Screen Printing',
-        'digital-printing': 'Digital Printing',
-        'offset-printing': 'Offset Printing',
-        embroidery: 'Embroidery'
-      },
-      colorCount: { '1': '1 Color', '2': '2 Colors', '3': '3 Colors', '4': '4+ Colors' },
-      edgeFinish: {
-        cut: 'Cut Edge', hemmed: 'Hemmed Edge', overlocked: 'Overlocked',
-        'end-fold': 'End Fold', 'loop-fold': 'Loop Fold', '4-side-heat-cut': '4 Side Heat Cut'
-      },
-      materialType: { satin: 'Satin Tape', cotton: 'Cotton Tape', woven: 'Woven Fabric', others: 'Others' },
-      flatRaised: { flat: 'Flat', raised: 'Raised' },
-      ink: { uv: 'UV', silicon: 'Silicon' },
-      folding: { 'end-fold': 'End Fold', 'loop-fold': 'Loop Fold', 'manhattan-fold': 'Manhattan Fold', 'mitre-fold': 'Mitre Fold', 'straight-cut': 'Straight Cut' },
-      transferType: {
-        'screen-print': 'Screen Print Transfer',
-        'digital-print': 'Digital Print Transfer',
-        'vinyl-cut': 'Vinyl Cut Transfer',
-        sublimation: 'Sublimation Transfer'
-      },
-      application: { 'heat-press': 'Heat Press', iron: 'Household Iron', commercial: 'Commercial Press' },
-      thickness: { '0.5mm': '0.5mm', '1mm': '1mm', '1.5mm': '1.5mm', '2mm': '2mm', '3mm': '3mm' },
-      colorMode: { 'single-color': 'Single Color', 'multi-color': 'Multi-Color', 'full-color': 'Full Color' },
-      backingType: {
-        adhesive: 'Adhesive', 'sew-on': 'Sew-on', velcro: 'Velcro', magnetic: 'Magnetic',
-        'iron-on': 'Iron-on', none: 'None'
-      },
-      designComplexity: { simple: 'Simple', medium: 'Medium', complex: 'Complex', custom: 'Custom' },
-      complexity: { simple: 'Simple', medium: 'Medium', complex: 'Complex', custom: 'Custom' },
-      stitchType: {
-        'flat-stitch': 'Flat Stitch', '3d-puff': '3D Puff', applique: 'Applique', chenille: 'Chenille'
-      },
-      borderType: { merrow: 'Merrow Border', 'heat-cut': 'Heat Cut Border', 'laser-cut': 'Laser Cut' },
-      threadColorCount: { '1-3': '1-3 Colors', '4-6': '4-6 Colors', '7-9': '7-9 Colors', '10+': '10+ Colors' },
-      screenPrint: { 'No': 'No', '1': '1', '2': '2', '3': '3', '4': '4' },
-      hotPress: { 'YES': 'YES', 'NO': 'NO' },
-      edge: { 'Paint': 'Paint', 'Embroidery': 'Embroidery' },
-      metalEmbedded: { 'YES': 'YES', 'NO': 'NO' }
-    };
-
-    // Resolve a single productDetails value to its human-readable form.
-    function resolveProductDetailValue(key, raw) {
-      const optMap = PRODUCT_OPTION_LABELS[key];
-      if (optMap && Object.prototype.hasOwnProperty.call(optMap, String(raw))) {
-        return optMap[String(raw)];
-      }
-      return raw;
     }
 
     // Compact one-line summary of a quotation's type-specific attributes, e.g.
@@ -22206,7 +22236,11 @@
       }
 
       // Generate HTML email content
-      const emailHtml = generateQuotationEmailHtml(quotation, emailMeta, originalEmailHtml, profileImageBase64);
+      const emailHtml = generateQuotationEmailHtml(quotation, {
+        brandName: getBrandName(quotation.brandId),
+        profileImageSrc: profileImageBase64,
+        emailMeta, originalEmailHtml,
+      });
 
       // Prepare email subject using original subject from envelope (thread) or standalone
       const emailSubject = originalSubject
@@ -22249,178 +22283,6 @@
       });
 
       return result;
-    }
-
-    // Generate HTML email content for quotation
-    function generateQuotationEmailHtml(quotation, emailMeta, originalEmailHtml, profileImageBase64 = null, qrBase64 = null, osRef = '', attachmentList = []) {
-      const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
-      const productTypeName = emailProductTypeDisplay(quotation.productType, productDetails);
-
-      const fmtDate = (ds) => ds ? new Date(ds).toLocaleString() : '';
-
-      // QR code for the top-right corner (encodes the quotation/outsource reference)
-      const qrCellHtml = qrBase64 ? `
-        <td width="100" valign="top" style="background:#fff; border:1px solid #ccc; text-align:center; padding:6px;">
-          <img src="${qrBase64}" width="84" height="84" style="width:84px; height:84px; display:block; margin:0 auto;" alt="QR Code">
-          ${osRef ? `<div style="font-size:11px; color:#000; font-weight:bold; margin-top:4px;">${osRef}</div>` : ''}
-        </td>` : '';
-
-      // Metadata band — just under the header: OS reference + date created + date revised
-      const metaBandHtml = `
-        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;">
-          <tr>
-            <td style="background:#f5f5f5; border:1px solid #ccc; padding:8px; font-size:12px;">
-              ${osRef ? `<strong style="color:#000;">Ref:</strong> <span style="color:#000;">${osRef}</span> &nbsp;|&nbsp; ` : ''}
-              <strong style="color:#000;">Date Created:</strong> <span style="color:#000;">${fmtDate(quotation.dateCreated) || '-'}</span> &nbsp;|&nbsp;
-              <strong style="color:#000;">Date Revised:</strong> <span style="color:#000;">${fmtDate(quotation.dateRevised) || '-'}</span>
-            </td>
-          </tr>
-        </table>`;
-
-      // Attachment reminder — shown just above the product profile image.
-      // Reminds the recipient that files are attached, with count, names, and sizes.
-      const attItems = (Array.isArray(attachmentList) ? attachmentList : [])
-        .map(a => `${a.filename} (${formatFileSize(a.sizeBytes)})`).join(', ');
-      const attachmentReminderHtml = (Array.isArray(attachmentList) && attachmentList.length > 0)
-        ? `<div style="margin-bottom:10px; padding:8px 10px; background:#fff8e1; border:1px solid #ffe082; font-size:12px; color:#5d4037;">
-             <strong>📎 Attachments (${attachmentList.length}):</strong> ${attItems}
-           </div>`
-        : `<div style="margin-bottom:10px; padding:8px 10px; background:#f5f5f5; border:1px solid #ccc; font-size:12px; color:#666;">
-             <strong>📎 Attachments:</strong> No additional attachments (a PDF copy of this quotation is attached).
-           </div>`;
-
-      // Brand name lookup from cached brands
-      const brandObj = (typeof cachedBrands !== 'undefined' && quotation.brandId)
-        ? cachedBrands.find(b => b.id === quotation.brandId || String(b.id) === String(quotation.brandId))
-        : null;
-      const brandName = brandObj ? brandObj.name : 'N/A';
-
-      // Build Product Specification rows.
-      // Root-level fields first (customer item name, height/width are stored at the
-      // quotation root, not inside productDetails), then type-specific productDetails.
-      const cellLabel = 'padding:8px; border:1px solid #ccc; font-weight:bold; width:45%; vertical-align:top;';
-      const cellValue = 'padding:8px; border:1px solid #ccc; vertical-align:top;';
-      const shownKeys = new Set();
-      let specRows = '';
-
-      const addRow = (label, value) => {
-        specRows += `<tr><td style="${cellLabel}">${label}</td><td style="${cellValue}">${value}</td></tr>`;
-      };
-
-      // Root-level specification fields
-      if (quotation.customerItemName) { addRow('Customer Item Name', quotation.customerItemName); shownKeys.add('customerItemName'); }
-      if (quotation.height_mm !== null && quotation.height_mm !== undefined && quotation.height_mm !== '') { addRow('Height (mm, unfolded)', quotation.height_mm); shownKeys.add('height_mm'); }
-      if (quotation.width_mm !== null && quotation.width_mm !== undefined && quotation.width_mm !== '') { addRow('Width (mm, unfolded)', quotation.width_mm); shownKeys.add('width_mm'); }
-
-      // Type-specific product details (convert option codes to display names)
-      for (const [key, raw] of Object.entries(productDetails)) {
-        if (key.startsWith('_')) continue;
-        if (shownKeys.has(key)) continue; // already rendered from root level
-        if (raw === null || raw === undefined || raw === '') continue;
-        const label = PRODUCT_DETAILS_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
-        const value = resolveProductDetailValue(key, raw);
-        addRow(label, value);
-      }
-
-      if (specRows === '') {
-        specRows = '<tr><td style="padding:8px; border:1px solid #ccc; color:#999;">No specifications recorded.</td><td style="padding:8px; border:1px solid #ccc;"></td></tr>';
-      }
-
-      const imageHtml = profileImageBase64
-        ? `<div style="margin:15px 0; text-align:center;"><img src="${profileImageBase64}" style="max-width:200px; max-height:200px; object-fit:contain; border:1px solid #ddd; padding:5px;" alt="Product Image"></div>`
-        : '';
-
-      const notesHtml = quotation.notes
-        ? `<h3 style="margin-top:24px; margin-bottom:8px; border-bottom:2px solid #000; padding-bottom:8px;">Additional Notes</h3><p style="margin:0; white-space:pre-wrap;">${String(quotation.notes).replace(/\n/g, '<br>')}</p>`
-        : '';
-
-      let html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .quotation-container { max-width: 800px; margin: 0 auto; padding: 20px; border: 2px solid #000; }
-    .quotation-header { background: #000; color: #fff; padding: 15px; text-align: center; }
-    .quotation-section { margin: 20px 0; }
-    .quotation-section h3 { margin-top: 0; margin-bottom: 8px; border-bottom: 2px solid #000; padding-bottom: 8px; }
-    .quotation-table { width: 100%; border-collapse: collapse; }
-    .quotation-total { font-size: 1.2em; font-weight: bold; color: #000; text-align: right; margin-top: 20px; }
-  </style>
-</head>
-<body>
-  <div class="quotation-container">
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:12px;">
-      <tr>
-        <td valign="middle" style="background:#000; color:#fff; padding:15px; text-align:center; border:1px solid #000;">
-          <div style="font-size:22px; font-weight:bold; margin:0;">QUOTATION</div>
-          <div style="font-size:13px; margin:4px 0 0 0;">${productTypeName}</div>
-        </td>
-        ${qrCellHtml}
-      </tr>
-    </table>
-
-    ${metaBandHtml}
-    ${attachmentReminderHtml}
-
-    <div class="quotation-section">
-      <h3>Product Information</h3>
-      <table class="quotation-table">
-        <tr><td style="${cellLabel}">Product Type</td><td style="${cellValue}">${productTypeName}</td></tr>
-        <tr><td style="${cellLabel}">Variable</td><td style="${cellValue}">${quotation.variable === 'YES' ? 'YES' : 'NO'}</td></tr>
-      </table>
-    </div>
-
-    <div class="quotation-section">
-      <h3>Customer Information</h3>
-      <table class="quotation-table">
-        <tr><td style="${cellLabel}">Customer Name</td><td style="${cellValue}">${quotation.customerName || 'N/A'}</td></tr>
-        <tr><td style="${cellLabel}">Contact Person</td><td style="${cellValue}">${quotation.contactPerson || 'N/A'}</td></tr>
-        <tr><td style="${cellLabel}">Email</td><td style="${cellValue}">${quotation.email || 'N/A'}</td></tr>
-        <tr><td style="${cellLabel}">Phone</td><td style="${cellValue}">${quotation.phone || 'N/A'}</td></tr>
-      </table>
-    </div>
-
-    <div class="quotation-section">
-      <h3>Brand Detail</h3>
-      <table class="quotation-table">
-        <tr><td style="${cellLabel}">Brand Name</td><td style="${cellValue}">${brandName}</td></tr>
-      </table>
-    </div>
-
-    <div class="quotation-section">
-      <h3>Product Specifications</h3>
-      ${imageHtml}
-      <table class="quotation-table">
-        ${specRows}
-      </table>
-    </div>
-
-    ${notesHtml ? `<div class="quotation-section">${notesHtml}</div>` : ''}
-  </div>
-
-  ${originalEmailHtml ? `
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #ccc;">
-    <div style="font-size: 0.9em; color: #666; margin-bottom: 10px;">
-      <strong>---------- Original Message ----------</strong><br>
-      ${emailMeta ? `
-      <strong>From:</strong> ${emailMeta.from || 'Unknown'}<br>
-      <strong>Date:</strong> ${emailMeta.date || 'Unknown'}<br>
-      <strong>Subject:</strong> ${emailMeta.subject || '(No subject)'}
-      ` : ''}
-    </div>
-    <div style="color: #333; border-left: 3px solid #ccc; padding-left: 15px; margin-left: 10px;">
-      ${originalEmailHtml}
-    </div>
-  </div>
-  ` : ''}
-
-</body>
-</html>
-`;
-
-      return html;
     }
 
     window.generateQuotation = function(tagType) {

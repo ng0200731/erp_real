@@ -1961,6 +1961,40 @@ export async function getSuppliersForQuotation(quotationId) {
   return suppliers;
 }
 
+// Auto-advance an outsourcing quotation's status from 'await quotation' to
+// 'compare quotation' once every linked supplier has submitted a response.
+// Mirrors the client action-button rule (responseCount >= linkedCount), so the
+// stored status tracks reality instead of staying "await quotation" after all
+// quotations are in. Returns { advanced, from, to, linkedCount, responseCount }
+// when it advanced, otherwise null. Idempotent: once status is no longer
+// 'await quotation' it does nothing. Sticky: it never reverts (unlinking a
+// supplier or deleting a response does not move the status back).
+export async function advanceToCompareQuotationWhenAllResponded(quotationId) {
+  const db = await getTasksDb();
+  const q = await db.get('SELECT status FROM quotations WHERE id = ?', [quotationId]);
+  if (!q || q.status !== 'await quotation') return null;
+
+  const linked = await db.get(
+    'SELECT COUNT(*) AS c FROM quotation_suppliers WHERE quotationId = ?',
+    [quotationId]
+  );
+  const linkedCount = linked ? Number(linked.c) : 0;
+  if (linkedCount === 0) return null;
+
+  const resp = await db.get(
+    'SELECT COUNT(*) AS c FROM supplier_quotation_responses WHERE quotationId = ?',
+    [quotationId]
+  );
+  const responseCount = resp ? Number(resp.c) : 0;
+  if (responseCount < linkedCount) return null;
+
+  await db.run(
+    "UPDATE quotations SET status = 'compare quotation' WHERE id = ?",
+    [quotationId]
+  );
+  return { advanced: true, from: 'await quotation', to: 'compare quotation', linkedCount, responseCount };
+}
+
 export async function getQuotationsForSupplier(supplierId) {
   const db = await getTasksDb();
   return await db.all(`
