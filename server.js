@@ -27,6 +27,8 @@ import {
   getAllSkills, getSkillsStats, getSkillByName, getSkillById, createSkill, updateSkill, deleteSkill,
   // Brand functions
   getAllBrands, getBrandById, createBrand, updateBrand, deleteBrand,
+  // Currency functions
+  getAllCurrencies, getCurrencyById, getCurrencyByCode, createCurrency, updateCurrency, deleteCurrency, getBaseCurrency,
   // Product Profile functions
   getAllProductProfiles, getProductProfileById, createProductProfile, updateProductProfile, deleteProductProfile, getProductProfilesByType,
   // Pricing Tier Table functions
@@ -51,6 +53,7 @@ import { createQuotationRoutes } from './routes/quotations.js';
 import { createSkillRoutes } from './routes/skills.js';
 import { createEmailRoutes } from './routes/emails.js';
 import { createBrandRoutes } from './routes/brands.js';
+import { createCurrencyRoutes } from './routes/currencies.js';
 import { createProductProfileRoutes } from './routes/product-profiles.js';
 import { createPricingTierTableRoutes } from './routes/pricing-tier-tables.js';
 import { createWorkshopRoutes } from './routes/workshops.js';
@@ -524,6 +527,18 @@ const brandRoutes = createBrandRoutes({
   deleteBrand
 });
 app.use('/api/brands', brandRoutes);
+
+// Currency routes
+const currencyRoutes = createCurrencyRoutes({
+  getAllCurrencies,
+  getCurrencyById,
+  getCurrencyByCode,
+  createCurrency,
+  updateCurrency,
+  deleteCurrency,
+  getBaseCurrency
+});
+app.use('/api/currencies', currencyRoutes);
 
 // Product Profile routes
 const productProfileRoutes = createProductProfileRoutes({

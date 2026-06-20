@@ -146,7 +146,7 @@
             <label>Pricing Tiers — enter your unit price per quantity</label>
             <table class="tier-table">
               <thead>
-                <tr><th style="text-align:left;">Quantity</th><th style="text-align:left;">Unit Price (HKD)</th></tr>
+                <tr><th style="text-align:left;">Quantity</th><th style="text-align:left;" data-ccy="Unit Price ({ccy})">Unit Price (HKD)</th></tr>
               </thead>
               <tbody id="tierInputBody"></tbody>
             </table>
@@ -160,7 +160,7 @@
             <input type="number" id="moq" min="0" step="1" placeholder="e.g. 1000">
           </div>
           <div class="form-group">
-            <label for="surchargeBelowMoq">Surcharge below MOQ (HKD)</label>
+            <label for="surchargeBelowMoq" data-ccy="Surcharge below MOQ ({ccy})">Surcharge below MOQ (HKD)</label>
             <input type="number" id="surchargeBelowMoq" min="0" step="0.01" placeholder="e.g. 150.00">
           </div>
           <div class="form-group">
@@ -177,6 +177,17 @@
   </div>
 
   <script>
+    // Apply the quotation's currency code to every element that carries a
+    // data-ccy="..." attribute. The attribute value is a literal token (e.g.
+    // "Unit Price ({ccy})" or "Surcharge below MOQ ({ccy})") whose "{ccy}"
+    // placeholder is replaced with the live currency code.
+    function applyCurrencyLabels(currency) {
+      const ccy = (currency || 'HKD').toUpperCase();
+      document.querySelectorAll('[data-ccy]').forEach(el => {
+        el.textContent = el.getAttribute('data-ccy').replace(/\{ccy\}/g, ccy);
+      });
+    }
+
     // Format product type to readable name
     function formatProductType(type) {
       const names = {
@@ -300,6 +311,9 @@
         document.getElementById('productType').textContent = formatProductType(data.quotation.productType) || '-';
         document.getElementById('quantity').textContent = data.quotation.quantity || '-';
 
+        // Apply the quotation's currency to all price labels
+        applyCurrencyLabels(data.quotation.currency || 'HKD');
+
         // Format product details as HTML rows
         renderProductDetails(data.quotation.productDetails, data.quotation.productType);
 
@@ -331,6 +345,7 @@
           document.getElementById('alreadySubmitted').style.display = 'block';
           if (data.existingResponse) {
             const r = data.existingResponse;
+            const submittedCcy = (data.quotation && data.quotation.currency) || 'HKD';
             const submittedTiersHtml = (Array.isArray(r.tiers) && r.tiers.length > 0)
               ? '<div style="margin-top:10px;"><strong style="font-size:13px;">Pricing Tiers</strong>' +
                 '<table class="tier-table" style="margin-top:6px;"><thead><tr><th style="text-align:left;">Quantity</th><th style="text-align:left;">Unit Price</th></tr></thead><tbody>' +
@@ -344,7 +359,7 @@
                 <div class="info-row"><span class="info-label">Unit Price</span><span class="info-value">${r.unitPrice != null ? Number(r.unitPrice).toFixed(2) : '-'}</span></div>
                 <div class="info-row"><span class="info-label">Delivery Days</span><span class="info-value">${r.deliveryDays || '-'}</span></div>
                 ${r.moq != null ? `<div class="info-row"><span class="info-label">MOQ (pcs)</span><span class="info-value">${Number(r.moq)}</span></div>` : ''}
-                ${r.surchargeBelowMoq != null ? `<div class="info-row"><span class="info-label">Surcharge below MOQ (HKD)</span><span class="info-value">${Number(r.surchargeBelowMoq).toFixed(2)}</span></div>` : ''}
+                ${r.surchargeBelowMoq != null ? `<div class="info-row"><span class="info-label">Surcharge below MOQ (${submittedCcy})</span><span class="info-value">${Number(r.surchargeBelowMoq).toFixed(2)}</span></div>` : ''}
                 <div class="info-row"><span class="info-label">Notes</span><span class="info-value">${r.notes || '-'}</span></div>
                 ${submittedTiersHtml}
               </div>

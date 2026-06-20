@@ -274,6 +274,18 @@ async function ensureSchema(db) {
 
     CREATE INDEX IF NOT EXISTS idx_brands_name ON brands(name);
 
+    CREATE TABLE IF NOT EXISTS currencies (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      symbol TEXT NOT NULL,
+      isBase INTEGER DEFAULT 0,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_currencies_code ON currencies(code);
+
     CREATE TABLE IF NOT EXISTS product_profiles (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -701,6 +713,40 @@ async function ensureSchema(db) {
     }
   }
 
+  // Currency columns for customers, suppliers, and quotations
+  try {
+    await db.exec(`ALTER TABLE customers ADD COLUMN defaultCurrency TEXT;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding defaultCurrency column to customers:', err);
+    }
+  }
+
+  try {
+    await db.exec(`ALTER TABLE suppliers ADD COLUMN defaultCurrency TEXT;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding defaultCurrency column to suppliers:', err);
+    }
+  }
+
+  try {
+    await db.exec(`ALTER TABLE quotations ADD COLUMN currency TEXT;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding currency column to quotations:', err);
+    }
+  }
+
+  // Currency column for pricing tier tables (synced with Currency Master)
+  try {
+    await db.exec(`ALTER TABLE pricing_tier_tables ADD COLUMN currency TEXT;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding currency column to pricing_tier_tables:', err);
+    }
+  }
+
   // === Guarantee the quotations schema is complete before serving requests ===
   // The columns above are added via migrations; if one failed to apply to an
   // existing DB (e.g. a stale server process), UPDATE would throw
@@ -743,7 +789,8 @@ async function ensureSchema(db) {
       ['height_mm', 'REAL'],
       ['width_mm', 'REAL'],
       ['markupPercent', 'REAL DEFAULT 0'],
-      ['variable', "TEXT DEFAULT 'NO'"]
+      ['variable', "TEXT DEFAULT 'NO'"],
+      ['currency', 'TEXT']
     ];
     const cols = await db.all(`PRAGMA table_info(quotations);`);
     const present = new Set(cols.map(c => c.name.toLowerCase()));
@@ -897,6 +944,7 @@ export async function getTasksDb() {
         driver: sqlite3.Database,
       });
       await ensureSchema(db);
+      await seedCurrenciesIfEmpty(db);
       return db;
     })();
   }
@@ -1227,8 +1275,8 @@ export async function createCustomer(customerData) {
 
   const result = await db.run(
     `
-      INSERT INTO customers (companyName, emailDomain, companyAddress, companyTel, companyType, companyWebsite, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO customers (companyName, emailDomain, companyAddress, companyTel, companyType, companyWebsite, defaultCurrency, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       customerData.companyName,
@@ -1237,6 +1285,7 @@ export async function createCustomer(customerData) {
       customerData.companyTel || null,
       customerData.companyType,
       customerData.companyWebsite || null,
+      customerData.defaultCurrency || null,
       now,
       now
     ]
@@ -1278,7 +1327,7 @@ export async function updateCustomer(id, customerData) {
   await db.run(
     `
       UPDATE customers
-      SET companyName = ?, emailDomain = ?, companyAddress = ?, companyTel = ?, companyType = ?, companyWebsite = ?, updatedAt = ?
+      SET companyName = ?, emailDomain = ?, companyAddress = ?, companyTel = ?, companyType = ?, companyWebsite = ?, defaultCurrency = ?, updatedAt = ?
       WHERE id = ?
     `,
     [
@@ -1288,6 +1337,7 @@ export async function updateCustomer(id, customerData) {
       customerData.companyTel || null,
       customerData.companyType,
       customerData.companyWebsite || null,
+      customerData.defaultCurrency || null,
       now,
       id
     ]
@@ -1451,8 +1501,8 @@ export async function createQuotation(quotationData) {
 
   const result = await db.run(
     `
-      INSERT INTO quotations (customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, outsourcingSeq, quotationSeq, brandId, customerItemName, height_mm, width_mm, variable)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO quotations (customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, outsourcingSeq, quotationSeq, brandId, customerItemName, height_mm, width_mm, variable, currency)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       quotationData.customerName,
@@ -1479,7 +1529,8 @@ export async function createQuotation(quotationData) {
       quotationData.customerItemName || null,
       quotationData.height_mm || null,
       quotationData.width_mm || null,
-      quotationData.variable || 'NO'
+      quotationData.variable || 'NO',
+      quotationData.currency || null
     ]
   );
 
@@ -1490,7 +1541,7 @@ export async function getQuotationById(id) {
   const db = await getTasksDb();
   // Exclude profileImageBlob from general queries to avoid transferring large BLOB data
   const quotation = await db.get(
-    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, dateRevised, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, height_mm, width_mm, variable, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations WHERE id = ?`,
+    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, dateRevised, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, height_mm, width_mm, variable, currency, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations WHERE id = ?`,
     [id]
   );
 
@@ -1506,7 +1557,7 @@ export async function getAllQuotations() {
   const db = await getTasksDb();
   // Exclude profileImageBlob from general queries to avoid transferring large BLOB data
   let quotations = await db.all(
-    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, dateRevised, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, height_mm, width_mm, variable, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations ORDER BY dateCreated DESC`
+    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, dateRevised, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, height_mm, width_mm, variable, currency, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations ORDER BY dateCreated DESC`
   );
 
   // Parse JSON fields
@@ -1525,7 +1576,7 @@ export async function updateQuotation(id, quotationData) {
   await db.run(
     `
       UPDATE quotations
-      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?, outsourcingSeq = ?, quotationSeq = ?, selectedSupplierId = ?, selectedSupplierResponseId = ?, sampleReadyDate = ?, brandId = ?, customerItemName = ?, chaseSampleCount = ?, resubmitCount = ?, height_mm = ?, width_mm = ?, variable = ?, dateRevised = ?
+      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?, outsourcingSeq = ?, quotationSeq = ?, selectedSupplierId = ?, selectedSupplierResponseId = ?, sampleReadyDate = ?, brandId = ?, customerItemName = ?, chaseSampleCount = ?, resubmitCount = ?, height_mm = ?, width_mm = ?, variable = ?, currency = ?, dateRevised = ?
       WHERE id = ?
     `,
     [
@@ -1559,6 +1610,7 @@ export async function updateQuotation(id, quotationData) {
       quotationData.height_mm !== undefined ? quotationData.height_mm : null,
       quotationData.width_mm !== undefined ? quotationData.width_mm : null,
       quotationData.variable || 'NO',
+      quotationData.currency || null,
       now,
       id
     ]
@@ -1769,8 +1821,8 @@ export async function createSupplier(supplierData) {
 
   const result = await db.run(
     `
-      INSERT INTO suppliers (companyName, emailDomain, companyAddress, companyTel, companyType, companyWebsite, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO suppliers (companyName, emailDomain, companyAddress, companyTel, companyType, companyWebsite, defaultCurrency, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       supplierData.companyName,
@@ -1779,6 +1831,7 @@ export async function createSupplier(supplierData) {
       supplierData.companyTel || null,
       supplierData.companyType,
       supplierData.companyWebsite || null,
+      supplierData.defaultCurrency || null,
       now,
       now
     ]
@@ -1820,7 +1873,7 @@ export async function updateSupplier(id, supplierData) {
   await db.run(
     `
       UPDATE suppliers
-      SET companyName = ?, emailDomain = ?, companyAddress = ?, companyTel = ?, companyType = ?, companyWebsite = ?, updatedAt = ?
+      SET companyName = ?, emailDomain = ?, companyAddress = ?, companyTel = ?, companyType = ?, companyWebsite = ?, defaultCurrency = ?, updatedAt = ?
       WHERE id = ?
     `,
     [
@@ -1830,6 +1883,7 @@ export async function updateSupplier(id, supplierData) {
       supplierData.companyTel || null,
       supplierData.companyType,
       supplierData.companyWebsite || null,
+      supplierData.defaultCurrency || null,
       now,
       id
     ]
@@ -2065,6 +2119,119 @@ export async function deleteBrand(id) {
   return true;
 }
 
+// ========== CURRENCY FUNCTIONS ==========
+
+export async function createCurrency(currencyData) {
+  const db = await getTasksDb();
+  const now = new Date().toISOString();
+  const code = String(currencyData.code || '').trim().toUpperCase();
+  const name = String(currencyData.name || '').trim();
+  const symbol = String(currencyData.symbol || '').trim();
+  const isBase = currencyData.isBase ? 1 : 0;
+
+  if (!code || !name) {
+    throw new Error('Currency code and name are required');
+  }
+
+  // Only one currency can be base at a time.
+  if (isBase) {
+    await db.run(`UPDATE currencies SET isBase = 0, updatedAt = ?`, [now]);
+  }
+
+  const result = await db.run(
+    `INSERT INTO currencies (code, name, symbol, isBase, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)`,
+    [code, name, symbol, isBase, now, now]
+  );
+
+  return result.lastID;
+}
+
+export async function getCurrencyById(id) {
+  const db = await getTasksDb();
+  return await db.get(`SELECT * FROM currencies WHERE id = ?`, [id]);
+}
+
+export async function getCurrencyByCode(code) {
+  const db = await getTasksDb();
+  return await db.get(`SELECT * FROM currencies WHERE code = ?`, [String(code || '').toUpperCase()]);
+}
+
+export async function getAllCurrencies() {
+  const db = await getTasksDb();
+  // Base currency first, then alphabetical by code.
+  return await db.all(`SELECT * FROM currencies ORDER BY isBase DESC, code ASC`);
+}
+
+export async function getBaseCurrency() {
+  const db = await getTasksDb();
+  const base = await db.get(`SELECT * FROM currencies WHERE isBase = 1 LIMIT 1`);
+  if (base) return base;
+  // Fall back to HKD if a base was never flagged.
+  return await db.get(`SELECT * FROM currencies WHERE code = 'HKD' LIMIT 1`);
+}
+
+export async function updateCurrency(id, currencyData) {
+  const db = await getTasksDb();
+  const now = new Date().toISOString();
+
+  const existing = await getCurrencyById(id);
+  if (!existing) {
+    throw new Error('Currency not found');
+  }
+
+  const code = String(currencyData.code || existing.code).trim().toUpperCase();
+  const name = String(currencyData.name || existing.name).trim();
+  const symbol = currencyData.symbol != null ? String(currencyData.symbol).trim() : (existing.symbol || '');
+  const isBase = currencyData.isBase ? 1 : 0;
+
+  if (isBase) {
+    await db.run(`UPDATE currencies SET isBase = 0, updatedAt = ?`, [now]);
+  }
+
+  await db.run(
+    `UPDATE currencies SET code = ?, name = ?, symbol = ?, isBase = ?, updatedAt = ? WHERE id = ?`,
+    [code, name, symbol, isBase, now, id]
+  );
+
+  return true;
+}
+
+export async function deleteCurrency(id) {
+  const db = await getTasksDb();
+  const existing = await getCurrencyById(id);
+  if (existing && existing.isBase) {
+    throw new Error('Cannot delete the base currency');
+  }
+  await db.run(`DELETE FROM currencies WHERE id = ?`, [id]);
+  return true;
+}
+
+// Seed default currencies on first run if the table is empty.
+// NOTE: receives the db instance directly (called from getTasksDb init) — it must
+// NOT call getTasksDb() itself, or it deadlocks the init promise.
+export async function seedCurrenciesIfEmpty(db) {
+  try {
+    const count = await db.get(`SELECT COUNT(*) as n FROM currencies`);
+    if (count && count.n > 0) return;
+
+    const now = new Date().toISOString();
+    const defaults = [
+      ['HKD', 'Hong Kong Dollar', 'HK$', 1],
+      ['USD', 'US Dollar', '$', 0],
+      ['EUR', 'Euro', '€', 0]
+    ];
+    for (const [code, name, symbol, isBase] of defaults) {
+      await db.run(
+        `INSERT INTO currencies (code, name, symbol, isBase, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)`,
+        [code, name, symbol, isBase, now, now]
+      );
+    }
+    console.log('Seeded default currencies (HKD base, USD, EUR)');
+  } catch (err) {
+    console.warn('Could not seed currencies:', err.message);
+  }
+}
+
 // ========== Product Profile Functions ==========
 
 export async function createProductProfile(profileData) {
@@ -2163,6 +2330,7 @@ function normalizePricingTierTablePayload(data = {}) {
     customerId: scope === 'customer' && data.customerId ? Number(data.customerId) : null,
     customerName: scope === 'customer' ? (data.customerName || null) : null,
     disabled: data.disabled ? 1 : 0,
+    currency: data.currency ? String(data.currency).trim().toUpperCase() : null,
     tiers: tiers.map((tier, index) => ({
       quantity: parseInt(tier.quantity ?? tier.qty ?? 0, 10) || 0,
       unitPrice: parseFloat(tier.unitPrice ?? tier.price ?? 0) || 0,
@@ -2178,8 +2346,8 @@ export async function createPricingTierTable(data) {
 
   const result = await db.run(
     `INSERT INTO pricing_tier_tables
-     (name, scope, brandId, brandName, customerId, customerName, disabled, createdAt, updatedAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     (name, scope, brandId, brandName, customerId, customerName, disabled, currency, createdAt, updatedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       payload.name,
       payload.scope,
@@ -2188,6 +2356,7 @@ export async function createPricingTierTable(data) {
       payload.customerId,
       payload.customerName,
       payload.disabled,
+      payload.currency,
       now,
       now
     ]
@@ -2340,7 +2509,7 @@ export async function updatePricingTierTable(id, data) {
 
   await db.run(
     `UPDATE pricing_tier_tables
-     SET name = ?, scope = ?, brandId = ?, brandName = ?, customerId = ?, customerName = ?, disabled = ?, updatedAt = ?
+     SET name = ?, scope = ?, brandId = ?, brandName = ?, customerId = ?, customerName = ?, disabled = ?, currency = ?, updatedAt = ?
      WHERE id = ?`,
     [
       payload.name,
@@ -2350,6 +2519,7 @@ export async function updatePricingTierTable(id, data) {
       payload.customerId,
       payload.customerName,
       payload.disabled,
+      payload.currency,
       now,
       id
     ]

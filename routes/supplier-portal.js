@@ -434,7 +434,7 @@ router.post('/sampling/:token/submit', async (req, res) => {
             if (response) {
               const tierRows = await getSupplierQuotationResponseTiers(response.id);
               const tiers = tierRows.map(t => ({ quantity: t.quantity, unitPrice: t.unitPrice, total: t.total }));
-              responseTiersHtml = generateSupplierResponseTiersHtml(tiers);
+              responseTiersHtml = generateSupplierResponseTiersHtml(tiers, quotation.currency || 'HKD');
             }
           } catch (e) { /* ignore — sampling email proceeds without prior response data */ }
 

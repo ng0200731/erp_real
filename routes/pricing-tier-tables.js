@@ -119,6 +119,7 @@ export function createPricingTierTableRoutes(deps) {
         customerId: req.body?.customerId ?? existing.customerId,
         customerName: req.body?.customerName ?? existing.customerName,
         disabled: req.body?.disabled ?? existing.disabled,
+        currency: req.body?.currency ?? existing.currency,
         tiers: req.body?.tiers ?? existing.tiers
       };
       if (!payload.name || !String(payload.name).trim()) {

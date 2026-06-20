@@ -122,9 +122,11 @@ function escapeHtml(s) {
 // tiers = [{tierIndex, quantity, unitPrice, total}, ...]. Returns '' when empty.
 // Note: 'total' is kept on the data objects (persisted + used downstream) but is
 // NOT rendered — only Quantity and Unit Price are shown.
-export function generateSupplierResponseTiersHtml(tiers) {
+// currency is the ISO code shown in the header (defaults to 'HKD').
+export function generateSupplierResponseTiersHtml(tiers, currency = 'HKD') {
   const arr = Array.isArray(tiers) ? tiers : [];
   if (arr.length === 0) return '';
+  const ccy = currency || 'HKD';
   const rows = arr.map((t) => {
     const q = Number(t.quantity) || 0;
     const u = t.unitPrice != null ? Number(t.unitPrice).toFixed(2) : '0.00';
@@ -136,7 +138,7 @@ export function generateSupplierResponseTiersHtml(tiers) {
     <table style="width:100%; border-collapse:collapse; margin:8px 0;">
       <thead><tr>
         <th style="padding:6px; border:1px solid #ccc; text-align:left;">Quantity</th>
-        <th style="padding:6px; border:1px solid #ccc; text-align:left;">Unit Price (HKD)</th>
+        <th style="padding:6px; border:1px solid #ccc; text-align:left;">Unit Price (${ccy})</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
@@ -181,6 +183,7 @@ export function resolveStatusTierMode({ status, responses, selectedSupplierId, s
 // by (1 + markupPercent/100) and the row is annotated "(incl. N% markup)".
 export function generateStatusTierSectionHtml(ctx = {}) {
   const m = resolveStatusTierMode(ctx);
+  const ccy = (ctx && ctx.currency) || 'HKD';
   const sectionOpen = '<div class="quotation-section" style="margin:20px 0;">';
   const h3Open = '<h3 style="margin-top:0; margin-bottom:8px; border-bottom:2px solid #000; padding-bottom:8px;">';
   const close = '</div>';
@@ -222,7 +225,7 @@ export function generateStatusTierSectionHtml(ctx = {}) {
       <thead><tr>
         <th style="${cellLbl} text-align:left;">Supplier</th>
         <th style="${cellLbl} text-align:left;">Contact</th>
-        <th style="${cellLbl} text-align:right;">Unit Price (HKD)</th>
+        <th style="${cellLbl} text-align:right;">Unit Price (${ccy})</th>
         <th style="${cellLbl} text-align:center;">Delivery Days</th>
         <th style="${cellLbl} text-align:left;">Notes</th>
       </tr></thead>
@@ -266,7 +269,7 @@ export function generateStatusTierSectionHtml(ctx = {}) {
     }
 
     html += `
-      ${h3Open.replace('margin-top:0;', 'margin-top:20px;')}Per-tier Pricing (HKD)</h3>
+      ${h3Open.replace('margin-top:0;', 'margin-top:20px;')}Per-tier Pricing (${ccy})</h3>
       <table style="width:100%; border-collapse:collapse; margin:8px 0;">
         <thead><tr><th style="${cellLbl} text-align:left;">Quantity</th>${colHeaders}</tr></thead>
         <tbody>${bodyRows}</tbody>
@@ -465,7 +468,7 @@ export function buildSupplierConfirmationHtml(quotation, supplier, supplierMembe
   });
 
   const tiers = (submittedData && Array.isArray(submittedData.sanitizedTiers)) ? submittedData.sanitizedTiers : [];
-  const tiersHtml = generateSupplierResponseTiersHtml(tiers);
+  const tiersHtml = generateSupplierResponseTiersHtml(tiers, quotation.currency || 'HKD');
 
   const sd = submittedData || {};
 

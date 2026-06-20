@@ -2127,6 +2127,12 @@
                 </select>
               </div>
               <div>
+                <label for="customerCurrency">Default Currency</label>
+                <select id="customerCurrency" data-currency-select>
+                  <option value="">Select currency...</option>
+                </select>
+              </div>
+              <div>
                 <label for="companyWebsite">Website</label>
                 <input id="companyWebsite" type="url" placeholder="https://www.example.com">
               </div>
@@ -2258,6 +2264,12 @@
                     <label><input type="checkbox" value="other"> Other</label>
                   </div>
                 </div>
+              </div>
+              <div>
+                <label for="supplierCurrency">Default Currency</label>
+                <select id="supplierCurrency" data-currency-select>
+                  <option value="">Select currency...</option>
+                </select>
               </div>
               <div>
                 <label for="supplierCompanyWebsite">Website</label>
@@ -3686,6 +3698,12 @@
               </div>
             </div>
             <div style="margin-bottom:10px;">
+              <label style="display:block; font-weight:600; margin-bottom:6px;">Currency <span style="font-weight:400; color:#999; font-size:11px;">(synced with Currency Master)</span></label>
+              <select id="tierCurrencySelect" data-currency-select style="width:100%; padding:6px; border:1px solid #ccc;">
+                <option value="">Select currency...</option>
+              </select>
+            </div>
+            <div style="margin-bottom:10px;">
               <label style="display:block; font-weight:600; margin-bottom:6px;">Table Name</label>
               <input id="tierTableName" type="text" style="width:100%; padding:6px; border:1px solid #ccc;" placeholder="e.g., PU Patch Standard Tiers">
             </div>
@@ -3721,6 +3739,56 @@
               <div id="tierTablesList" style="border:1px solid #ddd; max-height:260px; overflow:auto;">
                 <div style="padding:10px; color:#999; font-style:italic;">No tier tables loaded</div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Currency Master Panel -->
+      <div id="currencyPanel" style="border:0; padding:0; margin-bottom:20px; display:none;">
+        <div class="settings-section" id="sectionCurrencies">
+          <div class="settings-section-header" onclick="toggleSettingsSection('sectionCurrencies')">
+            <h3 class="settings-section-title">
+              <span class="settings-section-arrow">▼</span>
+              Currency Master
+            </h3>
+            <span style="font-size:11px; opacity:0.6; letter-spacing:0.08em;">CLICK TO TOGGLE</span>
+          </div>
+          <div class="settings-section-body">
+            <p style="font-size:12px; color:#666; margin:0 0 15px 0;">Manage the currencies used across quotations, emails, and PDFs. The base currency is the fallback when a quotation has no currency set.</p>
+
+            <!-- Add/Edit currency form -->
+            <div style="border:1px solid #ccc; padding:12px; background:#fafafa; margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <div style="font-weight:600;" id="currencyFormTitle">Add Currency</div>
+              </div>
+              <input type="hidden" id="currencyEditId" value="">
+              <div style="display:grid; grid-template-columns:100px 1fr 100px; gap:8px; margin-bottom:8px;">
+                <div>
+                  <label style="display:block; font-weight:600; margin-bottom:4px; font-size:12px;">Code</label>
+                  <input id="currencyCode" type="text" maxlength="6" style="width:100%; padding:6px; border:1px solid #ccc; text-transform:uppercase;" placeholder="USD">
+                </div>
+                <div>
+                  <label style="display:block; font-weight:600; margin-bottom:4px; font-size:12px;">Name</label>
+                  <input id="currencyName" type="text" style="width:100%; padding:6px; border:1px solid #ccc;" placeholder="US Dollar">
+                </div>
+                <div>
+                  <label style="display:block; font-weight:600; margin-bottom:4px; font-size:12px;">Symbol</label>
+                  <input id="currencySymbol" type="text" maxlength="6" style="width:100%; padding:6px; border:1px solid #ccc;" placeholder="$">
+                </div>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <label style="display:flex; align-items:center; gap:6px; font-size:12px;">
+                  <input type="checkbox" id="currencyIsBase"> Set as base currency
+                </label>
+                <button type="button" id="saveCurrencyBtn" class="page-btn">Save</button>
+                <button type="button" id="resetCurrencyBtn" class="page-btn">Reset</button>
+              </div>
+            </div>
+
+            <!-- Currency list -->
+            <div id="currenciesList" style="border:1px solid #ddd; max-height:320px; overflow:auto;">
+              <div style="padding:10px; color:#999; font-style:italic;">No currencies loaded</div>
             </div>
           </div>
         </div>
@@ -4814,6 +4882,7 @@
       document.getElementById('quotationDefaultsPanel').style.display = id === 'profiles' ? 'block' : 'none';
       document.getElementById('productProfilesPanel').style.display = id === 'profiles' ? 'block' : 'none';
       document.getElementById('quotationTierPanel').style.display = id === 'profiles' ? 'block' : 'none';
+      document.getElementById('currencyPanel').style.display = id === 'profiles' ? 'block' : 'none';
       document.getElementById('emails').style.display = id === 'emails' ? 'block' : 'none';
       document.getElementById('email-send').style.display = id === 'email-send' ? 'block' : 'none';
       document.getElementById('customerPanel').style.display = id === 'customer' ? 'block' : 'none';
@@ -4852,7 +4921,7 @@
         loadProfilesList().catch(() => {});
         loadProductProfilesList();
         // Collapse all settings sections by default
-        ['sectionEmailProfiles', 'sectionQuotationDefaults', 'sectionProductProfiles', 'sectionQuotationTiers'].forEach(sectionId => {
+        ['sectionEmailProfiles', 'sectionQuotationDefaults', 'sectionProductProfiles', 'sectionQuotationTiers', 'sectionCurrencies'].forEach(sectionId => {
           const section = document.getElementById(sectionId);
           if (section) section.classList.add('collapsed');
         });
@@ -4863,6 +4932,10 @@
           if (typeof loadBrandsCache === 'function') {
             try { await loadBrandsCache(); } catch (e) { /* ignore */ }
           }
+          if (typeof loadCurrenciesCache === 'function') {
+            try { await loadCurrenciesCache(); } catch (e) { /* ignore */ }
+          }
+          loadCurrencies();
           if (typeof initQuotationTierPanel === 'function') initQuotationTierPanel();
           if (typeof window.refreshTierPanelDropdowns === 'function') window.refreshTierPanelDropdowns();
         })();
@@ -11377,6 +11450,7 @@
         companyTel,
         companyType,
         companyWebsite,
+        defaultCurrency: document.getElementById('customerCurrency').value || null,
         members: [] // Will be populated when members are saved
       };
 
@@ -12970,6 +13044,7 @@
         companyTel,
         companyType,
         companyWebsite,
+        defaultCurrency: document.getElementById('supplierCurrency').value || null,
         members: [] // Will be populated when members are saved
       };
 
@@ -14619,7 +14694,7 @@
             });
             doc.autoTable({
               startY: y, theme: 'grid',
-              head: [['Supplier', 'Unit Price (HKD)', 'Delivery', 'Notes']],
+              head: [['Supplier', 'Unit Price (' + resolveCurrencyCode(quotation.currency) + ')', 'Delivery', 'Notes']],
               body,
               styles: { fontSize: 7.5, cellPadding: 1.3, textColor: [51, 51, 51], overflow: 'linebreak' },
               headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255], fontSize: 7.5 },
@@ -14650,7 +14725,7 @@
                 });
                 mBody.push(row);
               }
-              drawHeading('Per-tier Pricing (HKD)');
+              drawHeading('Per-tier Pricing (' + resolveCurrencyCode(quotation.currency) + ')');
               doc.autoTable({
                 startY: y, theme: 'grid', head: mHead, body: mBody,
                 styles: { fontSize: 7.5, cellPadding: 1.3, textColor: [51, 51, 51] },
@@ -15255,7 +15330,7 @@
                 responseTiersHtml = `
                   <h3 style="margin-top:20px;">Your Quoted Pricing</h3>
                   <table style="width:100%; border-collapse:collapse; margin:20px 0;">
-                    <thead><tr><th style="padding:8px; border:1px solid #ccc; text-align:left;">Quantity</th><th style="padding:8px; border:1px solid #ccc; text-align:left;">Unit Price (HKD)</th></tr></thead>
+                    <thead><tr><th style="padding:8px; border:1px solid #ccc; text-align:left;">Quantity</th><th style="padding:8px; border:1px solid #ccc; text-align:left;">Unit Price (${resolveCurrencyCode(quotation.currency)})</th></tr></thead>
                     <tbody>${rows}</tbody>
                   </table>`;
               }
@@ -15535,6 +15610,7 @@
 
     function generateOutsourcingSupplierEmailHtml(quotation, suppliers) {
       const productDetails = quotation.productDetails || {};
+      const ccy = resolveCurrencyCode(quotation.currency);
       return `
         <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto;">
           <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Quotation Request</h2>
@@ -15545,8 +15621,8 @@
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Description</td><td style="padding:8px; border:1px solid #ccc;">${productDetails.description || 'N/A'}</td></tr>
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Category</td><td style="padding:8px; border:1px solid #ccc;">${productDetails.category || 'N/A'}</td></tr>
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity ? quotation.quantity.toLocaleString() : 'N/A'}</td></tr>
-            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Unit Price (HKD)</td><td style="padding:8px; border:1px solid #ccc;">${quotation.unitPrice ? quotation.unitPrice.toFixed(2) : 'N/A'}</td></tr>
-            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Total (HKD)</td><td style="padding:8px; border:1px solid #ccc;">${quotation.total ? quotation.total.toFixed(2) : 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Unit Price (${ccy})</td><td style="padding:8px; border:1px solid #ccc;">${quotation.unitPrice ? quotation.unitPrice.toFixed(2) : 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Total (${ccy})</td><td style="padding:8px; border:1px solid #ccc;">${quotation.total ? quotation.total.toFixed(2) : 'N/A'}</td></tr>
           </table>
           ${quotation.notes ? '<p><strong>Notes:</strong> ' + quotation.notes + '</p>' : ''}
           <p style="margin-top:20px; font-size:12px; color:#666;">This is an automated quotation request. Please reply with your best offer.</p>
@@ -15587,6 +15663,7 @@
 
     function generateSupplierPortalEmailHtml(quotation, supplierToken, portalLink, profileImageBase64) {
       const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
+      const ccy = resolveCurrencyCode(quotation.currency);
       const imageHtml = profileImageBase64 ? `<div style="text-align:center; margin:15px 0;"><img src="${profileImageBase64}" style="max-width:150px; max-height:150px; object-fit:contain; border:1px solid #ddd; padding:3px;" alt="Product Image"></div>` : '';
       const itemRow = quotation.customerItemName ? `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer Item</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerItemName}</td></tr>` : '';
       const detailRows = emailProductDetailsRows(productDetails);
@@ -15600,7 +15677,7 @@
         tiersHtml = `
           <h3 style="margin:20px 0 8px 0;">Requested Pricing Tiers</h3>
           <table style="width:100%; border-collapse:collapse; margin:8px 0;">
-            <thead><tr><th style="padding:6px; border:1px solid #ccc; text-align:left;">Quantity</th><th style="padding:6px; border:1px solid #ccc; text-align:left;">Unit Price (HKD)</th></tr></thead>
+            <thead><tr><th style="padding:6px; border:1px solid #ccc; text-align:left;">Quantity</th><th style="padding:6px; border:1px solid #ccc; text-align:left;">Unit Price (${ccy})</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         `;
@@ -15630,6 +15707,7 @@
     // Generate reminder email HTML for suppliers
     function generateSupplierReminderEmailHtml(quotation, memberName, companyName, portalLink, resendCount, profileImageBase64) {
       const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
+      const ccy = resolveCurrencyCode(quotation.currency);
       const reminderLabel = `REMINDER #${resendCount}`;
       const imageHtml = profileImageBase64 ? `<div style="text-align:center; margin:15px 0;"><img src="${profileImageBase64}" style="max-width:150px; max-height:150px; object-fit:contain; border:1px solid #ddd; padding:3px;" alt="Product Image"></div>` : '';
       const itemRow = quotation.customerItemName ? `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer Item</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerItemName}</td></tr>` : '';
@@ -15644,7 +15722,7 @@
         tiersHtml = `
           <h3 style="margin:20px 0 8px 0;">Requested Pricing Tiers</h3>
           <table style="width:100%; border-collapse:collapse; margin:8px 0;">
-            <thead><tr><th style="padding:6px; border:1px solid #ccc; text-align:left;">Quantity</th><th style="padding:6px; border:1px solid #ccc; text-align:left;">Unit Price (HKD)</th></tr></thead>
+            <thead><tr><th style="padding:6px; border:1px solid #ccc; text-align:left;">Quantity</th><th style="padding:6px; border:1px solid #ccc; text-align:left;">Unit Price (${ccy})</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         `;
@@ -15973,7 +16051,7 @@
           const tierUnit = (r, i) => (r.tiers && r.tiers[i] && r.tiers[i].unitPrice != null) ? Number(r.tiers[i].unitPrice) : null;
 
           tableHtml += `
-            <h3 style="margin:20px 0 10px 0;">Per-tier Pricing Comparison (HKD)</h3>
+            <h3 style="margin:20px 0 10px 0;">Per-tier Pricing Comparison (${resolveCurrencyCode(quotation.currency)})</h3>
             <div style="max-height:320px; overflow:auto; margin-bottom:10px;">
               <table style="width:100%; border-collapse:collapse;">
                 <thead style="position:sticky; top:0; background:#f8f8f8;">
@@ -16117,6 +16195,7 @@
     // Generate customer email HTML for selected supplier quotation
     function generateCustomerComparisonEmailHtml(quotation, selectedResponse, profileImageBase64 = null, markupPercent = 0) {
       const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
+      const ccy = resolveCurrencyCode(quotation.currency);
       const r = selectedResponse;
       const markupMultiplier = 1 + (markupPercent / 100);
       const hasTiers = Array.isArray(r.tiers) && r.tiers.length > 0;
@@ -16130,7 +16209,7 @@
       const tierTableHtml = hasTiers ? `
           <h3 style="margin-top:30px;">Pricing Tiers</h3>
           <table style="width:100%; border-collapse:collapse; margin:20px 0;">
-            <thead><tr><th style="padding:8px; border:1px solid #ccc; text-align:left;">Quantity</th><th style="padding:8px; border:1px solid #ccc; text-align:left;">Unit Price (HKD)</th></tr></thead>
+            <thead><tr><th style="padding:8px; border:1px solid #ccc; text-align:left;">Quantity</th><th style="padding:8px; border:1px solid #ccc; text-align:left;">Unit Price (${ccy})</th></tr></thead>
             <tbody>${tierRowsHtml}</tbody>
           </table>` : '';
 
@@ -18949,6 +19028,59 @@
         '</div>';
     }
 
+    // ========== CURRENCY CACHE & HELPERS ==========
+    let cachedCurrencies = [];
+    let cachedBaseCurrency = null;
+
+    async function loadCurrenciesCache() {
+      try {
+        const r = await fetch('/api/currencies');
+        const data = await r.json();
+        if (data.success) {
+          cachedCurrencies = data.currencies || [];
+          window.cachedCurrencies = cachedCurrencies;
+          cachedBaseCurrency = cachedCurrencies.find(c => c.isBase) || cachedCurrencies.find(c => c.code === 'HKD') || (cachedCurrencies[0] || null);
+          window.cachedBaseCurrency = cachedBaseCurrency;
+          populateCurrencyDropdowns();
+        }
+      } catch (e) { console.error('Error loading currencies cache:', e); }
+    }
+
+    // Re-fill every currency <select> on the page from the cache, preserving the
+    // currently selected value where possible.
+    function populateCurrencyDropdowns() {
+      const selects = document.querySelectorAll('select[data-currency-select]');
+      selects.forEach(sel => {
+        const currentVal = sel.value;
+        sel.innerHTML = '<option value="">Select currency...</option>' +
+          cachedCurrencies.map(c => '<option value="' + escapeHtml(c.code) + '"' +
+            (c.code === currentVal ? ' selected' : '') + '>' + escapeHtml(c.code) +
+            (c.symbol ? ' (' + escapeHtml(c.symbol) + ')' : '') + (c.isBase ? ' — Base' : '') +
+            '</option>').join('');
+      });
+    }
+
+    // Resolve a currency CODE (string) for display. Falls back to the base
+    // currency code, then 'HKD'. Used everywhere prices are labeled.
+    function resolveCurrencyCode(currency) {
+      if (currency && typeof currency === 'string') return currency;
+      if (cachedBaseCurrency && cachedBaseCurrency.code) return cachedBaseCurrency.code;
+      return 'HKD';
+    }
+
+    // Build a currency <select> dropdown. selectedValue is a currency code.
+    function getCurrencySelectHtml(selectedValue = '', elementId = 'quotationCurrency', extraStyle = '') {
+      const sel = resolveCurrencyCode(selectedValue);
+      const options = cachedCurrencies.map(c =>
+        '<option value="' + escapeHtml(c.code) + '"' + (c.code === sel ? ' selected' : '') + '>' +
+        escapeHtml(c.code) + (c.symbol ? ' (' + escapeHtml(c.symbol) + ')' : '') +
+        (c.isBase ? ' — Base' : '') + '</option>'
+      ).join('');
+      return '<select id="' + elementId + '" style="padding:4px; font-size:12px; border:1px solid #ccc; background:#fff;' + extraStyle + '">' +
+        (cachedCurrencies.length === 0 ? '<option value="HKD">HKD</option>' : options) +
+        '</select>';
+    }
+
     // Helper to generate Product Type dropdown from saved defaults
     function getProductTypeSelectHtml(tagType) {
       const types = getAllProductTypes();
@@ -19257,13 +19389,18 @@
                   '<select id="customerTierTableSelect" style="width:100%; padding:4px; border:1px solid #ccc;"><option value="">Select…</option></select>' +
                 '</div>' +
               '</div>' +
+              '<div style="margin-bottom:16px; max-width:360px;">' +
+                '<label style="display:block; margin-bottom:5px; font-weight:600;">Currency</label>' +
+                getCurrencySelectHtml(quotation.currency || '', 'quotationCurrency', 'width:100%; padding:4px; font-size:12px; border:1px solid #ccc;') +
+                '<div style="font-size:11px; color:#666; margin-top:4px;">Fetched together with the selected tier table; also inherited from the customer.</div>' +
+              '</div>' +
               '<div id="flatPricingSection" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px;">' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Quantity *</label>' +
                   '<input type="number" id="quotationQuantity" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="1000" min="1" value="' + (quotation.quantity || '') + '">' +
                 '</div>' +
                 '<div>' +
-                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Unit Price (HKD)</label>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Unit Price (' + resolveCurrencyCode(quotation.currency) + ')</label>' +
                   '<input type="number" id="quotationUnitPrice" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="0.50" step="0.01" min="0" value="' + (quotation.unitPrice ? quotation.unitPrice.toFixed(2) : '') + '">' +
                 '</div>' +
                 '<div>' +
@@ -19474,6 +19611,15 @@
             '</div>' +
 
             '<div style="margin-bottom:20px;">' +
+              '<h4>Currency</h4>' +
+              '<div style="display:flex; gap:6px; align-items:center; max-width:360px;">' +
+                getCurrencySelectHtml('', 'quotationCurrency', 'flex:1;') +
+                '<button type="button" id="quotationCurrencyInfo" title="Fetched together with the tier table; also inherited from customer. Editable." style="padding:4px 8px; font-size:11px; border:1px solid #ccc; background:#f5f5f5; cursor:help;">ⓘ</button>' +
+              '</div>' +
+              '<div style="font-size:11px; color:#666; margin-top:4px;">Fetched together with the selected tier table; also inherited from the customer.</div>' +
+            '</div>' +
+
+            '<div style="margin-bottom:20px;">' +
               '<h4>Quantity & Pricing</h4>' +
               '<div id="flatPricingSection" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px;">' +
                 '<div>' +
@@ -19481,7 +19627,7 @@
                   '<input type="number" id="quotationQuantity" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="1000" min="1">' +
                 '</div>' +
                 '<div>' +
-                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Unit Price (HKD)</label>' +
+                  '<label id="quotationUnitPriceLabel" style="display:block; margin-bottom:5px; font-weight:600;">Unit Price (' + resolveCurrencyCode() + ')</label>' +
                   '<input type="number" id="quotationUnitPrice" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="0.50" step="0.01" min="0">' +
                 '</div>' +
                 '<div>' +
@@ -19927,8 +20073,16 @@
         try {
           const res = await fetch('/api/pricing-tier-tables/' + encodeURIComponent(tableId));
           const data = await res.json();
-          const tiers = data && data.success && data.table ? (data.table.tiers || []) : [];
+          const table = data && data.success && data.table ? data.table : null;
+          const tiers = table ? (table.tiers || []) : [];
           tiers.forEach((t) => addTierRow(t.quantity || 0, t.unitPrice || 0));
+          // Sync the quotation's currency with the tier table's currency (from Currency Master)
+          if (table && table.currency) {
+            const ccyEl = s.querySelector('#quotationCurrency') || document.getElementById('quotationCurrency');
+            if (ccyEl) ccyEl.value = table.currency;
+            const labelEl = document.getElementById('quotationUnitPriceLabel');
+            if (labelEl) labelEl.textContent = 'Unit Price (' + table.currency + ')';
+          }
         } catch (e) {
           console.error('Failed to load tier table', e);
         }
@@ -20071,6 +20225,7 @@
       const brandSel = panel.querySelector('#tierBrandSelect');
       const custSel = panel.querySelector('#tierCustomerSelect');
       const nameInput = panel.querySelector('#tierTableName');
+      const currencySel = panel.querySelector('#tierCurrencySelect');
       const rowsWrap = panel.querySelector('#tierEditorRows');
       const addBtn = panel.querySelector('#tierAddRowBtn');
       const saveBtn = panel.querySelector('#saveTierTableBtn');
@@ -20181,15 +20336,16 @@
       window.refreshTierPanelDropdowns = refreshTierPanelDropdowns;
 
       addBtn.onclick = () => addRow();
-      resetBtn.onclick = () => { 
-        window._tierEditingId = null; 
-        scopeSel.value = 'brand'; 
-        onScopeChange(); 
-        brandSel.value = ''; 
-        custSel.value = ''; 
-        nameInput.value = ''; 
-        rowsWrap.innerHTML = ''; 
-        disabledCb.checked = false; 
+      resetBtn.onclick = () => {
+        window._tierEditingId = null;
+        scopeSel.value = 'brand';
+        onScopeChange();
+        brandSel.value = '';
+        custSel.value = '';
+        if (currencySel) currencySel.value = '';
+        nameInput.value = '';
+        rowsWrap.innerHTML = '';
+        disabledCb.checked = false;
       };
 
       const dummyFillBtn = panel.querySelector('#dummyFillTierBtn');
@@ -20284,6 +20440,12 @@
                 <label style="display:block; font-weight:600; margin-bottom:6px;">Table Name</label>
                 <input type="text" class="tier-modal-name" value="${escapeHtml(p.name || '')}" style="width:100%; padding:6px; border:1px solid #ccc;">
               </div>
+              <div style="margin-bottom:12px;">
+                <label style="display:block; font-weight:600; margin-bottom:6px;">Currency <span style="font-weight:400; color:#999; font-size:11px;">(synced with Currency Master)</span></label>
+                <select class="tier-modal-currency" style="width:100%; padding:6px; border:1px solid #ccc;">
+                  <option value="">Select currency...</option>
+                </select>
+              </div>
               <div style="border:1px solid #ccc; padding:10px; background:#fafafa; margin-bottom:12px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                   <div style="font-weight:600;">Tiers</div>
@@ -20318,6 +20480,28 @@
         (p.tiers || []).forEach(t => addModalRow(t.quantity || 0, t.unitPrice || 0));
         if ((p.tiers || []).length === 0) addModalRow();
 
+        // Populate the currency dropdown from the cache and pre-select the tier table's currency
+        const modalCcySel = overlay.querySelector('.tier-modal-currency');
+        if (modalCcySel) {
+          // Ensure the cache is fresh before building options
+          try {
+            if (typeof loadCurrenciesCache === 'function') await loadCurrenciesCache();
+          } catch (e) { /* ignore */ }
+
+          const selCcy = p.currency || '';
+          let optsHtml = '<option value="">Select currency...</option>' +
+            (cachedCurrencies || []).map(c => '<option value="' + escapeHtml(c.code) + '">' +
+              escapeHtml(c.code) + (c.symbol ? ' (' + escapeHtml(c.symbol) + ')' : '') +
+              (c.isBase ? ' — Base' : '') + '</option>').join('');
+          // If the saved currency isn't in the master anymore, still show it as an option
+          if (selCcy && !(cachedCurrencies || []).some(c => c.code === selCcy)) {
+            optsHtml += '<option value="' + escapeHtml(selCcy) + '">' + escapeHtml(selCcy) + ' (missing)</option>';
+          }
+          modalCcySel.innerHTML = optsHtml;
+          // Explicit value assignment is more reliable than the `selected` attribute
+          modalCcySel.value = selCcy;
+        }
+
         overlay.querySelector('.tier-modal-add').onclick = () => addModalRow();
         overlay.querySelector('.tier-modal-close').onclick = closeModal;
         overlay.querySelector('.tier-modal-cancel').onclick = closeModal;
@@ -20347,6 +20531,7 @@
                 customerId: p.customerId,
                 customerName: p.customerName,
                 disabled: !!overlay.querySelector('.tier-modal-disabled')?.checked,
+                currency: modalCcySel ? modalCcySel.value : (p.currency || null),
                 tiers: nextTiers
               })
             });
@@ -20375,11 +20560,13 @@
             const scope = p.scope || '-';
             const who = scope === 'customer' ? (p.customerName || '-') : (p.brandName || '-');
             const status = p.disabled ? 'Disabled' : 'Active';
+            const ccy = p.currency || '-';
             return `
-              <div data-id="${p.id}" style="display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:8px; padding:8px; border-bottom:1px solid #eee; align-items:center;">
+              <div data-id="${p.id}" style="display:grid; grid-template-columns:1.4fr 1fr 1fr 70px auto; gap:8px; padding:8px; border-bottom:1px solid #eee; align-items:center;">
                 <button type="button" class="tier-name-click" data-id="${p.id}" style="background:none; border:none; padding:0; text-align:left; font-size:14px; font-weight:600; cursor:pointer; color:#000;">${escapeHtml(p.name || 'Untitled')}</button>
                 <div>${escapeHtml(scope === 'customer' ? 'Garment Factory' : 'Brand')}</div>
                 <div>${escapeHtml(who)}</div>
+                <div style="font-weight:600;">${escapeHtml(ccy)}</div>
                 <div style="display:flex; gap:6px; justify-content:flex-end;">
                   <span style="font-size:11px; color:${p.disabled ? '#b91c1c' : '#065f46'}; align-self:center;">${status}</span>
                   <button type="button" class="btn tier-edit" style="padding:4px 8px; font-size:12px;">Edit</button>
@@ -20431,6 +20618,7 @@
                   customerId: p.customerId,
                   customerName: p.customerName,
                   disabled: !p.disabled,
+                  currency: p.currency || null,
                   tiers: p.tiers || []
                 })
               });
@@ -20491,6 +20679,7 @@
           customerId: specs.customerId,
           customerName: specs.customerName,
           disabled: specs.disabled,
+          currency: currencySel ? currencySel.value : null,
           tiers
         };
         try {
@@ -21882,6 +22071,7 @@
           height_mm: heightMm ? parseFloat(heightMm) : null,
           width_mm: widthMm ? parseFloat(widthMm) : null,
           variable,
+          currency: getField('quotationCurrency')?.value || null,
           type: source,
           sourceEmailUid: (source === 'email' && window.currentQuotationEmailMeta) ? window.currentQuotationEmailMeta.uid : null,
           sourceEmailSubject: (source === 'email' && window.currentQuotationEmailMeta) ? window.currentQuotationEmailMeta.subject : null,
@@ -22649,6 +22839,13 @@
           contactField.style.backgroundColor = '#fff';
           contactField.style.color = '#000';
           contactField.style.cursor = 'default';
+        }
+
+        // Auto-fill currency from customer's defaultCurrency
+        const currencyField = this.getField('quotationCurrency');
+        if (currencyField && customer.defaultCurrency) {
+          // Set the value directly (options should already exist from populateCurrencyDropdowns)
+          currencyField.value = customer.defaultCurrency;
         }
       }
 
@@ -23563,7 +23760,131 @@
       window._clearBrandLogoFile = () => { droppedFile = null; };
     })();
 
+    // ========== CURRENCY FUNCTIONS ==========
+
+    function loadCurrencies() {
+      fetch('/api/currencies')
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            cachedCurrencies = data.currencies || [];
+            window.cachedCurrencies = cachedCurrencies;
+            cachedBaseCurrency = cachedCurrencies.find(c => c.isBase) || cachedCurrencies.find(c => c.code === 'HKD') || (cachedCurrencies[0] || null);
+            window.cachedBaseCurrency = cachedBaseCurrency;
+            renderCurrencyList(cachedCurrencies);
+          }
+        })
+        .catch(err => console.error('Error loading currencies:', err));
+    }
+
+    function renderCurrencyList(currencies) {
+      const container = document.getElementById('currenciesList');
+      if (!currencies || currencies.length === 0) {
+        container.innerHTML = '<p style="padding:10px; color:#999; font-style:italic;">No currencies configured.</p>';
+        return;
+      }
+      let html = '<table style="width:100%; border-collapse:collapse;">';
+      html += '<thead><tr style="background:#f0f0f0;"><th style="border:1px solid #000; padding:8px; text-align:left;">Code</th><th style="border:1px solid #000; padding:8px; text-align:left;">Name</th><th style="border:1px solid #000; padding:8px; text-align:left;">Symbol</th><th style="border:1px solid #000; padding:8px; text-align:left;">Base</th><th style="border:1px solid #000; padding:8px;">Actions</th></tr></thead><tbody>';
+      currencies.forEach(c => {
+        const baseBadge = c.isBase ? '<span style="background:#28a745; color:#fff; padding:2px 6px; border-radius:3px; font-size:10px;">BASE</span>' : '-';
+        html += '<tr>';
+        html += '<td style="border:1px solid #000; padding:8px; font-weight:600;">' + escapeHtml(c.code) + '</td>';
+        html += '<td style="border:1px solid #000; padding:8px;">' + escapeHtml(c.name) + '</td>';
+        html += '<td style="border:1px solid #000; padding:8px;">' + escapeHtml(c.symbol || '-') + '</td>';
+        html += '<td style="border:1px solid #000; padding:8px; text-align:center;">' + baseBadge + '</td>';
+        html += '<td style="border:1px solid #000; padding:8px; text-align:center;">';
+        html += '<button class="page-btn" onclick="editCurrency(' + c.id + ')" style="margin-right:5px;">Edit</button>';
+        html += '<button class="page-btn" onclick="deleteCurrency(' + c.id + ')"' + (c.isBase ? ' disabled style="opacity:0.5; cursor:not-allowed;" title="Cannot delete base currency"' : '') + '>Delete</button>';
+        html += '</td></tr>';
+      });
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    window.editCurrency = function(id) {
+      fetch('/api/currencies/' + id)
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.currency) {
+            document.getElementById('currencyEditId').value = data.currency.id;
+            document.getElementById('currencyCode').value = data.currency.code;
+            document.getElementById('currencyName').value = data.currency.name;
+            document.getElementById('currencySymbol').value = data.currency.symbol || '';
+            document.getElementById('currencyIsBase').checked = data.currency.isBase ? true : false;
+            document.getElementById('currencyFormTitle').textContent = 'Edit Currency';
+            document.getElementById('saveCurrencyBtn').textContent = 'Update';
+          }
+        })
+        .catch(err => console.error('Error loading currency:', err));
+    };
+
+    window.deleteCurrency = async function(id) {
+      if (!confirm('Delete this currency?')) return;
+      try {
+        const r = await fetch('/api/currencies/' + id, { method: 'DELETE' });
+        const data = await r.json();
+        if (data.success) {
+          await loadCurrenciesCache();
+          loadCurrencies();
+        } else {
+          alert(data.error || 'Failed to delete currency');
+        }
+      } catch (err) {
+        console.error('Error deleting currency:', err);
+        alert('Error deleting currency');
+      }
+    };
+
+    function clearCurrencyForm() {
+      document.getElementById('currencyEditId').value = '';
+      document.getElementById('currencyCode').value = '';
+      document.getElementById('currencyName').value = '';
+      document.getElementById('currencySymbol').value = '';
+      document.getElementById('currencyIsBase').checked = false;
+      document.getElementById('currencyFormTitle').textContent = 'Add Currency';
+      document.getElementById('saveCurrencyBtn').textContent = 'Save';
+    }
+
+    document.getElementById('saveCurrencyBtn').onclick = async () => {
+      const editId = document.getElementById('currencyEditId').value;
+      const code = document.getElementById('currencyCode').value.trim().toUpperCase();
+      const name = document.getElementById('currencyName').value.trim();
+      const symbol = document.getElementById('currencySymbol').value.trim();
+      const isBase = document.getElementById('currencyIsBase').checked;
+
+      if (!code || !name) {
+        alert('Currency code and name are required');
+        return;
+      }
+
+      const payload = { code, name, symbol, isBase };
+      const url = editId ? '/api/currencies/' + editId : '/api/currencies';
+      const method = editId ? 'PUT' : 'POST';
+
+      try {
+        const r = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await r.json();
+        if (data.success) {
+          clearCurrencyForm();
+          await loadCurrenciesCache();
+          loadCurrencies();
+        } else {
+          alert(data.error || 'Failed to save currency');
+        }
+      } catch (err) {
+        console.error('Error saving currency:', err);
+        alert('Error saving currency');
+      }
+    };
+
+    document.getElementById('resetCurrencyBtn').onclick = clearCurrencyForm;
+
     loadBrandsCache();
+    loadCurrenciesCache();
     load();
 
     // ========== STATUS HISTORY FUNCTIONS ==========
