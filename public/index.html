@@ -15314,6 +15314,7 @@
             // last-submitted tier pricing (for reference).
             let productDetailsRowsHtml = '';
             let responseTiersHtml = '';
+            let moqSurchargeHtml = '';
             try {
               const pd = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
               productDetailsRowsHtml = emailProductDetailsRows(pd);
@@ -15333,6 +15334,13 @@
                     <thead><tr><th style="padding:8px; border:1px solid #ccc; text-align:left;">Quantity</th><th style="padding:8px; border:1px solid #ccc; text-align:left;">Unit Price (${resolveCurrencyCode(quotation.currency)})</th></tr></thead>
                     <tbody>${rows}</tbody>
                   </table>`;
+              }
+              // MOQ + Surcharge (read-only reference, from the supplier's submitted response)
+              if (sel && ((sel.moq != null && sel.moq !== '') || (sel.surchargeBelowMoq != null && sel.surchargeBelowMoq !== ''))) {
+                const ccy = resolveCurrencyCode(quotation.currency);
+                const moqRow = (sel.moq != null && sel.moq !== '') ? `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">MOQ (pcs)</td><td style="padding:8px; border:1px solid #ccc;">${Number(sel.moq).toLocaleString()}</td></tr>` : '';
+                const surchargeRow = (sel.surchargeBelowMoq != null && sel.surchargeBelowMoq !== '') ? `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Surcharge below MOQ (${ccy})</td><td style="padding:8px; border:1px solid #ccc;">${Number(sel.surchargeBelowMoq).toFixed(2)}</td></tr>` : '';
+                moqSurchargeHtml = moqRow + surchargeRow;
               }
             } catch (e) { console.warn('Could not enrich sampling email:', e); }
 
@@ -15360,10 +15368,13 @@
                   <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerName || 'N/A'}</td></tr>
                   <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${emailProductTypeDisplay(quotation.productType, quotation.productDetails)}</td></tr>
                   ${productDetailsRowsHtml}
-                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity ? quotation.quantity.toLocaleString() : 'N/A'}</td></tr>
                   <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">OS Ref</td><td style="padding:8px; border:1px solid #ccc;">${quotation.outsourcingSeq || 'N/A'}</td></tr>
                 </table>
                 ${responseTiersHtml}
+                ${moqSurchargeHtml ? `
+                <table style="width:100%; border-collapse:collapse; margin:20px 0;">
+                  ${moqSurchargeHtml}
+                </table>` : ''}
                 <p>Please click the link below to confirm and provide the expected sample ready date:</p>
                 <table cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;"><tr><td align="center" bgcolor="#000000" style="padding:12px 24px; border-radius:4px;"><a href="${samplingLink}" style="color:#ffffff; text-decoration:none; font-weight:500; font-size:14px;" target="_blank">Submit Sample Ready Date</a></td></tr></table>
                 <p style="font-size:13px; color:#333; margin-bottom:4px; font-weight:600;">📋 Copy this link to open in your browser:</p>
@@ -16006,6 +16017,8 @@
                   <th style="border:1px solid #000; padding:8px; text-align:left;">Contact</th>
                   <th style="border:1px solid #000; padding:8px; text-align:left;">Email</th>
                   <th style="border:1px solid #000; padding:8px; text-align:center;">Delivery Days</th>
+                  <th style="border:1px solid #000; padding:8px; text-align:center;">MOQ (pcs)</th>
+                  <th style="border:1px solid #000; padding:8px; text-align:right;">Surcharge below MOQ (${resolveCurrencyCode(quotation.currency)})</th>
                   <th style="border:1px solid #000; padding:8px; text-align:left;">Notes</th>
                 </tr>
               </thead>
@@ -16025,6 +16038,8 @@
               <td style="border:1px solid #ccc; padding:8px;">${r.memberName}</td>
               <td style="border:1px solid #ccc; padding:8px;">${supplierEmail}</td>
               <td style="border:1px solid #ccc; padding:8px; text-align:center;">${r.deliveryDays || 'N/A'}</td>
+              <td style="border:1px solid #ccc; padding:8px; text-align:center;">${(r.moq != null && r.moq !== '') ? Number(r.moq).toLocaleString() : '-'}</td>
+              <td style="border:1px solid #ccc; padding:8px; text-align:right;">${(r.surchargeBelowMoq != null && r.surchargeBelowMoq !== '') ? Number(r.surchargeBelowMoq).toFixed(2) : '-'}</td>
               <td style="border:1px solid #ccc; padding:8px;">${r.notes || '-'}</td>
             </tr>
           `;
@@ -16236,6 +16251,8 @@
           <table style="width:100%; border-collapse:collapse; margin:20px 0;">
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold; width:200px;">Supplier</td><td style="padding:8px; border:1px solid #ccc;">${r.companyName}</td></tr>
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Delivery Days</td><td style="padding:8px; border:1px solid #ccc;">${r.deliveryDays || 'N/A'}</td></tr>
+            ${(r.moq != null && r.moq !== '') ? `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">MOQ (pcs)</td><td style="padding:8px; border:1px solid #ccc;">${Number(r.moq).toLocaleString()}</td></tr>` : ''}
+            ${(r.surchargeBelowMoq != null && r.surchargeBelowMoq !== '') ? `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Surcharge below MOQ (${ccy})</td><td style="padding:8px; border:1px solid #ccc;">${Number(r.surchargeBelowMoq).toFixed(2)}</td></tr>` : ''}
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Notes</td><td style="padding:8px; border:1px solid #ccc;">${r.notes || '-'}</td></tr>
           </table>
           ${tierTableHtml}
@@ -20005,6 +20022,19 @@
         addRowBtn.onclick = () => addTierRow();
       }
 
+      // Lock/unlock the currency + tier rows when a preset tier table is applied.
+      // Presets are fixed standards → read-only; Free mode stays editable.
+      function setTierGridReadOnly(locked) {
+        const ccyEl = s.querySelector('#quotationCurrency') || document.getElementById('quotationCurrency');
+        if (ccyEl) ccyEl.disabled = locked;
+        rowsWrap.querySelectorAll('.tier-qty, .tier-unit').forEach(el => {
+          el.disabled = locked;
+          el.style.backgroundColor = locked ? '#f5f5f5' : '#fff';
+        });
+        if (addRowBtn) addRowBtn.style.display = locked ? 'none' : '';
+        rowsWrap.querySelectorAll('.remove-tier').forEach(b => b.style.display = locked ? 'none' : '');
+      }
+
       // ---- field readers (container-scoped) ----
       function brandIdEl() { return s.querySelector('#quotationBrandId') || document.getElementById('quotationBrandId'); }
       function custNameEl() { return s.querySelector('#quotationCustomerName') || document.getElementById('quotationCustomerName'); }
@@ -20133,6 +20163,7 @@
         rowsWrap.innerHTML = '';
 
         if (v === 'free') {
+          setTierGridReadOnly(false);
           addTierRow();                 // one empty row — a flat price is just free mode with one row
           syncBaseFromTiers();
           return;
@@ -20142,6 +20173,7 @@
           const tableId = Number(v.slice(colon + 1));
           if (tableId > 0) {
             await loadTierTableIntoGrid(tableId);
+            setTierGridReadOnly(true);  // preset is a fixed standard — lock currency + tier rows
           }
         }
         if (!rowsWrap.querySelector('.tier-row')) addTierRow();
@@ -20184,6 +20216,10 @@
           addTierRow();
         }
         syncBaseFromTiers();
+        // Mirror the create-form rule: a saved preset locks currency + tier rows;
+        // free mode (incl. the deleted-table fallback) stays editable.
+        const isPreset = optValue.startsWith('brand:') || optValue.startsWith('customer:');
+        setTierGridReadOnly(isPreset);
       }
 
       // Initial population (after all functions defined)

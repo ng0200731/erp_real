@@ -114,7 +114,8 @@
         <div class="info-row"><span class="info-label">Customer</span><span class="info-value" id="customerName"></span></div>
         <div class="info-row"><span class="info-label">Product Type</span><span class="info-value" id="productType"></span></div>
         <div id="productDetailsHtml"></div>
-        <div class="info-row"><span class="info-label">Quantity</span><span class="info-value" id="quantity"></span></div>
+        <div class="info-row" id="moqRow" style="display:none;"><span class="info-label">MOQ (pcs)</span><span class="info-value" id="moq"></span></div>
+        <div class="info-row" id="surchargeRow" style="display:none;"><span class="info-label" id="surchargeLabel">Surcharge below MOQ</span><span class="info-value" id="surchargeBelowMoq"></span></div>
         <div class="info-row"><span class="info-label">OS Ref</span><span class="info-value" id="osRef"></span></div>
       </div>
       <div class="info-section" id="responseTiersSection" style="display:none;">
@@ -216,7 +217,6 @@
         document.getElementById('companyName').textContent = data.supplier.companyName;
         document.getElementById('customerName').textContent = data.quotation.customerName || '-';
         document.getElementById('productType').textContent = formatProductType(data.quotation.productType) || '-';
-        document.getElementById('quantity').textContent = data.quotation.quantity || '-';
         document.getElementById('osRef').textContent = data.quotation.outsourcingSeq || '-';
 
         // Update the price header with the quotation's currency
@@ -233,6 +233,20 @@
 
         // Render product details as HTML
         renderProductDetails(data.quotation.productDetails, data.quotation.productType);
+
+        // MOQ + Surcharge below MOQ (read-only reference from the supplier's submitted response)
+        const ccy = data.quotation.currency || 'HKD';
+        const moqVal = data.response ? data.response.moq : null;
+        const surchargeVal = data.response ? data.response.surchargeBelowMoq : null;
+        if (moqVal != null && moqVal !== '') {
+          document.getElementById('moqRow').style.display = 'flex';
+          document.getElementById('moq').textContent = Number(moqVal).toLocaleString();
+        }
+        if (surchargeVal != null && surchargeVal !== '') {
+          document.getElementById('surchargeRow').style.display = 'flex';
+          document.getElementById('surchargeLabel').textContent = 'Surcharge below MOQ (' + ccy + ')';
+          document.getElementById('surchargeBelowMoq').textContent = Number(surchargeVal).toFixed(2);
+        }
 
         // Render the supplier's previously-submitted pricing tiers (last submitted price)
         if (data.response && Array.isArray(data.response.tiers) && data.response.tiers.length > 0) {

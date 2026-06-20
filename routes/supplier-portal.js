@@ -317,6 +317,8 @@ router.get('/sampling/:token', async (req, res) => {
           totalPrice: response.totalPrice,
           deliveryDays: response.deliveryDays,
           notes: response.notes,
+          moq: response.moq,
+          surchargeBelowMoq: response.surchargeBelowMoq,
           tiers: tierRows.map((t) => ({ quantity: t.quantity, unitPrice: t.unitPrice, total: t.total }))
         };
       }
@@ -328,7 +330,8 @@ router.get('/sampling/:token', async (req, res) => {
         id: quotation.id, customerName: quotation.customerName, customerItemName: quotation.customerItemName,
         productType: quotation.productType, productDetails: samplingProductDetails,
         hasProfileImage: quotation.hasProfileImage,
-        quantity: quotation.quantity, outsourcingSeq: quotation.outsourcingSeq, sampleReadyDate: quotation.sampleReadyDate
+        quantity: quotation.quantity, outsourcingSeq: quotation.outsourcingSeq, sampleReadyDate: quotation.sampleReadyDate,
+        currency: quotation.currency
       },
       supplier: { companyName: supplier.companyName, memberName: member.name },
       response: responseSummary,
