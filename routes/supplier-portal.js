@@ -579,7 +579,7 @@ router.get('/:token', async (req, res) => {
 router.post('/:token/submit', async (req, res) => {
   try {
     const { token } = req.params;
-    const { unitPrice, totalPrice, deliveryDays, notes, tierPrices } = req.body;
+    const { unitPrice, totalPrice, deliveryDays, notes, tierPrices, moq, surchargeBelowMoq } = req.body;
     const db = await getTasksDb();
 
     // Normalize submitted per-tier prices (supplier enters a unit price per requested
@@ -607,6 +607,13 @@ router.post('/:token/submit', async (req, res) => {
       }
     }
     const tierPricesJson = sanitizedTiers.length > 0 ? JSON.stringify(sanitizedTiers) : null;
+
+    // MOQ + below-MOQ surcharge are optional numeric fields. Coerce to a number or
+    // store NULL when blank/non-numeric so reports can distinguish "not provided".
+    const moqNum = Number(moq);
+    const finalMoq = Number.isFinite(moqNum) ? Math.trunc(moqNum) : null;
+    const surchargeNum = Number(surchargeBelowMoq);
+    const finalSurchargeBelowMoq = Number.isFinite(surchargeNum) ? Number(surchargeNum.toFixed(2)) : null;
 
     // Validate token
     const tokenData = await db.get(
@@ -637,8 +644,8 @@ router.post('/:token/submit', async (req, res) => {
     const submittedAt = new Date().toISOString();
     const result = await db.run(
       `INSERT INTO supplier_quotation_responses
-       (tokenId, quotationId, supplierId, supplierMemberId, unitPrice, totalPrice, deliveryDays, notes, tierPrices, submittedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (tokenId, quotationId, supplierId, supplierMemberId, unitPrice, totalPrice, deliveryDays, notes, tierPrices, moq, surchargeBelowMoq, submittedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         tokenData.id,
         tokenData.quotationId,
@@ -649,6 +656,8 @@ router.post('/:token/submit', async (req, res) => {
         deliveryDays,
         notes,
         tierPricesJson,
+        finalMoq,
+        finalSurchargeBelowMoq,
         submittedAt
       ]
     );

@@ -156,6 +156,14 @@
             <input type="number" id="deliveryDays" min="1" required placeholder="e.g. 14">
           </div>
           <div class="form-group">
+            <label for="moq">MOQ (pcs)</label>
+            <input type="number" id="moq" min="0" step="1" placeholder="e.g. 1000">
+          </div>
+          <div class="form-group">
+            <label for="surchargeBelowMoq">Surcharge below MOQ (HKD)</label>
+            <input type="number" id="surchargeBelowMoq" min="0" step="0.01" placeholder="e.g. 150.00">
+          </div>
+          <div class="form-group">
             <label for="supplierNotes">Notes (optional)</label>
             <textarea id="supplierNotes" placeholder="Any additional information..."></textarea>
           </div>
@@ -221,6 +229,8 @@
         el.dispatchEvent(new Event('input'));
       });
       document.getElementById('deliveryDays').value = Math.floor(Math.random() * 24) + 7;
+      document.getElementById('moq').value = (Math.floor(Math.random() * 10) + 1) * 500;
+      document.getElementById('surchargeBelowMoq').value = (Math.random() * 400 + 50).toFixed(2);
       document.getElementById('supplierNotes').value = 'Dummy text ' + Math.floor(Math.random() * 10000);
     }
 
@@ -333,6 +343,8 @@
               <div style="border-top:1px solid #ccc; padding-top:10px;">
                 <div class="info-row"><span class="info-label">Unit Price</span><span class="info-value">${r.unitPrice != null ? Number(r.unitPrice).toFixed(2) : '-'}</span></div>
                 <div class="info-row"><span class="info-label">Delivery Days</span><span class="info-value">${r.deliveryDays || '-'}</span></div>
+                ${r.moq != null ? `<div class="info-row"><span class="info-label">MOQ (pcs)</span><span class="info-value">${Number(r.moq)}</span></div>` : ''}
+                ${r.surchargeBelowMoq != null ? `<div class="info-row"><span class="info-label">Surcharge below MOQ (HKD)</span><span class="info-value">${Number(r.surchargeBelowMoq).toFixed(2)}</span></div>` : ''}
                 <div class="info-row"><span class="info-label">Notes</span><span class="info-value">${r.notes || '-'}</span></div>
                 ${submittedTiersHtml}
               </div>
@@ -366,6 +378,8 @@
               unitPrice: firstUnit,
               totalPrice: Number(sumTotal.toFixed(2)),
               deliveryDays: parseInt(document.getElementById('deliveryDays').value),
+              moq: (function () { const v = document.getElementById('moq').value; const n = parseInt(v, 10); return (v === '' || isNaN(n)) ? null : n; })(),
+              surchargeBelowMoq: (function () { const v = document.getElementById('surchargeBelowMoq').value; const n = parseFloat(v); return (v === '' || isNaN(n)) ? null : Number(n.toFixed(2)); })(),
               notes: document.getElementById('supplierNotes').value
             };
           })())

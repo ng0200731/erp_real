@@ -549,6 +549,10 @@
     }
     .qv-modal[data-qv-mode="edit"] .modal-body{ pointer-events:auto; }
 
+    /* Supplier remove button: hidden in view mode, shown in edit mode */
+    .qv-modal[data-qv-mode="view"] .supplier-remove-btn { display: none; }
+    .qv-modal[data-qv-mode="edit"] .supplier-remove-btn { display: inline-block; }
+
     /* Email reader modal - Microsoft Outlook style */
     .email-modal-overlay{
       position:fixed; inset:0;
@@ -16861,11 +16865,12 @@
         const suppData = await suppRes.json();
         const suppliers = suppData.success ? suppData.suppliers : [];
         if (suppliers.length > 0) {
-          suppliersHtml = '<div style="margin-top:15px; padding:10px; border:1px solid #000; background:#f8f8f8;">' +
-            '<h4 style="margin:0 0 10px 0;">Linked Suppliers (' + suppliers.length + ')</h4>' +
+          suppliersHtml = '<div id="linkedSuppliersSection" style="margin-top:15px; padding:10px; border:1px solid #000; background:#f8f8f8;">' +
+            '<h4 style="margin:0 0 10px 0;">Linked Suppliers (<span id="linkedSuppliersCount">' + suppliers.length + '</span>)</h4>' +
             suppliers.map(s => {
               const members = (s.members || []).map(m => m.name).join(', ') || 'No members';
-              return '<div style="padding:8px; border:1px solid #ccc; margin-bottom:8px; background:#fff;">' +
+              return '<div class="supplier-view-card" data-supplier-id="' + s.id + '" style="padding:8px; border:1px solid #ccc; margin-bottom:8px; background:#fff; position:relative;">' +
+                '<button class="supplier-remove-btn" onclick="removeLinkedSupplierFromView(' + quotation.id + ', ' + s.id + ')" style="position:absolute; top:4px; right:4px; background:#dc3545; color:#fff; border:none; border-radius:4px; padding:2px 8px; font-size:13px; line-height:1; cursor:pointer;" title="Remove supplier">×</button>' +
                 '<strong>' + (s.companyName || 'Unknown') + '</strong>' +
                 ' <span style="color:#666; font-size:12px;">(' + (s.companyType || '') + ')</span><br>' +
                 '<span style="font-size:12px;">Email: ' + (s.emailDomain || 'N/A') + ' | Phone: ' + (s.companyTel || 'N/A') + '</span><br>' +
@@ -17277,6 +17282,36 @@
     window.cancelInlineEdit = async function(quotationId) {
       // Discard any edits and exit the view entirely (return to the list).
       closeQuotationViewModal();
+    };
+
+    // Remove a linked supplier from the quotation view modal (only visible in edit mode).
+    // Calls the unlink API and updates the DOM.
+    window.removeLinkedSupplierFromView = async function(quotationId, supplierId) {
+      if (!confirm('Remove this supplier from the quotation?')) return;
+      try {
+        const res = await fetch('/api/quotations/' + quotationId + '/suppliers/' + supplierId, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          // Remove the card from DOM
+          const card = document.querySelector('.supplier-view-card[data-supplier-id="' + supplierId + '"]');
+          if (card) card.remove();
+          // Update the count
+          const section = document.getElementById('linkedSuppliersSection');
+          if (section) {
+            const remaining = section.querySelectorAll('.supplier-view-card');
+            const countEl = document.getElementById('linkedSuppliersCount');
+            if (countEl) countEl.textContent = remaining.length;
+            // If no suppliers left, show empty message
+            if (remaining.length === 0) {
+              section.innerHTML = '<h4 style="margin:0 0 10px 0;">Linked Suppliers (0)</h4><div style="color:#999; font-size:14px;">No suppliers linked</div>';
+            }
+          }
+        } else {
+          alert('Failed to remove supplier: ' + (data.error || 'Unknown error'));
+        }
+      } catch (e) {
+        alert('Error removing supplier: ' + e.message);
+      }
     };
 
     window.saveInlineQuotationEdit = async function(quotationId) {
