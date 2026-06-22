@@ -6,6 +6,7 @@ const {
   generateStatusTierSectionHtml,
   generateCustomerMarkupTiersHtml,
   resolveCustomerMarkupTiers,
+  resolveSelectedSampleCharge,
   isConfirmPriceStatus,
   generateQuotationCardHtml,
   generateQuotationEmailHtml,
@@ -70,7 +71,7 @@ const respA = {
   id: 10, supplierId: 1, companyName: 'ABC Mfg', memberName: 'John',
   emailPrefix: 'john', emailDomain: 'abc.com',
   unitPrice: 2.00, totalPrice: 200.00, deliveryDays: 14, notes: 'fast turnaround',
-  moq: 3000, surchargeBelowMoq: 80.00,
+  moq: 3000, surchargeBelowMoq: 80.00, sampleCharge: 150.00,
   tiers: [
     { tierIndex: 0, quantity: 1000, unitPrice: 1.00, total: 1000 },
     { tierIndex: 1, quantity: 5000, unitPrice: 0.80, total: 4000 },
@@ -80,7 +81,7 @@ const respB = {
   id: 11, supplierId: 2, companyName: 'XYZ Co', memberName: 'Mary',
   emailPrefix: 'mary', emailDomain: 'xyz.com',
   unitPrice: 3.00, totalPrice: 300.00, deliveryDays: 21, notes: '',
-  moq: 1500, surchargeBelowMoq: 45.50,
+  moq: 1500, surchargeBelowMoq: 45.50, sampleCharge: 75.00,
   tiers: [],
 };
 
@@ -96,6 +97,8 @@ ok(compSec.includes('MOQ (pcs)'), 'comparison table has MOQ column');
 ok(compSec.includes('Surcharge below MOQ'), 'comparison table has Surcharge column');
 ok(compSec.includes('3,000'), 'comparison shows supplier A MOQ (pcs)');
 ok(compSec.includes('80.00'), 'comparison shows supplier A surcharge (2dp)');
+ok(compSec.includes('Sample Charge'), 'comparison table has Sample Charge column');
+ok(compSec.includes('150.00'), 'comparison shows supplier A sample charge (2dp)');
 ok(!compSec.includes('Unit Price ('), 'comparison omits Unit Price column');
 ok(!compSec.includes('200.00'), 'comparison omits supplier A total column');
 ok(!compSec.includes('✓ Selected'), 'comparison has no selected badge when nothing selected');
@@ -217,6 +220,13 @@ eq(generateCustomerMarkupTiersHtml({ responses: [respA, respB], selectedSupplier
 const mkZero = generateCustomerMarkupTiersHtml({ responses: [respA], selectedSupplierId: 1, markupPercent: 0 });
 ok(!mkZero.includes('markup'), 'no markup subtitle when 0%');
 ok(mkZero.includes('1.0000'), 'raw tier shown when markup is 0');
+// customer-facing confirm-price section includes the selected supplier's sample charge
+ok(mkZero.includes('Sample Charge'), 'customer confirm-price section shows a Sample Charge row');
+ok(mkZero.includes('150.00'), 'customer confirm-price section shows the selected supplier sample charge value');
+// a selected supplier with no sample charge omits the row (no stray label)
+const mkNoSample = generateCustomerMarkupTiersHtml({ responses: [respB], selectedSupplierId: 2, selectedResponseId: 11, markupPercent: 0 });
+// respB has no tiers -> generateCustomerMarkupTiersHtml returns '' (falls back); confirm no sample row leaks
+eq(mkNoSample, '', 'selected supplier without tiers -> empty (sample charge alone does not force the section)');
 
 // --- resolveCustomerMarkupTiers: data shape shared by HTML + PDF renderers ---
 const resolved = resolveCustomerMarkupTiers({ responses: [respA], selectedSupplierId: 1, markupPercent: 15 });
@@ -224,5 +234,15 @@ eq(resolved.length, 2, 'two tiers resolved for the selected supplier');
 eq(resolved[0], { quantity: 1000, unitPrice: 1.15 }, 'tier 1 quantity + marked-up unit price');
 eq(resolveCustomerMarkupTiers({ responses: [respB], selectedSupplierId: 2, markupPercent: 15 }), null,
   'null when the selected supplier has no tiers');
+
+// --- resolveSelectedSampleCharge: selected supplier's sample charge for the customer ---
+eq(resolveSelectedSampleCharge({ responses: [respA, respB], selectedSupplierId: 1 }), 150,
+  'returns the selected supplier A sample charge');
+eq(resolveSelectedSampleCharge({ responses: [respA, respB], selectedResponseId: 11 }), 75,
+  'returns the selected supplier B sample charge by response id');
+eq(resolveSelectedSampleCharge({ responses: [respA, respB], selectedSupplierId: 999 }), null,
+  'null when nothing is selected');
+eq(resolveSelectedSampleCharge({ responses: [{ id: 1, supplierId: 1, sampleCharge: null }], selectedSupplierId: 1 }), null,
+  'null when the selected response has no sample charge');
 
 summary('batch send status + tier section (shared module)');

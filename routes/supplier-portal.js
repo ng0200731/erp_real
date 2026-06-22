@@ -333,6 +333,7 @@ router.get('/sampling/:token', async (req, res) => {
           notes: response.notes,
           moq: response.moq,
           surchargeBelowMoq: response.surchargeBelowMoq,
+          sampleCharge: response.sampleCharge,
           tiers: tierRows.map((t) => ({ quantity: t.quantity, unitPrice: t.unitPrice, total: t.total }))
         };
       }

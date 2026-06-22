@@ -243,6 +243,7 @@ export function generateStatusTierSectionHtml(ctx = {}) {
     const email = (r.emailPrefix && r.emailDomain) ? `${r.emailPrefix}@${r.emailDomain}` : '-';
     const moq = (r.moq != null && r.moq !== '') ? Number(r.moq).toLocaleString() : '-';
     const surcharge = (r.surchargeBelowMoq != null && r.surchargeBelowMoq !== '') ? money2(r.surchargeBelowMoq) : '-';
+    const sampleCharge = (r.sampleCharge != null && r.sampleCharge !== '') ? money2(r.sampleCharge) : '-';
     return `<tr style="${strike}">
         <td style="${cell}">${escapeHtml(r.companyName || 'Supplier')}${badge}</td>
         <td style="${cell}">${escapeHtml(r.memberName || '-')}</td>
@@ -250,6 +251,7 @@ export function generateStatusTierSectionHtml(ctx = {}) {
         <td style="${cell} text-align:center;">${r.deliveryDays != null ? r.deliveryDays : 'N/A'}</td>
         <td style="${cell} text-align:right;">${moq}</td>
         <td style="${cell} text-align:right;">${surcharge}</td>
+        <td style="${cell} text-align:right;">${sampleCharge}</td>
         <td style="${cell}">${r.notes ? escapeHtml(r.notes) : '-'}</td>
       </tr>`;
   }).join('');
@@ -263,6 +265,7 @@ export function generateStatusTierSectionHtml(ctx = {}) {
         <th style="${cellLbl} text-align:center;">Delivery Days</th>
         <th style="${cellLbl} text-align:right;">MOQ (pcs)</th>
         <th style="${cellLbl} text-align:right;">Surcharge below MOQ (${ccy})</th>
+        <th style="${cellLbl} text-align:right;">Sample Charge (${ccy})</th>
         <th style="${cellLbl} text-align:left;">Notes</th>
       </tr></thead>
       <tbody>${rows}</tbody>
@@ -350,6 +353,25 @@ export function resolveCustomerMarkupTiers(ctx = {}) {
   }));
 }
 
+// The SELECTED supplier's sample charge (a number in the quotation's currency),
+// for the customer-facing Confirm Price email / PDF. Unlike MOQ / surcharge
+// (internal supplier-comparison terms that are hidden from the customer), sample
+// charge is shown to the customer. Returns null when nothing is selected or the
+// selected response carries no sample charge. Pure; consumed by both the HTML and
+// the jsPDF renderers so the email and PDF cannot drift.
+export function resolveSelectedSampleCharge(ctx = {}) {
+  const responses = Array.isArray(ctx.responses) ? ctx.responses : [];
+  const selectedSupplierId = ctx.selectedSupplierId != null ? Number(ctx.selectedSupplierId) : null;
+  const selectedResponseId = ctx.selectedResponseId != null ? Number(ctx.selectedResponseId) : null;
+  const isSelected = (r) =>
+    (selectedResponseId != null && Number(r.id) === selectedResponseId) ||
+    (selectedSupplierId != null && Number(r.supplierId) === selectedSupplierId);
+  const sel = responses.find(isSelected);
+  if (!sel) return null;
+  const sc = sel.sampleCharge;
+  return (sc != null && sc !== '' && !isNaN(Number(sc))) ? Number(sc) : null;
+}
+
 // Customer-facing tier section for the batch-send email at the Confirm Price
 // stage. Renders ONLY the selected supplier's Quantity / Unit Price (after
 // markup). Returns '' when resolveCustomerMarkupTiers yields nothing, so the
@@ -359,11 +381,17 @@ export function generateCustomerMarkupTiersHtml(ctx = {}) {
   if (!tiers) return '';
   const markupPercent = Number(ctx.markupPercent) || 0;
   const ccy = (ctx && ctx.currency) || 'HKD';
+  const sampleCharge = resolveSelectedSampleCharge(ctx);
   const rows = tiers.map((t) =>
     `<tr><td style="padding:8px; border:1px solid #ccc;">${t.quantity.toLocaleString()}</td><td style="padding:8px; border:1px solid #ccc; text-align:right;">${t.unitPrice.toFixed(4)}</td></tr>`
   ).join('');
   const subtitle = markupPercent > 0
     ? `<div style="font-size:12px; color:#666; margin-bottom:8px;">(after ${markupPercent}% markup)</div>`
+    : '';
+  const sampleChargeHtml = sampleCharge != null
+    ? `<table style="width:100%; border-collapse:collapse; margin-top:8px;">
+        <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Sample Charge</td><td style="padding:8px; border:1px solid #ccc; text-align:right;">${sampleCharge.toFixed(2)} ${escapeHtml(ccy)}</td></tr>
+      </table>`
     : '';
   return `
   <div class="quotation-section" style="margin:20px 0;">
@@ -376,6 +404,7 @@ export function generateCustomerMarkupTiersHtml(ctx = {}) {
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
+    ${sampleChargeHtml}
   </div>`;
 }
 

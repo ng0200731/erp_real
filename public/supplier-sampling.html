@@ -116,6 +116,7 @@
         <div id="productDetailsHtml"></div>
         <div class="info-row" id="moqRow" style="display:none;"><span class="info-label">MOQ (pcs)</span><span class="info-value" id="moq"></span></div>
         <div class="info-row" id="surchargeRow" style="display:none;"><span class="info-label" id="surchargeLabel">Surcharge below MOQ</span><span class="info-value" id="surchargeBelowMoq"></span></div>
+        <div class="info-row" id="sampleChargeRow" style="display:none;"><span class="info-label" id="sampleChargeLabel">Sample Charge</span><span class="info-value" id="sampleCharge"></span></div>
         <div class="info-row"><span class="info-label">OS Ref</span><span class="info-value" id="osRef"></span></div>
       </div>
       <div class="info-section" id="responseTiersSection" style="display:none;">
@@ -286,6 +287,7 @@
         const ccy = data.quotation.currency || 'HKD';
         const moqVal = data.response ? data.response.moq : null;
         const surchargeVal = data.response ? data.response.surchargeBelowMoq : null;
+        const sampleChargeVal = data.response ? data.response.sampleCharge : null;
         if (moqVal != null && moqVal !== '') {
           document.getElementById('moqRow').style.display = 'flex';
           document.getElementById('moq').textContent = Number(moqVal).toLocaleString();
@@ -294,6 +296,11 @@
           document.getElementById('surchargeRow').style.display = 'flex';
           document.getElementById('surchargeLabel').textContent = 'Surcharge below MOQ (' + ccy + ')';
           document.getElementById('surchargeBelowMoq').textContent = Number(surchargeVal).toFixed(2);
+        }
+        if (sampleChargeVal != null && sampleChargeVal !== '') {
+          document.getElementById('sampleChargeRow').style.display = 'flex';
+          document.getElementById('sampleChargeLabel').textContent = 'Sample Charge (' + ccy + ')';
+          document.getElementById('sampleCharge').textContent = Number(sampleChargeVal).toFixed(2);
         }
 
         // Render the supplier's previously-submitted pricing tiers (last submitted price)
