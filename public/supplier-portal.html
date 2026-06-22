@@ -132,7 +132,6 @@
         <div class="info-row"><span class="info-label">Customer</span><span class="info-value" id="customerName"></span></div>
         <div class="info-row"><span class="info-label">Product Type</span><span class="info-value" id="productType"></span></div>
         <div id="productDetailsHtml"></div>
-        <div class="info-row"><span class="info-label">Quantity</span><span class="info-value" id="quantity"></span></div>
         <div class="info-row" id="notesRow" style="display:none;"><span class="info-label">Notes</span><span class="info-value" id="notes"></span></div>
       </div>
       <div id="alreadySubmitted" class="already-submitted" style="display:none;">
@@ -223,9 +222,13 @@
       if (productType === 'outsource' && details._productTag) {
         html += '<div class="info-row"><span class="info-label">Product Type</span><span class="info-value">' + formatProductType(details._productTag) + '</span></div>';
       }
+      // Internal/non-display keys: _-prefixed fields, tier config, tier-table ids, and
+      // quantity (the buyer's requested quantity is shown in the pricing tiers, not as a
+      // spec row). Mirrors INTERNAL_PRODUCT_DETAIL_KEYS in shared/quotationEmailHtml.js.
+      const INTERNAL_DETAIL_KEYS = ['tiers', 'tierScopeMode', 'brandTierTableId', 'customerTierTableId', 'quantity'];
       for (const [key, value] of Object.entries(details)) {
         if (key.startsWith('_')) continue; // skip internal fields
-        if (key === 'tiers' || key === 'tierScopeMode') continue; // internal tier config — not a display spec
+        if (INTERNAL_DETAIL_KEYS.includes(key)) continue; // internal config / duplicate — not a display spec
         const label = detailLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
         const displayValue = (value !== null && value !== undefined && value !== '') ? value : '-';
         html += '<div class="info-row"><span class="info-label">' + label + '</span><span class="info-value">' + displayValue + '</span></div>';
@@ -309,7 +312,6 @@
         document.getElementById('companyName').textContent = data.supplier.companyName;
         document.getElementById('customerName').textContent = data.quotation.customerName || '-';
         document.getElementById('productType').textContent = formatProductType(data.quotation.productType) || '-';
-        document.getElementById('quantity').textContent = data.quotation.quantity || '-';
 
         // Apply the quotation's currency to all price labels
         applyCurrencyLabels(data.quotation.currency || 'HKD');

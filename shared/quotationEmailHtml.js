@@ -306,6 +306,96 @@ export function generateStatusTierSectionHtml(ctx = {}) {
   return html + close;
 }
 
+// Internal product-detail keys that hold pricing/tier configuration (or duplicate a
+// top-level field), not display specs. Every spec-rendering loop must skip these so
+// "Tier Scope Mode: free", "Tiers: 222; 444", "Brand Tier Table Id", and the duplicate
+// "Quantity" never leak into emails, PDFs, or on-screen views. 'quantity' duplicates
+// the top-level quotation.quantity field surfaced elsewhere, so it is not a spec row.
+export const INTERNAL_PRODUCT_DETAIL_KEYS = ['tiers', 'tierScopeMode', 'brandTierTableId', 'customerTierTableId', 'quantity'];
+
+// Shared inline styles for the detail sections — used by the card and every bespoke
+// email/view template so all quotations render identical, complete detail.
+const DETAIL_CELL_LABEL = 'padding:8px; border:1px solid #ccc; font-weight:bold; width:45%; vertical-align:top;';
+const DETAIL_CELL_VALUE = 'padding:8px; border:1px solid #ccc; vertical-align:top;';
+const DETAIL_TABLE = 'width:100%; border-collapse:collapse;';
+const DETAIL_H3 = 'margin-top:0; margin-bottom:8px; border-bottom:2px solid #000; padding-bottom:8px;';
+const DETAIL_SECTION = 'margin:20px 0;';
+
+// The four reusable detail sections: Product Information, Customer Information, Brand
+// Detail, Product Specifications. Shared by generateQuotationCardHtml and every bespoke
+// email/view template (supplier portal, reminder, sampling, compare popup, server
+// sample-ready email) so every quotation renders the SAME complete detail everywhere.
+// Product Specifications lists root Customer Item Name / Height / Width first, then the
+// remaining productDetails (option codes decoded to labels), and SKIPS the internal
+// tier-config keys so they never appear as spec rows.
+export function generateQuotationDetailSectionsHtml(quotation, opts = {}) {
+  const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
+  const productTypeName = emailProductTypeDisplay(quotation.productType, productDetails);
+  const brandName = opts.brandName || 'N/A';
+  const imageHtml = opts.profileImageSrc
+    ? `<div style="margin:15px 0; text-align:center;"><img src="${opts.profileImageSrc}" style="max-width:200px; max-height:200px; object-fit:contain; border:1px solid #ddd; padding:5px;" alt="Product Image"></div>`
+    : '';
+
+  const shownKeys = new Set();
+  let specRows = '';
+  const addRow = (label, value) => {
+    specRows += `<tr><td style="${DETAIL_CELL_LABEL}">${label}</td><td style="${DETAIL_CELL_VALUE}">${value}</td></tr>`;
+  };
+
+  if (quotation.customerItemName) { addRow('Customer Item Name', quotation.customerItemName); shownKeys.add('customerItemName'); }
+  if (quotation.height_mm !== null && quotation.height_mm !== undefined && quotation.height_mm !== '') { addRow('Height (mm, unfolded)', quotation.height_mm); shownKeys.add('height_mm'); }
+  if (quotation.width_mm !== null && quotation.width_mm !== undefined && quotation.width_mm !== '') { addRow('Width (mm, unfolded)', quotation.width_mm); shownKeys.add('width_mm'); }
+
+  for (const [key, raw] of Object.entries(productDetails)) {
+    if (key.startsWith('_')) continue;
+    if (INTERNAL_PRODUCT_DETAIL_KEYS.includes(key)) continue;
+    if (shownKeys.has(key)) continue;
+    if (raw === null || raw === undefined || raw === '') continue;
+    const label = PRODUCT_DETAILS_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+    const value = formatProductDetailValue(key, raw);
+    if (value === null || value === undefined) continue;
+    addRow(label, value);
+  }
+
+  if (specRows === '') {
+    specRows = '<tr><td style="padding:8px; border:1px solid #ccc; color:#999;">No specifications recorded.</td><td style="padding:8px; border:1px solid #ccc;"></td></tr>';
+  }
+
+  return `
+    <div class="quotation-section" style="${DETAIL_SECTION}">
+      <h3 style="${DETAIL_H3}">Product Information</h3>
+      <table class="quotation-table" style="${DETAIL_TABLE}">
+        <tr><td style="${DETAIL_CELL_LABEL}">Product Type</td><td style="${DETAIL_CELL_VALUE}">${productTypeName}</td></tr>
+        <tr><td style="${DETAIL_CELL_LABEL}">Variable</td><td style="${DETAIL_CELL_VALUE}">${quotation.variable === 'YES' ? 'YES' : 'NO'}</td></tr>
+      </table>
+    </div>
+
+    <div class="quotation-section" style="${DETAIL_SECTION}">
+      <h3 style="${DETAIL_H3}">Customer Information</h3>
+      <table class="quotation-table" style="${DETAIL_TABLE}">
+        <tr><td style="${DETAIL_CELL_LABEL}">Customer Name</td><td style="${DETAIL_CELL_VALUE}">${quotation.customerName || 'N/A'}</td></tr>
+        <tr><td style="${DETAIL_CELL_LABEL}">Contact Person</td><td style="${DETAIL_CELL_VALUE}">${quotation.contactPerson || 'N/A'}</td></tr>
+        <tr><td style="${DETAIL_CELL_LABEL}">Email</td><td style="${DETAIL_CELL_VALUE}">${quotation.email || 'N/A'}</td></tr>
+        <tr><td style="${DETAIL_CELL_LABEL}">Phone</td><td style="${DETAIL_CELL_VALUE}">${quotation.phone || 'N/A'}</td></tr>
+      </table>
+    </div>
+
+    <div class="quotation-section" style="${DETAIL_SECTION}">
+      <h3 style="${DETAIL_H3}">Brand Detail</h3>
+      <table class="quotation-table" style="${DETAIL_TABLE}">
+        <tr><td style="${DETAIL_CELL_LABEL}">Brand Name</td><td style="${DETAIL_CELL_VALUE}">${brandName}</td></tr>
+      </table>
+    </div>
+
+    <div class="quotation-section" style="${DETAIL_SECTION}">
+      <h3 style="${DETAIL_H3}">Product Specifications</h3>
+      ${imageHtml}
+      <table class="quotation-table" style="${DETAIL_TABLE}">
+        ${specRows}
+      </table>
+    </div>`;
+}
+
 // The reusable quotation card — INNER markup only (the quotation-container div:
 // header, meta band, attachment reminder, product/customer/brand/spec sections,
 // image, notes). No <!DOCTYPE>/<html>/<head>/<body> shell. Layout styles are
@@ -348,44 +438,11 @@ export function generateQuotationCardHtml(quotation, opts = {}) {
          <strong>📎 Attachments:</strong> No additional attachments (a PDF copy of this quotation is attached).
        </div>`;
 
-  const brandName = opts.brandName || 'N/A';
-
-  const cellLabel = 'padding:8px; border:1px solid #ccc; font-weight:bold; width:45%; vertical-align:top;';
-  const cellValue = 'padding:8px; border:1px solid #ccc; vertical-align:top;';
-  const tableStyle = 'width:100%; border-collapse:collapse;';
-  const h3Style = 'margin-top:0; margin-bottom:8px; border-bottom:2px solid #000; padding-bottom:8px;';
-  const sectionStyle = 'margin:20px 0;';
-
-  const shownKeys = new Set();
-  let specRows = '';
-  const addRow = (label, value) => {
-    specRows += `<tr><td style="${cellLabel}">${label}</td><td style="${cellValue}">${value}</td></tr>`;
-  };
-
-  if (quotation.customerItemName) { addRow('Customer Item Name', quotation.customerItemName); shownKeys.add('customerItemName'); }
-  if (quotation.height_mm !== null && quotation.height_mm !== undefined && quotation.height_mm !== '') { addRow('Height (mm, unfolded)', quotation.height_mm); shownKeys.add('height_mm'); }
-  if (quotation.width_mm !== null && quotation.width_mm !== undefined && quotation.width_mm !== '') { addRow('Width (mm, unfolded)', quotation.width_mm); shownKeys.add('width_mm'); }
-
-  for (const [key, raw] of Object.entries(productDetails)) {
-    if (key.startsWith('_')) continue;
-    if (shownKeys.has(key)) continue;
-    if (raw === null || raw === undefined || raw === '') continue;
-    const label = PRODUCT_DETAILS_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
-    const value = formatProductDetailValue(key, raw);
-    if (value === null || value === undefined) continue;
-    addRow(label, value);
-  }
-
-  if (specRows === '') {
-    specRows = '<tr><td style="padding:8px; border:1px solid #ccc; color:#999;">No specifications recorded.</td><td style="padding:8px; border:1px solid #ccc;"></td></tr>';
-  }
-
-  const imageHtml = opts.profileImageSrc
-    ? `<div style="margin:15px 0; text-align:center;"><img src="${opts.profileImageSrc}" style="max-width:200px; max-height:200px; object-fit:contain; border:1px solid #ddd; padding:5px;" alt="Product Image"></div>`
-    : '';
-
+  // Product Information / Customer Information / Brand Detail / Product Specifications
+  // are rendered by the shared helper so every email, PDF, and view shows identical,
+  // complete detail (and so the internal tier-config keys never leak in).
   const notesHtml = quotation.notes
-    ? `<div class="quotation-section" style="${sectionStyle}"><h3 style="${h3Style}">Additional Notes</h3><p style="margin:0; white-space:pre-wrap;">${escapeHtml(quotation.notes).replace(/\n/g, '<br>')}</p></div>`
+    ? `<div class="quotation-section" style="${DETAIL_SECTION}"><h3 style="${DETAIL_H3}">Additional Notes</h3><p style="margin:0; white-space:pre-wrap;">${escapeHtml(quotation.notes).replace(/\n/g, '<br>')}</p></div>`
     : '';
 
   return `
@@ -402,40 +459,7 @@ export function generateQuotationCardHtml(quotation, opts = {}) {
 
     ${metaBandHtml}
     ${attachmentReminderHtml}
-
-    <div class="quotation-section" style="${sectionStyle}">
-      <h3 style="${h3Style}">Product Information</h3>
-      <table class="quotation-table" style="${tableStyle}">
-        <tr><td style="${cellLabel}">Product Type</td><td style="${cellValue}">${productTypeName}</td></tr>
-        <tr><td style="${cellLabel}">Variable</td><td style="${cellValue}">${quotation.variable === 'YES' ? 'YES' : 'NO'}</td></tr>
-      </table>
-    </div>
-
-    <div class="quotation-section" style="${sectionStyle}">
-      <h3 style="${h3Style}">Customer Information</h3>
-      <table class="quotation-table" style="${tableStyle}">
-        <tr><td style="${cellLabel}">Customer Name</td><td style="${cellValue}">${quotation.customerName || 'N/A'}</td></tr>
-        <tr><td style="${cellLabel}">Contact Person</td><td style="${cellValue}">${quotation.contactPerson || 'N/A'}</td></tr>
-        <tr><td style="${cellLabel}">Email</td><td style="${cellValue}">${quotation.email || 'N/A'}</td></tr>
-        <tr><td style="${cellLabel}">Phone</td><td style="${cellValue}">${quotation.phone || 'N/A'}</td></tr>
-      </table>
-    </div>
-
-    <div class="quotation-section" style="${sectionStyle}">
-      <h3 style="${h3Style}">Brand Detail</h3>
-      <table class="quotation-table" style="${tableStyle}">
-        <tr><td style="${cellLabel}">Brand Name</td><td style="${cellValue}">${brandName}</td></tr>
-      </table>
-    </div>
-
-    <div class="quotation-section" style="${sectionStyle}">
-      <h3 style="${h3Style}">Product Specifications</h3>
-      ${imageHtml}
-      <table class="quotation-table" style="${tableStyle}">
-        ${specRows}
-      </table>
-    </div>
-
+    ${generateQuotationDetailSectionsHtml(quotation, { brandName: opts.brandName, profileImageSrc: opts.profileImageSrc })}
     ${notesHtml}
   </div>`;
 }

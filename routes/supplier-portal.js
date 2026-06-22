@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import nodemailer from 'nodemailer';
-import { buildSupplierConfirmationHtml, generateSupplierResponseTiersHtml, PRODUCT_DETAILS_LABELS, formatProductDetailValue, emailProductTypeDisplay } from '../shared/quotationEmailHtml.js';
+import { buildSupplierConfirmationHtml, generateSupplierResponseTiersHtml, generateQuotationDetailSectionsHtml } from '../shared/quotationEmailHtml.js';
 
 const router = express.Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -407,25 +407,21 @@ router.post('/sampling/:token/submit', async (req, res) => {
             }
           } catch (e) { /* ignore */ }
 
-          // Parse product details for display
-          let samplingProductDetails = quotation.productDetails;
-          if (typeof samplingProductDetails === 'string') {
-            try { samplingProductDetails = JSON.parse(samplingProductDetails || '{}'); } catch (e) { samplingProductDetails = {}; }
-          }
+          // Resolve brand name (one small query) for the detail sections.
+          let samplingBrandName = 'N/A';
+          try {
+            if (quotation.brandId) {
+              const brand = await db.get('SELECT name FROM brands WHERE id = ?', [quotation.brandId]);
+              if (brand && brand.name) samplingBrandName = brand.name;
+            }
+          } catch (e) { /* ignore — fall back to N/A */ }
 
-          // Build product detail rows (all specs, skip internal fields)
-          let productDetailRowsHtml = '';
-          const pd = (samplingProductDetails && typeof samplingProductDetails === 'object') ? samplingProductDetails : {};
-          for (const [key, raw] of Object.entries(pd)) {
-            if (key.startsWith('_')) continue;
-            if (key === 'tiers' || key === 'tierScopeMode') continue;
-            if (raw === null || raw === undefined || raw === '') continue;
-            if (Array.isArray(raw) || (raw !== null && typeof raw === 'object')) continue;
-            const label = PRODUCT_DETAILS_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
-            const value = formatProductDetailValue(key, raw);
-            if (value === null || value === undefined) continue;
-            productDetailRowsHtml += `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">${label}</td><td style="padding:8px; border:1px solid #ccc;">${value}</td></tr>`;
-          }
+          // Full product detail sections (Customer / Brand / Product Info / Specs) via
+          // the shared helper, so this email matches every other quotation email/PDF/view.
+          const samplingDetailSectionsHtml = generateQuotationDetailSectionsHtml(quotation, {
+            brandName: samplingBrandName,
+            profileImageSrc: profileImageCid ? `cid:${profileImageCid}` : null,
+          });
 
           // Fetch the supplier's submitted pricing tiers (last submitted price)
           let responseTiersHtml = '';
@@ -442,21 +438,12 @@ router.post('/sampling/:token/submit', async (req, res) => {
           } catch (e) { /* ignore — sampling email proceeds without prior response data */ }
 
           const html = `
-            <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
+            <div style="font-family:Arial,sans-serif; max-width:800px; margin:0 auto; color:#000;">
               <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Sample Ready Date Confirmed</h2>
-              ${profileImageCid ? `
-              <div style="text-align:center; margin:15px 0;">
-                <img src="cid:${profileImageCid}" style="max-width:150px; max-height:150px; object-fit:contain; border:1px solid #ddd; padding:3px;" alt="Product Image">
-              </div>
-              ` : ''}
-              ${quotation.customerItemName ? `<p><strong>Customer Item Name:</strong> ${quotation.customerItemName}</p>` : ''}
               <p>The sample ready date has been submitted:</p>
+              ${samplingDetailSectionsHtml}
               <table style="width:100%; border-collapse:collapse; margin:20px 0;">
-                <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Supplier</td><td style="padding:8px; border:1px solid #ccc;">${supplier.companyName}</td></tr>
-                <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerName || 'N/A'}</td></tr>
-                <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${emailProductTypeDisplay(quotation.productType, samplingProductDetails)}</td></tr>
-                ${productDetailRowsHtml}
-                <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">OS Ref</td><td style="padding:8px; border:1px solid #ccc;">${quotation.outsourcingSeq || 'N/A'}</td></tr>
+                <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold; width:45%;">Supplier</td><td style="padding:8px; border:1px solid #ccc;">${supplier.companyName}</td></tr>
                 <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Sample Ready Date</td><td style="padding:8px; border:1px solid #ccc;">${sampleReadyDate}</td></tr>
               </table>
               ${responseTiersHtml}

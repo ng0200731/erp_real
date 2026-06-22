@@ -5,6 +5,7 @@
       import * as Q from '/shared/quotationEmailHtml.js';
       Object.assign(window, {
         generateQuotationEmailHtml: Q.generateQuotationEmailHtml,
+        generateQuotationDetailSectionsHtml: Q.generateQuotationDetailSectionsHtml,
         generateSupplierResponseTiersHtml: Q.generateSupplierResponseTiersHtml,
         generateStatusTierSectionHtml: Q.generateStatusTierSectionHtml,
         resolveStatusTierMode: Q.resolveStatusTierMode,
@@ -15,6 +16,7 @@
         formatFileSize: Q.formatFileSize,
         PRODUCT_DETAILS_LABELS: Q.PRODUCT_DETAILS_LABELS,
         PRODUCT_OPTION_LABELS: Q.PRODUCT_OPTION_LABELS,
+        INTERNAL_PRODUCT_DETAIL_KEYS: Q.INTERNAL_PRODUCT_DETAIL_KEYS,
       });
     </script>
   <meta charset="UTF-8" />
@@ -14643,6 +14645,7 @@
         if (quotation.width_mm !== null && quotation.width_mm !== undefined && quotation.width_mm !== '') { specRows.push(['Width (mm, unfolded)', String(quotation.width_mm)]); shownKeys.add('width_mm'); }
         for (const [key, raw] of Object.entries(productDetails)) {
           if (key.startsWith('_')) continue;
+          if (INTERNAL_PRODUCT_DETAIL_KEYS.includes(key)) continue;
           if (shownKeys.has(key)) continue;
           if (raw === null || raw === undefined || raw === '') continue;
           const label = PRODUCT_DETAILS_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
@@ -15349,12 +15352,9 @@
 
             // Enrich the email with full product details + the selected supplier's
             // last-submitted tier pricing (for reference).
-            let productDetailsRowsHtml = '';
             let responseTiersHtml = '';
             let moqSurchargeHtml = '';
             try {
-              const pd = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
-              productDetailsRowsHtml = emailProductDetailsRows(pd);
               const responsesRes = await fetch(`/api/supplier-portal/responses/${quotation.id}`);
               const responsesData = await responsesRes.json();
               const responses = (responsesData && responsesData.success) ? (responsesData.responses || []) : [];
@@ -15396,16 +15396,18 @@
             const supplierEmail = samplingTokenData.supplierEmail;
             const subject = `Quotation Request from ${activeProfileDomain} to ${supplierName} / ${quotation.outsourcingSeq || 'N/A'} - confirm to start sampling`;
 
+            const samplingDetailSectionsHtml = generateQuotationDetailSectionsHtml(quotation, {
+              brandName: (typeof getBrandName === 'function' ? getBrandName(quotation.brandId) : '') || 'N/A',
+              profileImageSrc: null,
+            });
             const emailHtml = `
-              <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
+              <div style="font-family:Arial,sans-serif; max-width:800px; margin:0 auto; color:#000;">
                 <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Sampling Request</h2>
                 <p>Dear Supplier,</p>
                 <p>We are ready to proceed with sampling for the following quotation:</p>
+                ${samplingDetailSectionsHtml}
                 <table style="width:100%; border-collapse:collapse; margin:20px 0;">
-                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerName || 'N/A'}</td></tr>
-                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${emailProductTypeDisplay(quotation.productType, quotation.productDetails)}</td></tr>
-                  ${productDetailsRowsHtml}
-                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">OS Ref</td><td style="padding:8px; border:1px solid #ccc;">${quotation.outsourcingSeq || 'N/A'}</td></tr>
+                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold; width:45%;">OS Ref</td><td style="padding:8px; border:1px solid #ccc;">${quotation.outsourcingSeq || 'N/A'}</td></tr>
                 </table>
                 ${responseTiersHtml}
                 ${moqSurchargeHtml ? `
@@ -15541,22 +15543,19 @@
 
             // Fetch profile image for embedding
             const sampleProfileImage = quotation.hasProfileImage ? await fetchProfileImageBase64(quotation.id) : null;
-            const sampleImageHtml = sampleProfileImage ? `<div style="text-align:center; margin:15px 0;"><img src="${sampleProfileImage}" style="max-width:150px; max-height:150px; object-fit:contain; border:1px solid #ddd; padding:3px;" alt="Product Image"></div>` : '';
-            const sampleItemRow = quotation.customerItemName ? `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer Item</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerItemName}</td></tr>` : '';
-            const sampleDetailRows = emailProductDetailsRows(quotation.productDetails);
+            const sampleDetailSectionsHtml = generateQuotationDetailSectionsHtml(quotation, {
+              brandName: (typeof getBrandName === 'function' ? getBrandName(quotation.brandId) : '') || 'N/A',
+              profileImageSrc: sampleProfileImage,
+            });
 
             const emailHtml = `
-              <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
+              <div style="font-family:Arial,sans-serif; max-width:800px; margin:0 auto; color:#000;">
                 <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">REMINDER X ${currentChaseCount}: Sample Ready Date Request</h2>
-                ${sampleImageHtml}
                 <p>Dear Supplier,</p>
                 <p><strong>This is reminder #${currentChaseCount}</strong> regarding the sampling for the following quotation:</p>
+                ${sampleDetailSectionsHtml}
                 <table style="width:100%; border-collapse:collapse; margin:20px 0;">
-                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerName || 'N/A'}</td></tr>
-                  ${sampleItemRow}
-                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${emailProductTypeDisplay(quotation.productType, quotation.productDetails)}</td></tr>
-                  ${sampleDetailRows}
-                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity ? quotation.quantity.toLocaleString() : 'N/A'}</td></tr>
+                  <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold; width:45%;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity ? quotation.quantity.toLocaleString() : 'N/A'}</td></tr>
                   <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">OS Ref</td><td style="padding:8px; border:1px solid #ccc;">${quotation.outsourcingSeq || 'N/A'}</td></tr>
                 </table>
                 <p><strong>We kindly request you to confirm the expected sample ready date.</strong></p>
@@ -15686,6 +15685,7 @@
       const parts = [];
       for (const [key, raw] of Object.entries(pd)) {
         if (key.startsWith('_')) continue;
+        if (INTERNAL_PRODUCT_DETAIL_KEYS.includes(key)) continue; // internal tier config — not a display spec
         if (raw === null || raw === undefined || raw === '') continue;
         const label = PRODUCT_DETAILS_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
         const value = resolveProductDetailValue(key, raw);
@@ -15698,12 +15698,13 @@
     function emailProductDetailsRows(productDetails) {
       const pd = (typeof productDetails === 'string') ? JSON.parse(productDetails || '{}') : (productDetails || {});
       let rows = '';
-      for (const [key, value] of Object.entries(pd)) {
+      for (const [key, raw] of Object.entries(pd)) {
         if (key.startsWith('_')) continue;
-        if (key === 'tiers' || key === 'tierScopeMode') continue; // internal tier config — not a display spec
-        if (value === null || value === undefined || value === '') continue;
-        if (Array.isArray(value) || (value !== null && typeof value === 'object')) continue; // structured value — skip, never [object Object]
+        if (INTERNAL_PRODUCT_DETAIL_KEYS.includes(key)) continue; // internal tier config — not a display spec
+        if (raw === null || raw === undefined || raw === '') continue;
         const label = PRODUCT_DETAILS_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+        const value = formatProductDetailValue(key, raw); // decodes option codes; null for structured values
+        if (value === null || value === undefined) continue; // structured value — skip, never [object Object]
         rows += `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">${label}</td><td style="padding:8px; border:1px solid #ccc;">${value}</td></tr>`;
       }
       return rows;
@@ -15712,9 +15713,6 @@
     function generateSupplierPortalEmailHtml(quotation, supplierToken, portalLink, profileImageBase64) {
       const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
       const ccy = resolveCurrencyCode(quotation.currency);
-      const imageHtml = profileImageBase64 ? `<div style="text-align:center; margin:15px 0;"><img src="${profileImageBase64}" style="max-width:150px; max-height:150px; object-fit:contain; border:1px solid #ddd; padding:3px;" alt="Product Image"></div>` : '';
-      const itemRow = quotation.customerItemName ? `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer Item</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerItemName}</td></tr>` : '';
-      const detailRows = emailProductDetailsRows(productDetails);
       let tiersHtml = '';
       if (productDetails && productDetails.tierScopeMode && productDetails.tierScopeMode !== 'none' && Array.isArray(productDetails.tiers) && productDetails.tiers.length > 0) {
         const rows = productDetails.tiers.map(t => {
@@ -15730,19 +15728,16 @@
           </table>
         `;
       }
+      const detailSectionsHtml = generateQuotationDetailSectionsHtml(quotation, {
+        brandName: (typeof getBrandName === 'function' ? getBrandName(quotation.brandId) : '') || 'N/A',
+        profileImageSrc: profileImageBase64,
+      });
       return `
-        <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
+        <div style="font-family:Arial,sans-serif; max-width:800px; margin:0 auto; color:#000;">
           <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Quotation Request</h2>
-          ${imageHtml}
           <p>Dear ${supplierToken.memberName},</p>
           <p>We would like to request a quotation for the following:</p>
-          <table style="width:100%; border-collapse:collapse; margin:20px 0;">
-            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerName || 'N/A'}</td></tr>
-            ${itemRow}
-            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${emailProductTypeDisplay(quotation.productType, productDetails)}</td></tr>
-            ${detailRows}
-            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity ? quotation.quantity.toLocaleString() : 'N/A'}</td></tr>
-          </table>
+          ${detailSectionsHtml}
           ${tiersHtml}
           <p>Please submit your quotation using the link below:</p>
           <table cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;"><tr><td align="center" bgcolor="#000000" style="padding:12px 24px; border-radius:4px;"><a href="${portalLink}" style="color:#ffffff; text-decoration:none; font-weight:500; font-size:14px;" target="_blank">Submit Your Quotation</a></td></tr></table>
@@ -15757,9 +15752,6 @@
       const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
       const ccy = resolveCurrencyCode(quotation.currency);
       const reminderLabel = `REMINDER #${resendCount}`;
-      const imageHtml = profileImageBase64 ? `<div style="text-align:center; margin:15px 0;"><img src="${profileImageBase64}" style="max-width:150px; max-height:150px; object-fit:contain; border:1px solid #ddd; padding:3px;" alt="Product Image"></div>` : '';
-      const itemRow = quotation.customerItemName ? `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer Item</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerItemName}</td></tr>` : '';
-      const detailRows = emailProductDetailsRows(productDetails);
       let tiersHtml = '';
       if (productDetails && productDetails.tierScopeMode && productDetails.tierScopeMode !== 'none' && Array.isArray(productDetails.tiers) && productDetails.tiers.length > 0) {
         const rows = productDetails.tiers.map(t => {
@@ -15775,19 +15767,16 @@
           </table>
         `;
       }
+      const detailSectionsHtml = generateQuotationDetailSectionsHtml(quotation, {
+        brandName: (typeof getBrandName === 'function' ? getBrandName(quotation.brandId) : '') || 'N/A',
+        profileImageSrc: profileImageBase64,
+      });
       return `
-        <div style="font-family:Arial,sans-serif; max-width:600px; margin:0 auto; color:#000;">
+        <div style="font-family:Arial,sans-serif; max-width:800px; margin:0 auto; color:#000;">
           <h2 style="border-bottom:2px solid #f00; padding-bottom:10px;">${reminderLabel}: Quotation Request</h2>
-          ${imageHtml}
           <p>Dear ${memberName},</p>
           <p><strong>This is reminder #${resendCount}</strong> that we are still awaiting your quotation for:</p>
-          <table style="width:100%; border-collapse:collapse; margin:20px 0;">
-            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Customer</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerName || 'N/A'}</td></tr>
-            ${itemRow}
-            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${emailProductTypeDisplay(quotation.productType, productDetails)}</td></tr>
-            ${detailRows}
-            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity ? quotation.quantity.toLocaleString() : 'N/A'}</td></tr>
-          </table>
+          ${detailSectionsHtml}
           ${tiersHtml}
           <p><strong>Please submit your quotation as soon as possible:</strong></p>
           <table cellpadding="0" cellspacing="0" border="0" style="margin:20px 0;"><tr><td align="center" bgcolor="#ff0000" style="padding:12px 24px; border-radius:4px;"><a href="${portalLink}" style="color:#ffffff; text-decoration:none; font-weight:500; font-size:14px;" target="_blank">Submit Your Quotation Now</a></td></tr></table>
@@ -16031,17 +16020,14 @@
 
         // 3. Build comparison table HTML with radio selection
         const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
+        const compareDetailSectionsHtml = generateQuotationDetailSectionsHtml(quotation, {
+          brandName: (typeof getBrandName === 'function' ? getBrandName(quotation.brandId) : '') || 'N/A',
+          profileImageSrc: quotation.hasProfileImage ? `/api/quotations/${quotation.id}/profile-image?v=${window.profileImageVersion||0}` : null,
+        });
         let tableHtml = `
           <div style="margin-bottom:20px;">
-            ${quotation.hasProfileImage ? '<div style="text-align:center; margin-bottom:15px;"><img src="/api/quotations/' + quotation.id + '/profile-image?v=' + (window.profileImageVersion||0) + '" style="max-width:150px; max-height:150px; object-fit:contain; border:1px solid #ddd; padding:3px;"></div>' : ''}
             <h3 style="margin:0 0 10px 0;">Quotation Details</h3>
-            <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
-              <tr><td style="padding:6px; border:1px solid #ccc; font-weight:bold; width:150px;">Customer</td><td style="padding:6px; border:1px solid #ccc;">${quotation.customerName}</td></tr>
-              ${quotation.customerItemName ? '<tr><td style="padding:6px; border:1px solid #ccc; font-weight:bold;">Customer Item</td><td style="padding:6px; border:1px solid #ccc;">' + quotation.customerItemName + '</td></tr>' : ''}
-              <tr><td style="padding:6px; border:1px solid #ccc; font-weight:bold;">Product Type</td><td style="padding:6px; border:1px solid #ccc;">${emailProductTypeDisplay(quotation.productType, productDetails)}</td></tr>
-              ${emailProductDetailsRows(productDetails)}
-              <tr><td style="padding:6px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:6px; border:1px solid #ccc;">${quotation.quantity.toLocaleString()}</td></tr>
-            </table>
+            ${compareDetailSectionsHtml}
           </div>
 
           <h3 style="margin:0 0 10px 0;">${viewOnly ? 'Submitted Supplier Quotations' : 'Select a Supplier Quotation'}</h3>
@@ -16111,7 +16097,7 @@
                     <th style="border:1px solid #000; padding:8px; text-align:left;">Quantity</th>
           `;
           responses.forEach((r) => {
-            tableHtml += `<th style="border:1px solid #000; padding:8px; text-align:right;">${escapeHtml(r.companyName || 'Supplier')}</th>`;
+            tableHtml += `<th style="border:1px solid #000; padding:8px; text-align:right;">${escapeHtml(r.companyName || 'Supplier')} (unit price)</th>`;
           });
           tableHtml += `</tr></thead><tbody>`;
           for (let i = 0; i < rowCount; i++) {
@@ -16246,7 +16232,6 @@
 
     // Generate customer email HTML for selected supplier quotation
     function generateCustomerComparisonEmailHtml(quotation, selectedResponse, profileImageBase64 = null, markupPercent = 0) {
-      const productDetails = (typeof quotation.productDetails === 'string') ? JSON.parse(quotation.productDetails || '{}') : (quotation.productDetails || {});
       const ccy = resolveCurrencyCode(quotation.currency);
       const r = selectedResponse;
       const markupMultiplier = 1 + (markupPercent / 100);
@@ -16265,24 +16250,18 @@
             <tbody>${tierRowsHtml}</tbody>
           </table>` : '';
 
+      const customerDetailSectionsHtml = generateQuotationDetailSectionsHtml(quotation, {
+        brandName: (typeof getBrandName === 'function' ? getBrandName(quotation.brandId) : '') || 'N/A',
+        profileImageSrc: profileImageBase64,
+      });
       let html = `
         <div style="font-family:Arial,sans-serif; max-width:800px; margin:0 auto; color:#000;">
           <h2 style="border-bottom:2px solid #000; padding-bottom:10px;">Supplier Quotation</h2>
-          ${profileImageBase64 ? `
-          <div style="text-align:center; margin:15px 0;">
-            <img src="${profileImageBase64}" style="max-width:200px; max-height:200px; object-fit:contain; border:1px solid #ddd; padding:5px;" alt="Product Image">
-          </div>` : ''}
           <p>Dear ${quotation.customerName},</p>
           <p>We have sourced a quotation for your request. Please review the details below:</p>
-
-          <h3 style="margin-top:30px;">Your Request Details:</h3>
-          <table style="width:100%; border-collapse:collapse; margin:20px 0;">
-            ${(quotation.outsourcingSeq || quotation.quotationSeq) ? `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold; width:200px;">Reference</td><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">${quotation.outsourcingSeq || quotation.quotationSeq}</td></tr>` : ''}
-            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold; width:200px;">Product Type</td><td style="padding:8px; border:1px solid #ccc;">${emailProductTypeDisplay(quotation.productType, productDetails)}</td></tr>
-            ${quotation.customerItemName ? `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Item Name</td><td style="padding:8px; border:1px solid #ccc;">${quotation.customerItemName}</td></tr>` : ''}
-            ${emailProductDetailsRows(productDetails)}
-            ${hasTiers ? '' : `<tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity.toLocaleString()}</td></tr>`}
-          </table>
+          ${(quotation.outsourcingSeq || quotation.quotationSeq) ? `<p style="margin-top:20px;"><strong>Reference:</strong> ${quotation.outsourcingSeq || quotation.quotationSeq}</p>` : ''}
+          ${customerDetailSectionsHtml}
+          ${hasTiers ? '' : `<table style="width:100%; border-collapse:collapse; margin:20px 0;"><tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold; width:45%;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity.toLocaleString()}</td></tr></table>`}
 
           <h3 style="margin-top:30px;">Quotation Details:</h3>
           <table style="width:100%; border-collapse:collapse; margin:20px 0;">

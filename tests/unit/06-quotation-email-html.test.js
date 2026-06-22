@@ -173,10 +173,54 @@ eq(formatProductDetailValue('size', '10x20'), '10x20', 'free-text value returned
 eq(formatProductDetailValue('whatever', [{ a: 1 }]), null, 'unknown structured value -> null (skip, no [object Object])');
 
 const cardTiers = generateQuotationCardHtml(
-  { productType: 'hang-tag', productDetails: { tiers: [{ quantity: 1000, unitPrice: 0 }, { quantity: 5000, unitPrice: 0 }] }, customerName: 'C' },
+  { productType: 'hang-tag', productDetails: { tiers: [{ quantity: 1000, unitPrice: 0 }, { quantity: 5000, unitPrice: 0 }], tierScopeMode: 'free' }, customerName: 'C' },
   { brandName: 'B' }
 );
 ok(!cardTiers.includes('[object Object]'), 'card never emits [object Object] for tiers');
-ok(cardTiers.includes('1,000') && cardTiers.includes('5,000'), 'card renders tier quantities in the spec table');
+ok(!cardTiers.includes('1,000') && !cardTiers.includes('5,000'), 'card skips buyer-requested tier quantities in the spec table');
+ok(!cardTiers.includes('Tier Scope Mode'), 'card skips tierScopeMode in the spec table');
+
+// --- generateQuotationDetailSectionsHtml: the shared "all product details" block ---
+const { generateQuotationDetailSectionsHtml, INTERNAL_PRODUCT_DETAIL_KEYS } = await import('../../shared/quotationEmailHtml.js');
+
+ok(Array.isArray(INTERNAL_PRODUCT_DETAIL_KEYS) && INTERNAL_PRODUCT_DETAIL_KEYS.includes('tiers'), 'INTERNAL_PRODUCT_DETAIL_KEYS lists tiers');
+ok(INTERNAL_PRODUCT_DETAIL_KEYS.includes('tierScopeMode'), 'INTERNAL_PRODUCT_DETAIL_KEYS lists tierScopeMode');
+ok(INTERNAL_PRODUCT_DETAIL_KEYS.includes('brandTierTableId') && INTERNAL_PRODUCT_DETAIL_KEYS.includes('customerTierTableId'), 'INTERNAL_PRODUCT_DETAIL_KEYS lists tier table ids');
+ok(INTERNAL_PRODUCT_DETAIL_KEYS.includes('quantity'), 'INTERNAL_PRODUCT_DETAIL_KEYS lists quantity (duplicates top-level field)');
+
+const detailQuotation = {
+  productType: 'printed-label',
+  productDetails: { materialType: 'satin', folding: 'end-fold', tiers: [{ quantity: 222 }, { quantity: 444 }], tierScopeMode: 'free' },
+  customerName: 'Acme', contactPerson: 'Joe', email: 'joe@acme.com', phone: '+852 1234 5678',
+  customerItemName: 'SKU-1', height_mm: 50, width_mm: 30,
+  variable: 'NO',
+};
+const sections = generateQuotationDetailSectionsHtml(detailQuotation, { brandName: 'BrandX', profileImageSrc: null });
+ok(sections.includes('Product Information') && sections.includes('Customer Information') && sections.includes('Brand Detail') && sections.includes('Product Specifications'), 'sections has all four headings');
+ok(sections.includes('Contact Person') && sections.includes('joe@acme.com') && sections.includes('+852 1234 5678'), 'sections includes Contact Person / Email / Phone');
+ok(sections.includes('BrandX'), 'sections includes brand name');
+ok(sections.includes('>NO<'), 'sections includes Variable value');
+ok(sections.includes('Customer Item Name') && sections.includes('Height (mm, unfolded)') && sections.includes('Width (mm, unfolded)'), 'sections includes root Customer Item Name / Height / Width');
+ok(sections.includes('Satin Tape') && sections.includes('End Fold'), 'sections decodes option codes (materialType satin, folding end-fold)');
+ok(!sections.includes('222') && !sections.includes('444'), 'sections skips buyer-requested tier quantities');
+ok(!sections.includes('Tier Scope Mode'), 'sections skips tierScopeMode');
+ok(!sections.includes('[object Object]'), 'sections never emits [object Object]');
+
+// quantity duplicates the top-level quotation.quantity field and brandTierTableId is
+// internal tier config — neither should render as a spec row in emails/PDFs/views.
+const qtySections = generateQuotationDetailSectionsHtml(
+  { productType: 'printed-label', productDetails: { materialType: 'satin', quantity: 2, brandTierTableId: 156 }, customerName: 'Acme', customerItemName: 'SKU-1' },
+  { brandName: 'B' }
+);
+ok(!qtySections.includes('Quantity'), 'sections skips productDetails.quantity');
+ok(!qtySections.includes('Brand Tier Table Id'), 'sections skips brandTierTableId');
+ok(!qtySections.includes('>156<'), 'sections skips brandTierTableId value');
+
+// brand fallback when brandName missing
+const sectionsNoBrand = generateQuotationDetailSectionsHtml(
+  { productType: 'woven-label', productDetails: {}, customerName: 'C' },
+  { brandName: undefined }
+);
+ok(sectionsNoBrand.includes('N/A'), 'sections falls back to N/A brand when brandName missing');
 
 summary('shared quotation email html (maps, helpers, tiers, card)');
