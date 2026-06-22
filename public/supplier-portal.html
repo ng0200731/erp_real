@@ -210,9 +210,13 @@
       _productTag: null // hidden internal field
     };
 
-    // Render product details object as HTML info-rows
-    function renderProductDetails(details, productType) {
+    // Render product details object as HTML info-rows. Mirrors the email HTML
+    // (shared/quotationEmailHtml.js): Height/Width live on the quotation root (not in
+    // productDetails) and empty spec values are omitted rather than shown as "-".
+    function renderProductDetails(quotation) {
       const container = document.getElementById('productDetailsHtml');
+      const details = quotation && quotation.productDetails;
+      const productType = quotation && quotation.productType;
       if (!details || typeof details !== 'object') {
         container.innerHTML = '<div class="info-row"><span class="info-label">Product Details</span><span class="info-value">' + (details || '-') + '</span></div>';
         return;
@@ -222,6 +226,13 @@
       if (productType === 'outsource' && details._productTag) {
         html += '<div class="info-row"><span class="info-label">Product Type</span><span class="info-value">' + formatProductType(details._productTag) + '</span></div>';
       }
+      // Height / Width (stored on the quotation root, same source as the email HTML)
+      if (quotation.height_mm !== null && quotation.height_mm !== undefined && quotation.height_mm !== '') {
+        html += '<div class="info-row"><span class="info-label">Height (mm, unfolded)</span><span class="info-value">' + quotation.height_mm + '</span></div>';
+      }
+      if (quotation.width_mm !== null && quotation.width_mm !== undefined && quotation.width_mm !== '') {
+        html += '<div class="info-row"><span class="info-label">Width (mm, unfolded)</span><span class="info-value">' + quotation.width_mm + '</span></div>';
+      }
       // Internal/non-display keys: _-prefixed fields, tier config, tier-table ids, and
       // quantity (the buyer's requested quantity is shown in the pricing tiers, not as a
       // spec row). Mirrors INTERNAL_PRODUCT_DETAIL_KEYS in shared/quotationEmailHtml.js.
@@ -229,9 +240,9 @@
       for (const [key, value] of Object.entries(details)) {
         if (key.startsWith('_')) continue; // skip internal fields
         if (INTERNAL_DETAIL_KEYS.includes(key)) continue; // internal config / duplicate — not a display spec
+        if (value === null || value === undefined || value === '') continue; // omit empty specs (matches email HTML)
         const label = detailLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
-        const displayValue = (value !== null && value !== undefined && value !== '') ? value : '-';
-        html += '<div class="info-row"><span class="info-label">' + label + '</span><span class="info-value">' + displayValue + '</span></div>';
+        html += '<div class="info-row"><span class="info-label">' + label + '</span><span class="info-value">' + value + '</span></div>';
       }
       container.innerHTML = html;
     }
@@ -317,7 +328,7 @@
         applyCurrencyLabels(data.quotation.currency || 'HKD');
 
         // Format product details as HTML rows
-        renderProductDetails(data.quotation.productDetails, data.quotation.productType);
+        renderProductDetails(data.quotation);
 
         // Render per-tier price inputs (buyer-fixed quantities; supplier fills unit price).
         const requestedTiers = (Array.isArray(data.requestedTiers) && data.requestedTiers.length > 0)

@@ -49,8 +49,8 @@ export const PRODUCT_OPTION_LABELS = {
   folding: { 'end-fold': 'End Fold', 'loop-fold': 'Loop Fold', 'manhattan-fold': 'Manhattan Fold', 'mitre-fold': 'Mitre Fold', 'straight-cut': 'Straight Cut' },
   transferType: { 'screen-print': 'Screen Print Transfer', 'digital-print': 'Digital Print Transfer', 'vinyl-cut': 'Vinyl Cut Transfer', sublimation: 'Sublimation Transfer' },
   application: { 'heat-press': 'Heat Press', iron: 'Household Iron', commercial: 'Commercial Press' },
-  thickness: { '0.5mm': '0.5mm', '1mm': '1mm', '1.5mm': '1.5mm', '2mm': '2mm', '3mm': '3mm' },
-  colorMode: { 'single-color': 'Single Color', 'multi-color': 'Multi-Color', 'full-color': 'Full Color' },
+  thickness: { '0.5mm': '0.5mm', '1mm': '1mm', '1.5mm': '1.5mm', '2mm': '2mm', '3mm': '3mm', 'as-per-sample': 'As Per Sample' },
+  colorMode: { 'single-color': 'Single Color', 'multi-color': 'Multi-Color', 'full-color': 'Full Color', 'as-per-sample': 'As Per Sample' },
   backingType: { adhesive: 'Adhesive', 'sew-on': 'Sew-on', velcro: 'Velcro', magnetic: 'Magnetic', 'iron-on': 'Iron-on', none: 'None' },
   designComplexity: { simple: 'Simple', medium: 'Medium', complex: 'Complex', custom: 'Custom' },
   complexity: { simple: 'Simple', medium: 'Medium', complex: 'Complex', custom: 'Custom' },
@@ -272,7 +272,7 @@ export function generateStatusTierSectionHtml(ctx = {}) {
     const tierUnitRaw = (r, i) => (r.tiers && r.tiers[i] && r.tiers[i].unitPrice != null) ? Number(r.tiers[i].unitPrice) : null;
     const colHeaders = responses.map((r) => {
       const mark = isSelected(r) ? ' ✓' : '';
-      return `<th style="${cellLbl} text-align:right;">${escapeHtml(r.companyName || 'Supplier')}${mark}</th>`;
+      return `<th style="${cellLbl} text-align:right;">${escapeHtml(r.companyName || 'Supplier')} (unit price)${mark}</th>`;
     }).join('');
 
     let bodyRows = '';

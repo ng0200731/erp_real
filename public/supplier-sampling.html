@@ -167,9 +167,12 @@
       _productTag: null // hidden internal field
     };
 
-    // Render product details object as HTML info-rows
-    function renderProductDetails(details, productType) {
+    // Render product details object as HTML info-rows. Height/Width live on the
+    // quotation root (same source as the email HTML), not inside productDetails.
+    function renderProductDetails(quotation) {
       const container = document.getElementById('productDetailsHtml');
+      const details = quotation && quotation.productDetails;
+      const productType = quotation && quotation.productType;
       if (!details || typeof details !== 'object') {
         container.innerHTML = '';
         return;
@@ -178,6 +181,13 @@
       // Show the actual product type if it's an outsource with _productTag
       if (productType === 'outsource' && details._productTag) {
         document.getElementById('productType').textContent = formatProductType(details._productTag);
+      }
+      // Height / Width (stored on the quotation root, same source as the email HTML)
+      if (quotation.height_mm !== null && quotation.height_mm !== undefined && quotation.height_mm !== '') {
+        html += '<div class="info-row"><span class="info-label">Height (mm, unfolded)</span><span class="info-value">' + quotation.height_mm + '</span></div>';
+      }
+      if (quotation.width_mm !== null && quotation.width_mm !== undefined && quotation.width_mm !== '') {
+        html += '<div class="info-row"><span class="info-label">Width (mm, unfolded)</span><span class="info-value">' + quotation.width_mm + '</span></div>';
       }
       for (const [key, value] of Object.entries(details)) {
         if (key.startsWith('_')) continue;
@@ -232,7 +242,7 @@
         }
 
         // Render product details as HTML
-        renderProductDetails(data.quotation.productDetails, data.quotation.productType);
+        renderProductDetails(data.quotation);
 
         // MOQ + Surcharge below MOQ (read-only reference from the supplier's submitted response)
         const ccy = data.quotation.currency || 'HKD';

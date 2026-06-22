@@ -331,7 +331,9 @@ router.get('/sampling/:token', async (req, res) => {
         productType: quotation.productType, productDetails: samplingProductDetails,
         hasProfileImage: quotation.hasProfileImage,
         quantity: quotation.quantity, outsourcingSeq: quotation.outsourcingSeq, sampleReadyDate: quotation.sampleReadyDate,
-        currency: quotation.currency
+        currency: quotation.currency,
+        height_mm: quotation.height_mm,
+        width_mm: quotation.width_mm
       },
       supplier: { companyName: supplier.companyName, memberName: member.name },
       response: responseSummary,
@@ -551,7 +553,9 @@ router.get('/:token', async (req, res) => {
         hasProfileImage: quotation.hasProfileImage,
         quantity: quotation.quantity,
         notes: quotation.notes,
-        currency: quotation.currency
+        currency: quotation.currency,
+        height_mm: quotation.height_mm,
+        width_mm: quotation.width_mm
       },
       supplier: {
         companyName: supplier.companyName,

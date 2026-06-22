@@ -8716,7 +8716,7 @@
       const outsourcingViewPanel = document.getElementById('outsourcingViewPanel');
       if (outsourcingViewPanel && outsourcingViewPanel.style.display !== 'none') {
         try {
-          const r = await fetch('/api/quotations/outsourcing');
+          const r = await fetch('/api/quotations/outsourcing', { cache: 'no-store' });
           const data = await r.json();
           if (data.success && data.quotations) {
             // Compare quotation fields + supplier response counts to detect external changes
@@ -10021,6 +10021,178 @@
     
 
     
+    // Multi-recipient input modal — supports adding/removing email rows via a + button.
+    // Validates each address inline (keeps the modal open on error). Resolves with
+    // { ok, value } where value is an array of validated email strings.
+    function showMultiEmailInputModal({ title = 'Input', label = '', okText = 'OK', cancelText = 'Cancel' }) {
+      return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+
+        const header = document.createElement('div');
+        header.className = 'modal-header';
+        header.textContent = title;
+
+        const content = document.createElement('div');
+        content.className = 'modal-body';
+
+        const labelEl = document.createElement('div');
+        labelEl.style.fontWeight = '700';
+        labelEl.style.marginBottom = '8px';
+        labelEl.textContent = label;
+
+        const rowsContainer = document.createElement('div');
+        rowsContainer.style.display = 'flex';
+        rowsContainer.style.flexDirection = 'column';
+        rowsContainer.style.gap = '6px';
+
+        const errorEl = document.createElement('div');
+        errorEl.style.color = '#c00';
+        errorEl.style.fontSize = '12px';
+        errorEl.style.marginTop = '6px';
+        errorEl.style.minHeight = '14px';
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        // Keep the × remove buttons disabled when only one row remains
+        function refreshRemoveState() {
+          const single = rowsContainer.children.length <= 1;
+          rowsContainer.querySelectorAll('button[data-remove]').forEach(btn => { btn.disabled = single; });
+        }
+
+        function collectEmails() {
+          return Array.from(rowsContainer.querySelectorAll('input'))
+            .map(i => i.value.trim())
+            .filter(v => v.length > 0);
+        }
+
+        function createRow(initialValue = '') {
+          const row = document.createElement('div');
+          row.style.display = 'flex';
+          row.style.gap = '6px';
+          row.style.alignItems = 'center';
+
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.value = initialValue;
+          input.placeholder = 'name@example.com';
+          input.style.flex = '1';
+
+          const removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.className = 'btn';
+          removeBtn.dataset.remove = 'true';
+          removeBtn.textContent = '×';
+          removeBtn.title = 'Remove this recipient';
+          removeBtn.style.minWidth = '34px';
+          removeBtn.onclick = () => {
+            if (rowsContainer.children.length > 1) {
+              row.remove();
+              refreshRemoveState();
+            }
+          };
+
+          // Enter on the last (non-empty) row appends a fresh row and focuses it
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              const inputs = Array.from(rowsContainer.querySelectorAll('input'));
+              if (inputs[inputs.length - 1] === input && input.value.trim()) {
+                e.preventDefault();
+                const newRow = createRow('');
+                rowsContainer.appendChild(newRow);
+                refreshRemoveState();
+                newRow.querySelector('input').focus();
+              }
+            }
+          });
+
+          row.appendChild(input);
+          row.appendChild(removeBtn);
+          return row;
+        }
+
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'btn';
+        addBtn.textContent = '+ Add recipient';
+        addBtn.style.marginTop = '8px';
+        addBtn.onclick = () => {
+          const newRow = createRow('');
+          rowsContainer.appendChild(newRow);
+          refreshRemoveState();
+          newRow.querySelector('input').focus();
+        };
+
+        rowsContainer.appendChild(createRow(''));
+        refreshRemoveState();
+
+        content.appendChild(labelEl);
+        content.appendChild(rowsContainer);
+        content.appendChild(addBtn);
+        content.appendChild(errorEl);
+
+        const actions = document.createElement('div');
+        actions.className = 'modal-actions';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn';
+        cancelBtn.textContent = cancelText;
+
+        const okBtn = document.createElement('button');
+        okBtn.className = 'btn primary';
+        okBtn.textContent = okText;
+
+        const onKey = (e) => {
+          if (e.key === 'Escape') close({ ok: false, value: [] });
+        };
+
+        const close = (result) => {
+          document.removeEventListener('keydown', onKey);
+          try { document.body.removeChild(overlay); } catch {}
+          resolve(result);
+        };
+
+        okBtn.onclick = () => {
+          const emails = collectEmails();
+          if (emails.length === 0) {
+            errorEl.textContent = 'Please enter at least one email address.';
+            return;
+          }
+          const invalid = emails.find(e => !emailRegex.test(e));
+          if (invalid) {
+            errorEl.textContent = `Invalid email address: ${invalid}`;
+            return;
+          }
+          errorEl.textContent = '';
+          close({ ok: true, value: emails });
+        };
+
+        cancelBtn.onclick = () => close({ ok: false, value: [] });
+
+        actions.appendChild(cancelBtn);
+        actions.appendChild(okBtn);
+
+        modal.appendChild(header);
+        modal.appendChild(content);
+        modal.appendChild(actions);
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+        overlay.onclick = (e) => {
+          if (e.target === overlay) close({ ok: false, value: [] });
+        };
+        document.addEventListener('keydown', onKey);
+
+        setTimeout(() => {
+          const first = rowsContainer.querySelector('input');
+          if (first) { first.focus(); first.select(); }
+        }, 0);
+      });
+    }
+
     // Function to populate and show email modal
     function populateEmailModal(subject, from, date, body, emailMeta, isSentEmail = false) {
       document.getElementById('emailModalSubject').textContent = subject || '(No subject)';
@@ -12453,6 +12625,8 @@
     function getFileIconFromPath(filePath) {
       const fileName = filePath.toLowerCase();
       if (fileName.includes('.pdf')) return '📄';
+      if (fileName.includes('.xlsx') || fileName.includes('.xls')) return '📊';
+      if (fileName.includes('.psd') || fileName.includes('.ai')) return '🎨';
       if (fileName.includes('.doc') || fileName.includes('.docx')) return '📝';
       if (fileName.includes('.txt')) return '📄';
       if (fileName.includes('.jpg') || fileName.includes('.jpeg') || fileName.includes('.png') || fileName.includes('.gif')) return '🖼️';
@@ -14184,7 +14358,7 @@
       }
     }
 
-    // Batch send quotation/outsourcing emails to a single recipient address.
+    // Batch send quotation/outsourcing emails to one or more recipient addresses.
     // type: 'quotation' (regular quotations) or 'outsourcing' (outsource product type).
     async function batchSendQuotations(type) {
       // 1. Gather selected rows for this view
@@ -14199,38 +14373,33 @@
       // 2. Collect quotation IDs (preserve selection order)
       const quotationIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.dataset.quotationId, 10));
 
-      // 3. Prompt for the recipient email address
-      const emailResult = await showTextInputModal({
+      // 3. Prompt for recipient email address(es) — multiple supported via the + button
+      const emailResult = await showMultiEmailInputModal({
         title: 'Batch Send Email',
-        label: 'Enter recipient email address:',
-        initialValue: '',
+        label: 'Enter recipient email address(es):',
         okText: 'Send',
         cancelText: 'Cancel'
       });
 
-      if (!emailResult.ok || !emailResult.value) {
-        return; // User cancelled or left blank
+      if (!emailResult.ok || !emailResult.value || emailResult.value.length === 0) {
+        return; // User cancelled
       }
 
-      const recipientEmail = String(emailResult.value).trim();
+      // Emails are validated inside the modal (array of recipient addresses). Send ONE
+      // email per quotation with ALL recipients in the To field (one email, many addresses).
+      const recipientEmails = emailResult.value;
+      const toField = recipientEmails.join(', ');
 
-      // 4. Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(recipientEmail)) {
-        await showModal({ title: 'Error', body: 'Invalid email address format.', okText: 'OK' });
-        return;
-      }
-
-      // 5. Confirm the count before sending
+      // 4. Confirm the count before sending
       const confirmed = await showModal({
         title: 'Confirm Batch Send',
-        body: `Send ${quotationIds.length} email(s) to <strong>${recipientEmail}</strong>?`,
+        body: `Send ${quotationIds.length} email(s) to ${recipientEmails.length} recipient(s):<br><strong>${toField}</strong>?`,
         okText: 'Send',
         cancelText: 'Cancel'
       });
       if (!confirmed) return;
 
-      // 6. Send emails one by one, showing progress
+      // 5. Send one email per quotation (all recipients combined in the To field)
       showSendingOverlay(quotationIds.length);
       const results = { success: 0, failed: 0, errors: [] };
 
@@ -14238,7 +14407,7 @@
         const qid = quotationIds[i];
         updateSendingOverlayProgress(i + 1, quotationIds.length);
         try {
-          await sendSingleBatchEmail(qid, recipientEmail);
+          await sendSingleBatchEmail(qid, toField);
           results.success++;
         } catch (err) {
           results.failed++;
@@ -14248,15 +14417,24 @@
 
       hideSendingOverlay();
 
-      // 7. Report results
+      // 6. Report results
       if (results.failed === 0) {
-        await showModal({ title: 'Success', body: `All ${results.success} email(s) sent successfully!`, okText: 'OK' });
+        await showModal({ title: 'Success', body: `All ${results.success} email(s) sent to ${recipientEmails.length} email account(s) successfully!`, okText: 'OK' });
       } else {
         await showModal({
           title: 'Batch Send Results',
           body: `Sent: ${results.success}<br>Failed: ${results.failed}<br><br>Errors:<br>${results.errors.join('<br>')}`,
           okText: 'OK'
         });
+      }
+
+      // 7. Refresh both lists so all records stay visible after the send (batch send is
+      //    otherwise the only completing action that didn't refresh the views).
+      try {
+        if (typeof displayQuotations === 'function') await displayQuotations();
+        if (typeof displayOutsourcingQuotations === 'function') await displayOutsourcingQuotations();
+      } catch (e) {
+        console.warn('Post-batch-send list refresh failed:', e);
       }
     }
 
@@ -14754,7 +14932,7 @@
                 return 'Tier ' + (i + 1);
               };
               const tierU = (r, i) => (r.tiers && r.tiers[i] && r.tiers[i].unitPrice != null) ? Number(r.tiers[i].unitPrice) : null;
-              const mHead = [['Quantity', ...mode.responses.map((r) => (isSel(r) ? '✓ ' : '') + String(r.companyName || 'Supplier'))]];
+              const mHead = [['Quantity', ...mode.responses.map((r) => (isSel(r) ? '✓ ' : '') + String(r.companyName || 'Supplier') + ' (unit price)')]];
               const mBody = [];
               for (let i = 0; i < maxLen; i++) {
                 const row = [qty(i)];
@@ -15986,16 +16164,17 @@
     // Show comparison popup for supplier quotations
     window.showCompareQuotationPopup = async function(quotationId, viewOnly = false) {
       try {
-        // 1. Fetch quotation details
-        const quotationRes = await fetch(`/api/quotations/${quotationId}`);
+        // 1. Fetch quotation details (cache: 'no-store' — always sync live data from the DB)
+        const quotationRes = await fetch(`/api/quotations/${quotationId}`, { cache: 'no-store' });
         const quotationData = await quotationRes.json();
         if (!quotationData.success) {
           return;
         }
         const quotation = quotationData.quotation;
 
-        // 2. Fetch supplier responses
-        const responsesRes = await fetch(`/api/supplier-portal/responses/${quotationId}`);
+        // 2. Fetch supplier responses (cache: 'no-store' — always sync live data from the DB,
+        //    so a newly submitted response appears without a hard refresh)
+        const responsesRes = await fetch(`/api/supplier-portal/responses/${quotationId}`, { cache: 'no-store' });
         const responsesData = await responsesRes.json();
         const responses = responsesData.success ? (responsesData.responses || []) : [];
 
@@ -17862,8 +18041,8 @@
       list = getField('attachmentsList');
       dz.style.cursor = 'pointer';
 
-      const allowedTypes = ['image/', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/'];
-      const isAllowed = (file) => allowedTypes.some(t => file.type.startsWith(t)) || /\.(pdf|doc|docx|txt)$/i.test(file.name);
+      const allowedTypes = ['image/', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'image/vnd.adobe.photoshop', 'application/illustrator', 'application/vnd.adobe.illustrator', 'text/'];
+      const isAllowed = (file) => allowedTypes.some(t => file.type.startsWith(t)) || /\.(pdf|doc|docx|txt|xlsx|xls|psd|ai)$/i.test(file.name);
 
       function addRow(serverPath) {
         const ph = list.querySelector('.view-attachment-placeholder');
@@ -18735,13 +18914,13 @@
       // Attachments: Handle file processing
       function handleAttachmentFile(file) {
         // Validate file type
-        const allowedTypes = ['image/', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/'];
-        const isAllowed = allowedTypes.some(type => file.type.startsWith(type) || file.name.toLowerCase().endsWith('.pdf', '.doc', '.docx', '.txt'));
+        const allowedTypes = ['image/', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'image/vnd.adobe.photoshop', 'application/illustrator', 'application/vnd.adobe.illustrator', 'text/'];
+        const isAllowed = allowedTypes.some(type => file.type.startsWith(type)) || /\.(pdf|doc|docx|txt|xlsx|xls|psd|ai)$/i.test(file.name);
 
         if (!isAllowed) {
           showModal({
             title: 'Unsupported File Type',
-            body: 'Please upload PDF, DOC, DOCX, TXT, or image files only.',
+            body: 'Please upload PDF, DOC, DOCX, XLSX, XLS, PSD, AI, TXT, or image files only.',
             buttons: [{ text: 'OK', action: 'close' }]
           });
           return;
@@ -18809,6 +18988,10 @@
           icon.textContent = '🖼️';
         } else if (mimeType === 'application/pdf') {
           icon.textContent = '📄';
+        } else if (mimeType.includes('spreadsheet') || fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+          icon.textContent = '📊';
+        } else if (fileName.endsWith('.psd') || fileName.endsWith('.ai') || mimeType.includes('photoshop') || mimeType.includes('illustrator')) {
+          icon.textContent = '🎨';
         } else if (mimeType.includes('word') || fileName.endsWith('.doc') || fileName.endsWith('.docx')) {
           icon.textContent = '📝';
         } else {
@@ -21068,6 +21251,7 @@
               <option value="1.5mm">1.5mm</option>
               <option value="2mm">2mm</option>
               <option value="3mm">3mm</option>
+              <option value="as-per-sample">As Per Sample</option>
             </select>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
@@ -21078,6 +21262,7 @@
                 <option value="single-color">Single Color</option>
                 <option value="multi-color">Multi-Color</option>
                 <option value="full-color">Full Color</option>
+                <option value="as-per-sample">As Per Sample</option>
               </select>
             </div>
             <div>
@@ -21411,6 +21596,7 @@
                 <option value="1.5mm" ${productDetails.thickness === '1.5mm' ? 'selected' : ''}>1.5mm</option>
                 <option value="2mm" ${productDetails.thickness === '2mm' ? 'selected' : ''}>2mm</option>
                 <option value="3mm" ${productDetails.thickness === '3mm' ? 'selected' : ''}>3mm</option>
+                <option value="as-per-sample" ${productDetails.thickness === 'as-per-sample' ? 'selected' : ''}>As Per Sample</option>
               </select>
             </div>
           </div>
@@ -21422,6 +21608,7 @@
                 <option value="single-color" ${productDetails.colorMode === 'single-color' ? 'selected' : ''}>Single Color</option>
                 <option value="multi-color" ${productDetails.colorMode === 'multi-color' ? 'selected' : ''}>Multi-Color</option>
                 <option value="full-color" ${productDetails.colorMode === 'full-color' ? 'selected' : ''}>Full Color</option>
+                <option value="as-per-sample" ${productDetails.colorMode === 'as-per-sample' ? 'selected' : ''}>As Per Sample</option>
               </select>
             </div>
             <div>
@@ -22462,7 +22649,7 @@
 
     async function loadQuotationsFromStorage() {
       try {
-        const response = await fetch('/api/quotations');
+        const response = await fetch('/api/quotations', { cache: 'no-store' });
         const result = await response.json();
         if (!result.success) {
           throw new Error(result.error || 'Failed to load quotations');
@@ -22477,7 +22664,7 @@
     // Load outsourcing quotations from separate API (only 'other' type)
     async function loadOutsourcingQuotationsFromStorage() {
       try {
-        const response = await fetch('/api/quotations/outsourcing');
+        const response = await fetch('/api/quotations/outsourcing', { cache: 'no-store' });
         const result = await response.json();
         if (!result.success) {
           throw new Error(result.error || 'Failed to load outsourcing quotations');
