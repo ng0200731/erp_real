@@ -409,6 +409,17 @@ export function generateQuotationDetailSectionsHtml(quotation, opts = {}) {
     ? `<div style="margin:15px 0; text-align:center;"><img src="${opts.profileImageSrc}" style="max-width:200px; max-height:200px; object-fit:contain; border:1px solid #ddd; padding:5px;" alt="Product Image"></div>`
     : '';
 
+  // Quotation reference: outsource quotations carry an OS Ref (outsourcingSeq),
+  // regular quotations a Seq# (quotationSeq). Rendered as the first Product
+  // Information row so every email / PDF / View / Compare / supplier-portal view
+  // identifies the quotation the same way (and the portal — which has no card
+  // meta band — finally shows it).
+  const refValue = quotation.outsourcingSeq || quotation.quotationSeq || '';
+  const refLabel = quotation.outsourcingSeq ? 'OS Ref#' : 'Seq#';
+  const refRowHtml = refValue
+    ? `<tr><td style="${DETAIL_CELL_LABEL}">${refLabel}</td><td style="${DETAIL_CELL_VALUE}">${escapeHtml(refValue)}</td></tr>`
+    : '';
+
   const shownKeys = new Set();
   let specRows = '';
   const addRow = (label, value) => {
@@ -438,6 +449,7 @@ export function generateQuotationDetailSectionsHtml(quotation, opts = {}) {
     <div class="quotation-section" style="${DETAIL_SECTION}">
       <h3 style="${DETAIL_H3}">Product Information</h3>
       <table class="quotation-table" style="${DETAIL_TABLE}">
+        ${refRowHtml}
         <tr><td style="${DETAIL_CELL_LABEL}">Product Type</td><td style="${DETAIL_CELL_VALUE}">${productTypeName}</td></tr>
         <tr><td style="${DETAIL_CELL_LABEL}">Variable</td><td style="${DETAIL_CELL_VALUE}">${quotation.variable === 'YES' ? 'YES' : 'NO'}</td></tr>
       </table>
@@ -493,7 +505,6 @@ export function generateQuotationCardHtml(quotation, opts = {}) {
     <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;">
       <tr>
         <td style="background:#f5f5f5; border:1px solid #ccc; padding:8px; font-size:12px;">
-          ${osRef ? `<strong style="color:#000;">Ref:</strong> <span style="color:#000;">${osRef}</span> &nbsp;|&nbsp; ` : ''}
           <strong style="color:#000;">Date Created:</strong> <span style="color:#000;">${fmtDate(quotation.dateCreated) || '-'}</span> &nbsp;|&nbsp;
           <strong style="color:#000;">Date Revised:</strong> <span style="color:#000;">${fmtDate(quotation.dateRevised) || '-'}</span> &nbsp;|&nbsp;
           <strong style="color:#000;">Status:</strong> <span style="color:#000;">${formatStatusLabel(quotation.status)}</span>
@@ -595,6 +606,10 @@ export function buildSupplierConfirmationHtml(quotation, supplier, supplierMembe
   const tiersHtml = generateSupplierResponseTiersHtml(tiers, quotation.currency || 'HKD');
 
   const sd = submittedData || {};
+  const ccy = quotation.currency || 'HKD';
+  const sampleChargeCell = (sd.sampleCharge != null && !isNaN(Number(sd.sampleCharge)))
+    ? `${Number(sd.sampleCharge).toFixed(2)} ${escapeHtml(ccy)}`
+    : '-';
 
   const confirmationBlock = `
   <div class="quotation-section" style="margin:20px 0;">
@@ -603,6 +618,7 @@ export function buildSupplierConfirmationHtml(quotation, supplier, supplierMembe
       <tr><td style="${cellLabel}">Supplier</td><td style="${cellValue}">${(supplier && supplier.companyName) || 'N/A'}</td></tr>
       <tr><td style="${cellLabel}">Contact</td><td style="${cellValue}">${(supplierMember && supplierMember.name) || 'N/A'}</td></tr>
       <tr><td style="${cellLabel}">Delivery Days</td><td style="${cellValue}">${sd.deliveryDays || 'N/A'}</td></tr>
+      <tr><td style="${cellLabel}">Sample Charge (${escapeHtml(ccy)})</td><td style="${cellValue}">${sampleChargeCell}</td></tr>
       <tr><td style="${cellLabel}">Notes</td><td style="${cellValue}">${escapeHtml(sd.notes || '-')}</td></tr>
     </table>
   </div>`;

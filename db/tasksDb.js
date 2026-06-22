@@ -599,6 +599,14 @@ async function ensureSchema(db) {
   }
 
   try {
+    await db.exec(`ALTER TABLE supplier_quotation_responses ADD COLUMN sampleCharge REAL;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding sampleCharge column:', err);
+    }
+  }
+
+  try {
     await db.exec(`
       CREATE TABLE IF NOT EXISTS supplier_sampling_tokens (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -862,6 +870,27 @@ async function ensureSchema(db) {
     }
   } catch (err) {
     console.warn('Error backfilling quotationSeq:', err);
+  }
+
+  // Backfill outsourcingSeq (OS Ref) for existing outsourcing quotations. The
+  // quotationSeq backfill above deliberately skips outsourcing rows, and the OS
+  // ref is only assigned at create-time — so legacy outsourcing quotations (e.g.
+  // ones routed through the supplier portal before this column existed) have NULL
+  // outsourcingSeq and show no reference number anywhere. Assign one here.
+  try {
+    const existingOs = await db.all(`SELECT id FROM quotations WHERE outsourcingSeq IS NULL AND productType IN ('other', 'others', 'outsource') ORDER BY id ASC`);
+    if (existingOs.length > 0) {
+      const maxRow = await db.get(`SELECT MAX(CAST(REPLACE(outsourcingSeq, 'OS', '') AS INTEGER)) as maxSeq FROM quotations WHERE outsourcingSeq IS NOT NULL`);
+      let nextSeq = (maxRow && maxRow.maxSeq ? maxRow.maxSeq : 0) + 1;
+      for (const row of existingOs) {
+        const seq = 'OS' + String(nextSeq).padStart(7, '0');
+        await db.run(`UPDATE quotations SET outsourcingSeq = ? WHERE id = ?`, [seq, row.id]);
+        nextSeq++;
+      }
+      console.log(`Backfilled outsourcingSeq for ${existingOs.length} existing outsourcing quotations`);
+    }
+  } catch (err) {
+    console.warn('Error backfilling outsourcingSeq:', err);
   }
 
   try {

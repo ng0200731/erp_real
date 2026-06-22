@@ -130,13 +130,7 @@
       </div>
       <div class="info-section">
         <h2>Quotation Details</h2>
-        <div id="profileImageSection" style="margin-bottom:16px; display:none;">
-          <img id="profileImage" style="max-width:100%; max-height:200px; object-fit:contain; border:1px solid #000;">
-        </div>
-        <div class="info-row" id="customerItemNameRow" style="display:none;"><span class="info-label">Customer Item</span><span class="info-value" id="customerItemName"></span></div>
-        <div class="info-row"><span class="info-label">Customer</span><span class="info-value" id="customerName"></span></div>
-        <div class="info-row"><span class="info-label">Product Type</span><span class="info-value" id="productType"></span></div>
-        <div id="productDetailsHtml"></div>
+        <div id="detailSections"><!-- server-rendered Product Information / Customer / Brand / Product Specifications (same as email / PDF / View / Compare) --></div>
         <div class="info-row" id="notesRow" style="display:none;"><span class="info-label">Notes</span><span class="info-value" id="notes"></span></div>
       </div>
       <div id="alreadySubmitted" class="already-submitted" style="display:none;">
@@ -166,6 +160,10 @@
           <div class="form-group">
             <label for="surchargeBelowMoq" data-ccy="Surcharge below MOQ ({ccy})">Surcharge below MOQ (HKD)</label>
             <input type="number" id="surchargeBelowMoq" min="0" step="0.01" placeholder="e.g. 150.00">
+          </div>
+          <div class="form-group">
+            <label for="sampleCharge" data-ccy="Sample Charge ({ccy})">Sample Charge (HKD)</label>
+            <input type="number" id="sampleCharge" min="0" step="0.01" placeholder="e.g. 200.00">
           </div>
           <div class="form-group">
             <label for="supplierNotes">Notes (optional)</label>
@@ -239,66 +237,6 @@
       });
     }
 
-    // Format product type to readable name
-    function formatProductType(type) {
-      const names = {
-        'hang-tag': 'Hang Tag', 'woven-label': 'Woven Label', 'printed-label': 'Printed Label',
-        'heat-transfer': 'Heat Transfer', 'silicon-patch': 'Silicon Patch',
-        'embroidery-patch': 'Embroidery Patch', 'outsource': 'Outsource', 'other': 'Other'
-      };
-      return names[type] || type || '-';
-    }
-
-    // Friendly labels for product detail keys
-    const detailLabels = {
-      material: 'Material', size: 'Size', printingMethod: 'Printing Method',
-      colorCount: 'Color Count', edgeFinish: 'Edge Finish',
-      materialType: 'Material Type', frontColor: 'Front Color', backColor: 'Back Color',
-      transferType: 'Transfer Type', application: 'Application Method',
-      thickness: 'Thickness', colorMode: 'Color Mode', backingType: 'Backing Type',
-      designComplexity: 'Design Complexity',
-      stitchType: 'Stitch Type', borderType: 'Border Type', threadColorCount: 'Thread Color Count',
-      productDescription: 'Description', category: 'Category', complexity: 'Complexity',
-      _productTag: null // hidden internal field
-    };
-
-    // Render product details object as HTML info-rows. Mirrors the email HTML
-    // (shared/quotationEmailHtml.js): Height/Width live on the quotation root (not in
-    // productDetails) and empty spec values are omitted rather than shown as "-".
-    function renderProductDetails(quotation) {
-      const container = document.getElementById('productDetailsHtml');
-      const details = quotation && quotation.productDetails;
-      const productType = quotation && quotation.productType;
-      if (!details || typeof details !== 'object') {
-        container.innerHTML = '<div class="info-row"><span class="info-label">Product Details</span><span class="info-value">' + (details || '-') + '</span></div>';
-        return;
-      }
-      let html = '';
-      // Show the actual product type if it's an outsource with _productTag
-      if (productType === 'outsource' && details._productTag) {
-        html += '<div class="info-row"><span class="info-label">Product Type</span><span class="info-value">' + formatProductType(details._productTag) + '</span></div>';
-      }
-      // Height / Width (stored on the quotation root, same source as the email HTML)
-      if (quotation.height_mm !== null && quotation.height_mm !== undefined && quotation.height_mm !== '') {
-        html += '<div class="info-row"><span class="info-label">Height (mm, unfolded)</span><span class="info-value">' + quotation.height_mm + '</span></div>';
-      }
-      if (quotation.width_mm !== null && quotation.width_mm !== undefined && quotation.width_mm !== '') {
-        html += '<div class="info-row"><span class="info-label">Width (mm, unfolded)</span><span class="info-value">' + quotation.width_mm + '</span></div>';
-      }
-      // Internal/non-display keys: _-prefixed fields, tier config, tier-table ids, and
-      // quantity (the buyer's requested quantity is shown in the pricing tiers, not as a
-      // spec row). Mirrors INTERNAL_PRODUCT_DETAIL_KEYS in shared/quotationEmailHtml.js.
-      const INTERNAL_DETAIL_KEYS = ['tiers', 'tierScopeMode', 'brandTierTableId', 'customerTierTableId', 'quantity'];
-      for (const [key, value] of Object.entries(details)) {
-        if (key.startsWith('_')) continue; // skip internal fields
-        if (INTERNAL_DETAIL_KEYS.includes(key)) continue; // internal config / duplicate — not a display spec
-        if (value === null || value === undefined || value === '') continue; // omit empty specs (matches email HTML)
-        const label = detailLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
-        html += '<div class="info-row"><span class="info-label">' + label + '</span><span class="info-value">' + value + '</span></div>';
-      }
-      container.innerHTML = html;
-    }
-
     function dummyFill() {
       const unitInputs = document.querySelectorAll('#tierInputBody .tier-unit');
       unitInputs.forEach((el) => {
@@ -308,6 +246,7 @@
       document.getElementById('deliveryDays').value = Math.floor(Math.random() * 24) + 7;
       document.getElementById('moq').value = (Math.floor(Math.random() * 10) + 1) * 500;
       document.getElementById('surchargeBelowMoq').value = (Math.random() * 400 + 50).toFixed(2);
+      document.getElementById('sampleCharge').value = (Math.random() * 300 + 50).toFixed(2);
       document.getElementById('supplierNotes').value = 'Dummy text ' + Math.floor(Math.random() * 10000);
     }
 
@@ -453,14 +392,12 @@
         loadFiles();
         document.getElementById('supplierName').textContent = data.supplier.memberName;
         document.getElementById('companyName').textContent = data.supplier.companyName;
-        document.getElementById('customerName').textContent = data.quotation.customerName || '-';
-        document.getElementById('productType').textContent = formatProductType(data.quotation.productType) || '-';
-
         // Apply the quotation's currency to all price labels
         applyCurrencyLabels(data.quotation.currency || 'HKD');
 
-        // Format product details as HTML rows
-        renderProductDetails(data.quotation);
+        // Inject the server-rendered detail sections (Product Information / Customer /
+        // Brand / Product Specifications) — identical to email / PDF / View / Compare.
+        document.getElementById('detailSections').innerHTML = data.detailSectionsHtml || '';
 
         // Render per-tier price inputs (buyer-fixed quantities; supplier fills unit price).
         const requestedTiers = (Array.isArray(data.requestedTiers) && data.requestedTiers.length > 0)
@@ -469,18 +406,6 @@
               ? data.quotation.productDetails.tiers
               : []);
         renderTierInputs(requestedTiers, data.quotation && data.quotation.quantity);
-
-        // Show profile image if available
-        if (data.quotation.hasProfileImage) {
-          document.getElementById('profileImageSection').style.display = 'block';
-          document.getElementById('profileImage').src = `/api/quotations/${data.quotation.id}/profile-image`;
-        }
-
-        // Show customer item name if available
-        if (data.quotation.customerItemName) {
-          document.getElementById('customerItemNameRow').style.display = 'flex';
-          document.getElementById('customerItemName').textContent = data.quotation.customerItemName;
-        }
 
         if (data.quotation.notes) {
           document.getElementById('notesRow').style.display = 'flex';
@@ -505,6 +430,7 @@
                 <div class="info-row"><span class="info-label">Delivery Days</span><span class="info-value">${r.deliveryDays || '-'}</span></div>
                 ${r.moq != null ? `<div class="info-row"><span class="info-label">MOQ (pcs)</span><span class="info-value">${Number(r.moq)}</span></div>` : ''}
                 ${r.surchargeBelowMoq != null ? `<div class="info-row"><span class="info-label">Surcharge below MOQ (${submittedCcy})</span><span class="info-value">${Number(r.surchargeBelowMoq).toFixed(2)}</span></div>` : ''}
+                ${r.sampleCharge != null ? `<div class="info-row"><span class="info-label">Sample Charge (${submittedCcy})</span><span class="info-value">${Number(r.sampleCharge).toFixed(2)}</span></div>` : ''}
                 <div class="info-row"><span class="info-label">Notes</span><span class="info-value">${r.notes || '-'}</span></div>
                 ${submittedTiersHtml}
               </div>
@@ -540,6 +466,7 @@
               deliveryDays: parseInt(document.getElementById('deliveryDays').value),
               moq: (function () { const v = document.getElementById('moq').value; const n = parseInt(v, 10); return (v === '' || isNaN(n)) ? null : n; })(),
               surchargeBelowMoq: (function () { const v = document.getElementById('surchargeBelowMoq').value; const n = parseFloat(v); return (v === '' || isNaN(n)) ? null : Number(n.toFixed(2)); })(),
+              sampleCharge: (function () { const v = document.getElementById('sampleCharge').value; const n = parseFloat(v); return (v === '' || isNaN(n)) ? null : Number(n.toFixed(2)); })(),
               notes: document.getElementById('supplierNotes').value
             };
           })())

@@ -57,6 +57,7 @@ const quotation = {
   variable: 'YES',
   notes: 'Line1\nLine2',
   dateCreated: '2026-06-19T00:00:00Z',
+  outsourcingSeq: 'OS-001',
 };
 
 // cid image path (server)
@@ -71,7 +72,9 @@ ok(!withCid.includes('<!DOCTYPE'), 'card is NOT a full document (no doctype)');
 ok(withCid.includes('QUOTATION'), 'card has QUOTATION header');
 ok(withCid.includes('BrandX'), 'card uses opts.brandName');
 ok(withCid.includes('src="cid:profile-image-7@longriverlabel.com"'), 'card embeds cid: image');
-ok(withCid.includes('OS-001'), 'card shows osRef');
+ok(withCid.includes('OS-001'), 'card shows the quotation ref');
+ok(withCid.includes('OS Ref#'), 'card renders OS Ref# label in Product Information');
+ok(!withCid.includes('>Ref:</strong>'), 'card no longer duplicates ref in the meta band');
 ok(withCid.includes('Satin Tape'), 'card decodes productDetail option (materialType satin -> Satin Tape)');
 ok(withCid.includes('Customer Item Name'), 'card shows root-level customer item name');
 ok(withCid.includes('Line1<br>Line2'), 'card renders notes with line breaks');
@@ -84,6 +87,7 @@ const withDataUrl = generateQuotationCardHtml(
 ok(withDataUrl.includes('src="data:image/png;base64,AAAA"'), 'card embeds data URL image');
 ok(withDataUrl.includes('N/A'), 'card falls back to N/A brand when brandName missing');
 ok(!withDataUrl.includes('Ref:'), 'card omits Ref band when osRef empty');
+ok(!withDataUrl.includes('OS Ref#') && !withDataUrl.includes('Seq#'), 'card omits ref row when quotation has no seq');
 
 // self-contained: every section heading + table carry inline styles (no reliance on a <style> block)
 ok(withCid.includes('style="width:100%; border-collapse:collapse;"'), 'card table has inlined quotation-table style');
@@ -157,6 +161,25 @@ const confEsc = buildSupplierConfirmationHtml(
 );
 ok(confEsc.includes('&lt;img src=x onerror=alert(1)&gt;'), 'confirmation escapes notes HTML');
 ok(!confEsc.includes('<img src=x onerror'), 'confirmation does not emit raw notes markup');
+
+// --- sample charge: supplier-entered, shown in the confirmation in the quotation's currency ---
+const confWithSample = buildSupplierConfirmationHtml(
+  { productType: 'pu-patch', productDetails: {}, customerName: 'C', outsourcingSeq: 'OS-1', currency: 'USD' },
+  { companyName: 'S' }, { name: 'M' },
+  { deliveryDays: 10, notes: '', sampleCharge: 123.5, sanitizedTiers: [] },
+  { brandName: 'B' }
+);
+ok(confWithSample.includes('Sample Charge (USD)'), 'confirmation labels sample charge with the quotation currency');
+ok(confWithSample.includes('123.50 USD'), 'confirmation renders sample charge value to 2 decimals with currency');
+
+const confNoSample = buildSupplierConfirmationHtml(
+  { productType: 'pu-patch', productDetails: {}, customerName: 'C', currency: 'HKD' },
+  { companyName: 'S' }, { name: 'M' },
+  { deliveryDays: 10, notes: '', sanitizedTiers: [] },
+  { brandName: 'B' }
+);
+ok(confNoSample.includes('Sample Charge (HKD)'), 'confirmation shows sample-charge row even when none entered');
+ok(confNoSample.includes('>-</td>'), 'confirmation renders "-" for sample charge when none entered');
 
 // tier table no longer shows total (data still persisted for downstream use)
 const tierTotalPref = generateSupplierResponseTiersHtml([{ quantity: 1000, unitPrice: 0.50, total: 1234.5 }]);

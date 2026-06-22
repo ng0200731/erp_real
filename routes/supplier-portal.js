@@ -555,6 +555,21 @@ router.get('/:token', async (req, res) => {
       }));
     }
 
+    // Render the same shared detail sections used by email / PDF / View / Compare, so
+    // the portal shows full Product Information / Customer / Brand / Product
+    // Specifications for every product type (identical to the other routes).
+    let brandName = 'N/A';
+    try {
+      if (quotation.brandId) {
+        const brand = await db.get('SELECT name FROM brands WHERE id = ?', [quotation.brandId]);
+        if (brand && brand.name) brandName = brand.name;
+      }
+    } catch (e) { /* keep N/A */ }
+    const profileImageSrc = quotation.hasProfileImage
+      ? `/api/quotations/${quotation.id}/profile-image`
+      : null;
+    const detailSectionsHtml = generateQuotationDetailSectionsHtml(quotation, { brandName, profileImageSrc });
+
     res.json({
       success: true,
       quotation: {
@@ -576,7 +591,8 @@ router.get('/:token', async (req, res) => {
         memberName: supplierMember.name
       },
       alreadySubmitted: !!existingResponse,
-      existingResponse: existingResponse || null
+      existingResponse: existingResponse || null,
+      detailSectionsHtml
     });
   } catch (error) {
     console.error('Error validating token:', error);
@@ -588,7 +604,7 @@ router.get('/:token', async (req, res) => {
 router.post('/:token/submit', async (req, res) => {
   try {
     const { token } = req.params;
-    const { unitPrice, totalPrice, deliveryDays, notes, tierPrices, moq, surchargeBelowMoq } = req.body;
+    const { unitPrice, totalPrice, deliveryDays, notes, tierPrices, moq, surchargeBelowMoq, sampleCharge } = req.body;
     const db = await getTasksDb();
 
     // Normalize submitted per-tier prices (supplier enters a unit price per requested
@@ -624,6 +640,11 @@ router.post('/:token/submit', async (req, res) => {
     const surchargeNum = Number(surchargeBelowMoq);
     const finalSurchargeBelowMoq = Number.isFinite(surchargeNum) ? Number(surchargeNum.toFixed(2)) : null;
 
+    // Sample charge is an optional numeric field quoted by the supplier (in the
+    // quotation's currency). Coerce to a number or NULL when blank/non-numeric.
+    const sampleChargeNum = Number(sampleCharge);
+    const finalSampleCharge = Number.isFinite(sampleChargeNum) ? Number(sampleChargeNum.toFixed(2)) : null;
+
     // Validate token
     const tokenData = await db.get(
       `SELECT * FROM supplier_quotation_tokens WHERE token = ?`,
@@ -653,8 +674,8 @@ router.post('/:token/submit', async (req, res) => {
     const submittedAt = new Date().toISOString();
     const result = await db.run(
       `INSERT INTO supplier_quotation_responses
-       (tokenId, quotationId, supplierId, supplierMemberId, unitPrice, totalPrice, deliveryDays, notes, tierPrices, moq, surchargeBelowMoq, submittedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (tokenId, quotationId, supplierId, supplierMemberId, unitPrice, totalPrice, deliveryDays, notes, tierPrices, moq, surchargeBelowMoq, sampleCharge, submittedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         tokenData.id,
         tokenData.quotationId,
@@ -667,6 +688,7 @@ router.post('/:token/submit', async (req, res) => {
         tierPricesJson,
         finalMoq,
         finalSurchargeBelowMoq,
+        finalSampleCharge,
         submittedAt
       ]
     );
@@ -700,7 +722,7 @@ router.post('/:token/submit', async (req, res) => {
     const supplier = await db.get(`SELECT * FROM suppliers WHERE id = ?`, [tokenData.supplierId]);
     const supplierMember = await db.get(`SELECT * FROM supplier_members WHERE id = ?`, [tokenData.supplierMemberId]);
     if (quotation && supplier && supplierMember) {
-      sendSubmissionNotification(quotation, supplier, supplierMember, { unitPrice, totalPrice, deliveryDays, notes, sanitizedTiers })
+      sendSubmissionNotification(quotation, supplier, supplierMember, { unitPrice, totalPrice, deliveryDays, notes, sanitizedTiers, sampleCharge: finalSampleCharge })
         .catch(err => console.error('Notification error:', err));
 
       // Log supplier response in quotation history
