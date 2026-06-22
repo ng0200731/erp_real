@@ -39,7 +39,7 @@ export const PRODUCT_DETAILS_LABELS = {
 
 // Verbatim from public/index.html:15414
 export const PRODUCT_OPTION_LABELS = {
-  material: { paper: 'Paper', cardboard: 'Cardboard', plastic: 'Plastic', fabric: 'Fabric', 'Real Leather': 'Real Leather', 'PU Leather': 'PU Leather' },
+  material: { paper: 'Paper', cardboard: 'Cardboard', plastic: 'Plastic', fabric: 'Fabric', 'Real Leather': 'Real Leather', 'PU Leather': 'PU Leather', 'Jacron': 'Jacron', 'Suede': 'Suede' },
   printingMethod: { 'screen-printing': 'Screen Printing', 'digital-printing': 'Digital Printing', 'offset-printing': 'Offset Printing', embroidery: 'Embroidery' },
   colorCount: { '1': '1 Color', '2': '2 Colors', '3': '3 Colors', '4': '4+ Colors' },
   edgeFinish: { cut: 'Cut Edge', hemmed: 'Hemmed Edge', overlocked: 'Overlocked', 'end-fold': 'End Fold', 'loop-fold': 'Loop Fold', '4-side-heat-cut': '4 Side Heat Cut' },
@@ -59,7 +59,7 @@ export const PRODUCT_OPTION_LABELS = {
   threadColorCount: { '1-3': '1-3 Colors', '4-6': '4-6 Colors', '7-9': '7-9 Colors', '10+': '10+ Colors' },
   screenPrint: { 'No': 'No', '1': '1', '2': '2', '3': '3', '4': '4' },
   hotPress: { 'YES': 'YES', 'NO': 'NO' },
-  edge: { 'Paint': 'Paint', 'Embroidery': 'Embroidery' },
+  edge: { 'Paint': 'Paint', 'Embroidery': 'Embroidery', 'No Treatment': 'No Treatment' },
   metalEmbedded: { 'YES': 'YES', 'NO': 'NO' }
 };
 
@@ -84,6 +84,15 @@ export function emailProductTypeDisplay(productType, productDetails) {
 
 // Verbatim from public/index.html:15458
 export function resolveProductDetailValue(key, raw) {
+  // DB-augmented labels (browser only) take precedence, so newly added/edited
+  // Product-Specification options render with their current label in emails/PDFs.
+  // On the Node server `window` is undefined, so it falls through to the static map.
+  if (typeof window !== 'undefined' && window.cachedSpecOptionLabels) {
+    const dbMap = window.cachedSpecOptionLabels[key];
+    if (dbMap && Object.prototype.hasOwnProperty.call(dbMap, String(raw))) {
+      return dbMap[String(raw)];
+    }
+  }
   const optMap = PRODUCT_OPTION_LABELS[key];
   if (optMap && Object.prototype.hasOwnProperty.call(optMap, String(raw))) {
     return optMap[String(raw)];
@@ -304,6 +313,70 @@ export function generateStatusTierSectionHtml(ctx = {}) {
   }
 
   return html + close;
+}
+
+// The "Confirm Price" action band. Once a quotation reaches this stage a supplier
+// has been chosen and the customer-facing (marked-up) price is what matters: the
+// batch-send email/PDF must show ONLY the selected supplier's tiers with markup
+// applied, never the raw supplier comparison. Covers the statuses whose action
+// button reads "Confirm Price" ("send to customer", "await customer confirm
+// price") plus the subsequent "price confirmed". Pure; case-insensitive.
+export function isConfirmPriceStatus(status) {
+  const s = String(status || '').toLowerCase();
+  return s === 'send to customer' || s === 'await customer confirm price' || s === 'price confirmed';
+}
+
+// Resolve the customer-facing marked-up tiers for the SELECTED supplier at the
+// Confirm Price stage. Pure; consumed by both the HTML renderer and the jsPDF
+// renderer so the email and PDF cannot drift. Returns null when no supplier is
+// selected or the selected supplier submitted no tiers — the caller then falls
+// back to the status-driven comparison section (generateStatusTierSectionHtml).
+export function resolveCustomerMarkupTiers(ctx = {}) {
+  const responses = Array.isArray(ctx.responses) ? ctx.responses : [];
+  const selectedSupplierId = ctx.selectedSupplierId != null ? Number(ctx.selectedSupplierId) : null;
+  const selectedResponseId = ctx.selectedResponseId != null ? Number(ctx.selectedResponseId) : null;
+  const markupPercent = Number(ctx.markupPercent) || 0;
+  const isSelected = (r) =>
+    (selectedResponseId != null && Number(r.id) === selectedResponseId) ||
+    (selectedSupplierId != null && Number(r.supplierId) === selectedSupplierId);
+  const sel = responses.find(isSelected);
+  if (!sel) return null;
+  const tiers = Array.isArray(sel.tiers) ? sel.tiers : [];
+  if (tiers.length === 0) return null;
+  const mk = 1 + (markupPercent / 100);
+  return tiers.map((t) => ({
+    quantity: Number(t.quantity) || 0,
+    unitPrice: (t.unitPrice != null ? Number(t.unitPrice) : 0) * mk,
+  }));
+}
+
+// Customer-facing tier section for the batch-send email at the Confirm Price
+// stage. Renders ONLY the selected supplier's Quantity / Unit Price (after
+// markup). Returns '' when resolveCustomerMarkupTiers yields nothing, so the
+// caller can fall back to the status-driven comparison section.
+export function generateCustomerMarkupTiersHtml(ctx = {}) {
+  const tiers = resolveCustomerMarkupTiers(ctx);
+  if (!tiers) return '';
+  const markupPercent = Number(ctx.markupPercent) || 0;
+  const ccy = (ctx && ctx.currency) || 'HKD';
+  const rows = tiers.map((t) =>
+    `<tr><td style="padding:8px; border:1px solid #ccc;">${t.quantity.toLocaleString()}</td><td style="padding:8px; border:1px solid #ccc; text-align:right;">${t.unitPrice.toFixed(4)}</td></tr>`
+  ).join('');
+  const subtitle = markupPercent > 0
+    ? `<div style="font-size:12px; color:#666; margin-bottom:8px;">(after ${markupPercent}% markup)</div>`
+    : '';
+  return `
+  <div class="quotation-section" style="margin:20px 0;">
+    <h3 style="margin-top:0; margin-bottom:8px; border-bottom:2px solid #000; padding-bottom:8px;">Supplier Quoted Pricing</h3>
+    ${subtitle}
+    <table style="width:100%; border-collapse:collapse; margin:8px 0;">
+      <thead><tr>
+        <th style="padding:8px; border:1px solid #ccc; text-align:left;">Quantity</th>
+        <th style="padding:8px; border:1px solid #ccc; text-align:right;">Unit Price (${ccy})</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
 }
 
 // Internal product-detail keys that hold pricing/tier configuration (or duplicate a

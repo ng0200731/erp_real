@@ -144,6 +144,44 @@
   </div>
 
   <script>
+    // ---- Suppress the browser's "previously typed value" dropdown on free-text inputs ----
+    // Sweep existing inputs once, then watch the DOM for dynamically inserted ones.
+    // Password fields and password-manager tokens (username / current-password /
+    // new-password) are left alone so login + password-manager autofill keep working.
+    (function suppressFreeTextAutocomplete() {
+      const FREE_TEXT_SELECTOR = 'input[type="text"], input[type="email"], input[type="tel"], input[type="number"], input[type="search"], input[type="url"], input:not([type]), textarea';
+      const FREE_TEXT_TYPES = ['', 'text', 'email', 'tel', 'number', 'search', 'url'];
+      const PRESERVED_TOKENS = /^(username|current-password|new-password)$/i;
+
+      function applyOff(el) {
+        if (!el || el.nodeType !== 1) return;
+        if (el.tagName === 'INPUT') {
+          const type = (el.getAttribute('type') || '').toLowerCase();
+          if (!FREE_TEXT_TYPES.includes(type)) return;
+        }
+        const current = (el.getAttribute('autocomplete') || '').trim().toLowerCase();
+        if (PRESERVED_TOKENS.test(current)) return;
+        if (current !== 'off') el.setAttribute('autocomplete', 'off');
+      }
+      function sweep(root) {
+        try { (root || document).querySelectorAll(FREE_TEXT_SELECTOR).forEach(applyOff); }
+        catch (e) { /* ignore */ }
+      }
+      sweep(document);
+      const obs = new MutationObserver((mutations) => {
+        for (const m of mutations) {
+          for (const node of m.addedNodes) {
+            if (node.nodeType !== 1) continue;
+            applyOff(node);
+            if (node.querySelectorAll) sweep(node);
+          }
+        }
+      });
+      const start = (root) => obs.observe(root, { childList: true, subtree: true });
+      if (document.body) start(document.body);
+      else document.addEventListener('DOMContentLoaded', () => start(document.body));
+    })();
+
     // Format product type to readable name
     function formatProductType(type) {
       const names = {

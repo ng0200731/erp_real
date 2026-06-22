@@ -4,6 +4,9 @@ const {
   formatStatusLabel,
   resolveStatusTierMode,
   generateStatusTierSectionHtml,
+  generateCustomerMarkupTiersHtml,
+  resolveCustomerMarkupTiers,
+  isConfirmPriceStatus,
   generateQuotationCardHtml,
   generateQuotationEmailHtml,
 } = await import('../../shared/quotationEmailHtml.js');
@@ -168,5 +171,58 @@ const docWithoutExtra = generateQuotationEmailHtml(
   { brandName: 'B', profileImageSrc: null }
 );
 ok(!docWithoutExtra.includes('tier-section'), 'wrapper without afterCardHtml is unchanged (no marker)');
+
+// --- isConfirmPriceStatus: the "Confirm Price" action band ---
+eq(isConfirmPriceStatus('await customer confirm price'), true, 'await customer confirm price is a confirm-price status');
+eq(isConfirmPriceStatus('send to customer'), true, 'send to customer is a confirm-price status');
+eq(isConfirmPriceStatus('price confirmed'), true, 'price confirmed is a confirm-price status');
+eq(isConfirmPriceStatus('Await Customer Confirm Price'), true, 'confirm-price check is case-insensitive');
+eq(isConfirmPriceStatus('compare quotation'), false, 'compare quotation is NOT confirm-price (still comparing)');
+eq(isConfirmPriceStatus('await quotation'), false, 'await quotation is NOT confirm-price');
+eq(isConfirmPriceStatus(''), false, 'empty status is NOT confirm-price');
+eq(isConfirmPriceStatus(null), false, 'null status is NOT confirm-price');
+
+// --- generateCustomerMarkupTiersHtml: Confirm Price stage, marked-up only ---
+const mkHtml = generateCustomerMarkupTiersHtml({
+  responses: [respA, respB],
+  selectedSupplierId: 1,
+  selectedResponseId: 10,
+  markupPercent: 15,
+  currency: 'HKD',
+});
+ok(mkHtml.includes('Supplier Quoted Pricing'), 'confirm-price section uses the customer-facing heading');
+ok(mkHtml.includes('after 15% markup'), 'confirm-price section shows the markup subtitle');
+ok(mkHtml.includes('Unit Price (HKD)'), 'confirm-price tier header carries the currency');
+ok(mkHtml.includes('1.1500'), 'tier 1 marked up 1.00 * 1.15 = 1.1500');
+ok(mkHtml.includes('0.9200'), 'tier 2 marked up 0.80 * 1.15 = 0.9200');
+ok(!mkHtml.includes('1.0000') && !mkHtml.includes('0.8000'), 'raw supplier tier prices are NOT shown');
+ok(!mkHtml.includes('XYZ Co') && !mkHtml.includes('Mary'), 'non-selected supplier / competitor is NOT shown');
+ok(!mkHtml.includes('line-through'), 'no strike-through chrome from the comparison view');
+
+// no selection -> '' (caller falls back to the comparison section)
+eq(generateCustomerMarkupTiersHtml({ responses: [respA, respB], markupPercent: 15 }), '',
+  'no selected supplier -> empty (fall back to comparison)');
+eq(generateCustomerMarkupTiersHtml({ responses: [], markupPercent: 15 }), '',
+  'no responses -> empty (fall back)');
+
+// selected supplier that submitted no tiers (respB) -> '' (fall back)
+eq(generateCustomerMarkupTiersHtml({ responses: [respA, respB], selectedSupplierId: 2, markupPercent: 15 }), '',
+  'selected supplier without tiers -> empty (fall back)');
+
+// stale selection id -> '' (fall back), no crash
+eq(generateCustomerMarkupTiersHtml({ responses: [respA, respB], selectedSupplierId: 999, markupPercent: 15 }), '',
+  'stale selection id -> empty (fall back)');
+
+// markup 0 -> no subtitle, raw tier prices shown as-is
+const mkZero = generateCustomerMarkupTiersHtml({ responses: [respA], selectedSupplierId: 1, markupPercent: 0 });
+ok(!mkZero.includes('markup'), 'no markup subtitle when 0%');
+ok(mkZero.includes('1.0000'), 'raw tier shown when markup is 0');
+
+// --- resolveCustomerMarkupTiers: data shape shared by HTML + PDF renderers ---
+const resolved = resolveCustomerMarkupTiers({ responses: [respA], selectedSupplierId: 1, markupPercent: 15 });
+eq(resolved.length, 2, 'two tiers resolved for the selected supplier');
+eq(resolved[0], { quantity: 1000, unitPrice: 1.15 }, 'tier 1 quantity + marked-up unit price');
+eq(resolveCustomerMarkupTiers({ responses: [respB], selectedSupplierId: 2, markupPercent: 15 }), null,
+  'null when the selected supplier has no tiers');
 
 summary('batch send status + tier section (shared module)');

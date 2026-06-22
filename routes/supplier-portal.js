@@ -1,12 +1,12 @@
 import express from 'express';
-import { getTasksDb, getProfiles, getQuotationProfileImage, logStatusChange, createSupplierQuotationResponseTiers, getSupplierQuotationResponseTiers, getSupplierQuotationResponseTiersByQuotation, advanceToCompareQuotationWhenAllResponded } from '../db/tasksDb.js';
+import { getTasksDb, getProfiles, getQuotationProfileImage, logStatusChange, createSupplierQuotationResponseTiers, getSupplierQuotationResponseTiers, getSupplierQuotationResponseTiersByQuotation, advanceToCompareQuotationWhenAllResponded, getSupplierQuotationFiles, insertSupplierQuotationFile } from '../db/tasksDb.js';
 import crypto from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import nodemailer from 'nodemailer';
+import { getNormalizedRelativePath } from '../utils/pathUtils.js';
 import { buildSupplierConfirmationHtml, generateSupplierResponseTiersHtml, generateQuotationDetailSectionsHtml } from '../shared/quotationEmailHtml.js';
 
-const router = express.Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Helper: send notification email to both parties after supplier submits quotation
@@ -112,6 +112,20 @@ export async function generateSupplierToken(quotationId, supplierId, supplierMem
 
   return token;
 }
+
+// Validate a portal token (exists + not expired). Returns { tokenData } on success or
+// { error: { status, message } } on failure. Reused by the supplier file routes.
+async function resolvePortalToken(token) {
+  const db = await getTasksDb();
+  const tokenData = await db.get(`SELECT * FROM supplier_quotation_tokens WHERE token = ?`, [token]);
+  if (!tokenData) return { error: { status: 404, message: 'Invalid token' } };
+  if (new Date(tokenData.expiresAt) < new Date()) return { error: { status: 403, message: 'Token expired' } };
+  return { tokenData };
+}
+
+export function createSupplierPortalRoutes(deps) {
+  const upload = deps && deps.upload;
+  const router = express.Router();
 
 // POST /supplier-portal/generate-tokens - Generate tokens for a quotation's suppliers
 // (must be before /:token to avoid matching "generate-tokens" as a token)
@@ -709,4 +723,44 @@ router.post('/:token/submit', async (req, res) => {
   }
 });
 
-export default router;
+  // GET /:token/files - list this supplier's uploaded supporting files (read-only)
+  router.get('/:token/files', async (req, res) => {
+    try {
+      const { tokenData, error } = await resolvePortalToken(req.params.token);
+      if (error) return res.status(error.status).json({ success: false, error: error.message });
+      const files = await getSupplierQuotationFiles(tokenData.quotationId, tokenData.supplierId);
+      res.json({ success: true, files });
+    } catch (e) {
+      console.error('Error listing supplier files:', e);
+      res.status(500).json({ success: false, error: 'Server error' });
+    }
+  });
+
+  // POST /:token/files - supplier uploads a supporting file
+  router.post('/:token/files', upload.single('supplierFile'), async (req, res) => {
+    try {
+      const { tokenData, error } = await resolvePortalToken(req.params.token);
+      if (error) return res.status(error.status).json({ success: false, error: error.message });
+      if (!req.file) return res.status(400).json({ success: false, error: 'No file uploaded' });
+      const filePath = getNormalizedRelativePath(path.join(__dirname, '..'), req.file.path);
+      const row = await insertSupplierQuotationFile({
+        quotationId: tokenData.quotationId,
+        supplierId: tokenData.supplierId,
+        supplierMemberId: tokenData.supplierMemberId,
+        tokenId: tokenData.id,
+        originalName: req.file.originalname,
+        storedFilename: req.file.filename,
+        filePath,
+        mimeType: req.file.mimetype,
+        sizeBytes: req.file.size,
+        uploadedBy: 'supplier',
+      });
+      res.json({ success: true, file: row });
+    } catch (e) {
+      console.error('Error uploading supplier file:', e);
+      res.status(500).json({ success: false, error: 'Server error' });
+    }
+  });
+
+  return router;
+}

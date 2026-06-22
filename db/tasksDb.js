@@ -263,6 +263,22 @@ async function ensureSchema(db) {
     );
     CREATE INDEX IF NOT EXISTS idx_sqrt_responseId ON supplier_quotation_response_tiers(responseId);
 
+    CREATE TABLE IF NOT EXISTS supplier_quotation_files (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      quotationId       INTEGER NOT NULL,
+      supplierId        INTEGER NOT NULL,
+      supplierMemberId  INTEGER,
+      tokenId           INTEGER,
+      originalName      TEXT NOT NULL,
+      storedFilename    TEXT NOT NULL,
+      filePath          TEXT NOT NULL,
+      mimeType          TEXT,
+      sizeBytes         INTEGER,
+      uploadedBy        TEXT NOT NULL,
+      uploadedAt        TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_sqf_quotation ON supplier_quotation_files(quotationId);
+
     CREATE TABLE IF NOT EXISTS brands (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -285,6 +301,21 @@ async function ensureSchema(db) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_currencies_code ON currencies(code);
+
+    CREATE TABLE IF NOT EXISTS product_spec_options (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      productType TEXT NOT NULL,
+      fieldKey TEXT NOT NULL,
+      value TEXT NOT NULL,
+      label TEXT NOT NULL,
+      sortOrder INTEGER NOT NULL DEFAULT 0,
+      isActive INTEGER NOT NULL DEFAULT 1,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_pso_unique ON product_spec_options(productType, fieldKey, value);
+    CREATE INDEX IF NOT EXISTS idx_pso_lookup ON product_spec_options(productType, fieldKey, sortOrder);
 
     CREATE TABLE IF NOT EXISTS product_profiles (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -945,6 +976,7 @@ export async function getTasksDb() {
       });
       await ensureSchema(db);
       await seedCurrenciesIfEmpty(db);
+      await seedProductSpecOptionsIfEmpty(db);
       return db;
     })();
   }
@@ -2232,6 +2264,284 @@ export async function seedCurrenciesIfEmpty(db) {
   }
 }
 
+// ========== PRODUCT SPEC OPTIONS FUNCTIONS ==========
+
+// Single source of truth for default Product-Specification dropdown options.
+// Must stay in sync with the frontend DEFAULT_SPEC_OPTIONS in public/index.html.
+// Structure: { productType: { fieldKey: [ { value, label }, ... ] } }
+export const DEFAULT_SPEC_OPTIONS = {
+  'hang-tag': {
+    material: [
+      { value: 'paper', label: 'Paper' },
+      { value: 'cardboard', label: 'Cardboard' },
+      { value: 'plastic', label: 'Plastic' },
+      { value: 'fabric', label: 'Fabric' },
+    ],
+    printingMethod: [
+      { value: 'screen-printing', label: 'Screen Printing' },
+      { value: 'digital-printing', label: 'Digital Printing' },
+      { value: 'offset-printing', label: 'Offset Printing' },
+      { value: 'embroidery', label: 'Embroidery' },
+    ],
+  },
+  'woven-label': {
+    colorCount: [
+      { value: '1', label: '1 Color' },
+      { value: '2', label: '2 Colors' },
+      { value: '3', label: '3 Colors' },
+      { value: '4', label: '4+ Colors' },
+    ],
+    edgeFinish: [
+      { value: 'cut', label: 'Cut Edge' },
+      { value: 'hemmed', label: 'Hemmed Edge' },
+      { value: 'overlocked', label: 'Overlocked' },
+      { value: 'end-fold', label: 'End Fold' },
+      { value: 'loop-fold', label: 'Loop Fold' },
+      { value: '4-side-heat-cut', label: '4 Side Heat Cut' },
+    ],
+  },
+  'printed-label': {
+    materialType: [
+      { value: 'satin', label: 'Satin Tape' },
+      { value: 'cotton', label: 'Cotton Tape' },
+      { value: 'woven', label: 'Woven Fabric' },
+      { value: 'others', label: 'Others' },
+    ],
+    ink: [
+      { value: 'uv', label: 'UV' },
+      { value: 'silicon', label: 'Silicon' },
+    ],
+    flatRaised: [
+      { value: 'flat', label: 'Flat' },
+      { value: 'raised', label: 'Raised' },
+    ],
+    folding: [
+      { value: 'end-fold', label: 'End Fold' },
+      { value: 'loop-fold', label: 'Loop Fold' },
+      { value: 'manhattan-fold', label: 'Manhattan Fold' },
+      { value: 'mitre-fold', label: 'Mitre Fold' },
+      { value: 'straight-cut', label: 'Straight Cut' },
+    ],
+  },
+  'heat-transfer': {
+    transferType: [
+      { value: 'screen-print', label: 'Screen Print Transfer' },
+      { value: 'digital-print', label: 'Digital Print Transfer' },
+      { value: 'vinyl-cut', label: 'Vinyl Cut Transfer' },
+      { value: 'sublimation', label: 'Sublimation Transfer' },
+    ],
+    application: [
+      { value: 'heat-press', label: 'Heat Press' },
+      { value: 'iron', label: 'Household Iron' },
+      { value: 'commercial', label: 'Commercial Press' },
+    ],
+  },
+  'silicon-patch': {
+    thickness: [
+      { value: '0.5mm', label: '0.5mm' },
+      { value: '1mm', label: '1mm' },
+      { value: '1.5mm', label: '1.5mm' },
+      { value: '2mm', label: '2mm' },
+      { value: '3mm', label: '3mm' },
+      { value: 'as-per-sample', label: 'As Per Sample' },
+    ],
+    colorMode: [
+      { value: 'single-color', label: 'Single Color' },
+      { value: 'multi-color', label: 'Multi-Color' },
+      { value: 'full-color', label: 'Full Color' },
+      { value: 'as-per-sample', label: 'As Per Sample' },
+    ],
+    backingType: [
+      { value: 'adhesive', label: 'Adhesive' },
+      { value: 'sew-on', label: 'Sew-on' },
+      { value: 'velcro', label: 'Velcro' },
+      { value: 'magnetic', label: 'Magnetic' },
+    ],
+    designComplexity: [
+      { value: 'simple', label: 'Simple' },
+      { value: 'medium', label: 'Medium' },
+      { value: 'complex', label: 'Complex' },
+      { value: 'custom', label: 'Custom' },
+    ],
+  },
+  'embroidery-patch': {
+    stitchType: [
+      { value: 'flat-stitch', label: 'Flat Stitch' },
+      { value: '3d-puff', label: '3D Puff' },
+      { value: 'applique', label: 'Applique' },
+      { value: 'chenille', label: 'Chenille' },
+    ],
+    borderType: [
+      { value: 'merrow', label: 'Merrow Border' },
+      { value: 'heat-cut', label: 'Heat Cut Border' },
+      { value: 'laser-cut', label: 'Laser Cut' },
+    ],
+    backingType: [
+      { value: 'iron-on', label: 'Iron-on' },
+      { value: 'sew-on', label: 'Sew-on' },
+      { value: 'velcro', label: 'Velcro' },
+      { value: 'adhesive', label: 'Adhesive' },
+      { value: 'none', label: 'None' },
+    ],
+    threadColorCount: [
+      { value: '1-3', label: '1-3 Colors' },
+      { value: '4-6', label: '4-6 Colors' },
+      { value: '7-9', label: '7-9 Colors' },
+      { value: '10+', label: '10+ Colors' },
+    ],
+  },
+  'pu-patch': {
+    material: [
+      { value: 'Real Leather', label: 'Real Leather' },
+      { value: 'PU Leather', label: 'PU Leather' },
+      { value: 'Jacron', label: 'Jacron' },
+      { value: 'Suede', label: 'Suede' },
+    ],
+    screenPrint: [
+      { value: 'No', label: 'No' },
+      { value: '1', label: '1' },
+      { value: '2', label: '2' },
+      { value: '3', label: '3' },
+      { value: '4', label: '4' },
+    ],
+    hotPress: [
+      { value: 'YES', label: 'YES' },
+      { value: 'NO', label: 'NO' },
+    ],
+    edge: [
+      { value: 'Paint', label: 'Paint' },
+      { value: 'Embroidery', label: 'Embroidery' },
+      { value: 'No Treatment', label: 'No Treatment' },
+    ],
+    metalEmbedded: [
+      { value: 'YES', label: 'YES' },
+      { value: 'NO', label: 'NO' },
+    ],
+  },
+};
+
+export async function getAllProductSpecOptions() {
+  const db = await getTasksDb();
+  return await db.all(
+    `SELECT * FROM product_spec_options ORDER BY productType, fieldKey, sortOrder, id`
+  );
+}
+
+export async function getProductSpecOptionsByType(productType) {
+  const db = await getTasksDb();
+  return await db.all(
+    `SELECT * FROM product_spec_options WHERE productType = ? ORDER BY fieldKey, sortOrder, id`,
+    [productType]
+  );
+}
+
+export async function createProductSpecOption(data) {
+  const db = await getTasksDb();
+  const now = new Date().toISOString();
+  const productType = String(data.productType || '').trim();
+  const fieldKey = String(data.fieldKey || '').trim();
+  const value = String(data.value ?? '').trim();
+  const label = String(data.label ?? '').trim();
+
+  if (!productType || !fieldKey || !value || !label) {
+    throw new Error('productType, fieldKey, value and label are required');
+  }
+
+  // Append at the end of this (productType, fieldKey) group.
+  const max = await db.get(
+    `SELECT MAX(sortOrder) AS m FROM product_spec_options WHERE productType = ? AND fieldKey = ?`,
+    [productType, fieldKey]
+  );
+  const sortOrder = (max && max.m != null ? max.m : -1) + 1;
+
+  const result = await db.run(
+    `INSERT INTO product_spec_options (productType, fieldKey, value, label, sortOrder, isActive, createdAt, updatedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [productType, fieldKey, value, label, sortOrder, 1, now, now]
+  );
+  return result.lastID;
+}
+
+export async function getProductSpecOptionById(id) {
+  const db = await getTasksDb();
+  return await db.get(`SELECT * FROM product_spec_options WHERE id = ?`, [id]);
+}
+
+export async function updateProductSpecOption(id, data) {
+  const db = await getTasksDb();
+  const now = new Date().toISOString();
+
+  const existing = await getProductSpecOptionById(id);
+  if (!existing) {
+    throw new Error('Product spec option not found');
+  }
+
+  const value = data.value != null ? String(data.value).trim() : existing.value;
+  const label = data.label != null ? String(data.label).trim() : existing.label;
+  const isActive = data.isActive != null ? (data.isActive ? 1 : 0) : existing.isActive;
+
+  if (!value || !label) {
+    throw new Error('value and label are required');
+  }
+
+  await db.run(
+    `UPDATE product_spec_options SET value = ?, label = ?, isActive = ?, updatedAt = ? WHERE id = ?`,
+    [value, label, isActive, now, id]
+  );
+  return true;
+}
+
+export async function deleteProductSpecOption(id) {
+  const db = await getTasksDb();
+  await db.run(`DELETE FROM product_spec_options WHERE id = ?`, [id]);
+  return true;
+}
+
+export async function reorderProductSpecOptions(productType, fieldKey, orderedIds) {
+  const db = await getTasksDb();
+  const now = new Date().toISOString();
+  let order = 0;
+  for (const rawId of orderedIds) {
+    const id = Number(rawId);
+    if (!Number.isFinite(id)) continue;
+    await db.run(
+      `UPDATE product_spec_options SET sortOrder = ?, updatedAt = ? WHERE id = ? AND productType = ? AND fieldKey = ?`,
+      [order, now, id, productType, fieldKey]
+    );
+    order += 1;
+  }
+  return true;
+}
+
+// Seed default Product-Specification dropdown options on first run if the table is empty.
+// NOTE: receives the db instance directly (called from getTasksDb init) — it must
+// NOT call getTasksDb() itself, or it deadlocks the init promise.
+export async function seedProductSpecOptionsIfEmpty(db) {
+  try {
+    const count = await db.get(`SELECT COUNT(*) as n FROM product_spec_options`);
+    if (count && count.n > 0) return;
+
+    const now = new Date().toISOString();
+    let order = 0;
+    for (const [productType, fields] of Object.entries(DEFAULT_SPEC_OPTIONS)) {
+      for (const [fieldKey, options] of Object.entries(fields)) {
+        order = 0;
+        for (const opt of options) {
+          await db.run(
+            `INSERT INTO product_spec_options (productType, fieldKey, value, label, sortOrder, isActive, createdAt, updatedAt)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [productType, fieldKey, opt.value, opt.label, order, 1, now, now]
+          );
+          order += 1;
+        }
+      }
+    }
+    console.log('Seeded default product spec options');
+  } catch (err) {
+    console.warn('Could not seed product spec options:', err.message);
+  }
+}
+
 // ========== Product Profile Functions ==========
 
 export async function createProductProfile(profileData) {
@@ -2486,6 +2796,62 @@ export async function getSupplierQuotationResponseTiersByQuotation(quotationId) 
      ORDER BY t.tierIndex ASC, r.id ASC`,
     [valid]
   );
+}
+
+// ---- Supplier quotation files (supporting documents uploaded via portal / buyer) ----
+// Bytes live on disk under uploads/supplier-files/; this table holds traceable metadata.
+// Files are grouped by (quotationId, supplierId) and are decoupled from the pricing
+// submission (supplier_quotation_responses), so they exist before/after a submit and
+// never affect quotation-status logic.
+
+export async function insertSupplierQuotationFile({
+  quotationId, supplierId, supplierMemberId = null, tokenId = null,
+  originalName, storedFilename, filePath, mimeType, sizeBytes, uploadedBy,
+}) {
+  const db = await getTasksDb();
+  const uploadedAt = new Date().toISOString();
+  const result = await db.run(
+    `INSERT INTO supplier_quotation_files
+       (quotationId, supplierId, supplierMemberId, tokenId, originalName, storedFilename, filePath, mimeType, sizeBytes, uploadedBy, uploadedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [quotationId, supplierId, supplierMemberId, tokenId, originalName, storedFilename, filePath, mimeType, sizeBytes ?? null, uploadedBy, uploadedAt]
+  );
+  return getSupplierQuotationFileById(result.lastID);
+}
+
+export async function getSupplierQuotationFiles(quotationId, supplierId = null) {
+  const db = await getTasksDb();
+  const sel = `SELECT f.*, s.companyName
+                 FROM supplier_quotation_files f
+                 LEFT JOIN suppliers s ON s.id = f.supplierId`;
+  if (supplierId != null) {
+    return db.all(`${sel} WHERE f.quotationId = ? AND f.supplierId = ? ORDER BY f.uploadedAt ASC`, [quotationId, supplierId]);
+  }
+  return db.all(`${sel} WHERE f.quotationId = ? ORDER BY f.supplierId ASC, f.uploadedAt ASC`, [quotationId]);
+}
+
+export async function getSupplierQuotationFileById(fileId) {
+  const db = await getTasksDb();
+  return db.get(`SELECT f.*, s.companyName
+                   FROM supplier_quotation_files f
+                   LEFT JOIN suppliers s ON s.id = f.supplierId
+                   WHERE f.id = ?`, [fileId]);
+}
+
+export async function renameSupplierQuotationFile(fileId, newName) {
+  const db = await getTasksDb();
+  const clean = String(newName).replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 200);
+  if (!clean) throw new Error('Invalid name');
+  await db.run(`UPDATE supplier_quotation_files SET originalName = ? WHERE id = ?`, [clean, fileId]);
+  return getSupplierQuotationFileById(fileId);
+}
+
+export async function deleteSupplierQuotationFile(fileId) {
+  const db = await getTasksDb();
+  const row = await getSupplierQuotationFileById(fileId);
+  if (!row) return null;
+  await db.run(`DELETE FROM supplier_quotation_files WHERE id = ?`, [fileId]);
+  return row; // caller unlinks row.filePath from disk
 }
 
 export async function getPricingTierTableScopeMap(ids = []) {

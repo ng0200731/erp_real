@@ -111,6 +111,11 @@
     .tier-table input { width: 100%; padding: 8px 10px; border: 1px solid #000; font-size: 14px; font-family: inherit; outline: none; background: #fff; }
     .tier-table input:focus { box-shadow: 0 0 0 1px #000; }
     .loading { text-align: center; padding: 60px 20px; font-size: 14px; }
+    .file-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid #000; margin-bottom: 6px; font-size: 13px; background: #fff; }
+    .file-item .fname { flex: 1; color: #000; text-decoration: none; }
+    .file-item .fmeta { font-size: 11px; color: #777; }
+    #filesDropZone { border: 2px dashed #000; padding: 24px; text-align: center; font-size: 13px; color: #555; cursor: pointer; margin-bottom: 12px; background: #fafafa; }
+    #filesDropZone.dragover { background: #efefef; }
   </style>
 </head>
 <body>
@@ -172,10 +177,57 @@
           <button type="button" class="btn-submit" id="btnDummyFill" style="flex:0 0 auto; background:#666;" onclick="dummyFill()">Dummy Fill</button>
         </div>
       </form>
+      <div class="info-section" id="filesSection" style="display:none;">
+        <h2>Supporting Documents</h2>
+        <p style="font-size:12px; color:#555; margin-bottom:10px;">
+          Drop, click, or paste (Ctrl+V) files to attach — PDF, Excel, image, or Word. Max 10&nbsp;MB each.
+        </p>
+        <div id="filesDropZone" tabindex="0">Drag &amp; drop files here, or click to browse</div>
+        <input type="file" id="filesInput" multiple style="display:none;" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*">
+        <div id="filesList"></div>
+      </div>
     </div>
   </div>
 
   <script>
+    // ---- Suppress the browser's "previously typed value" dropdown on free-text inputs ----
+    // Sweep existing inputs once, then watch the DOM for dynamically inserted ones.
+    // Password fields and password-manager tokens (username / current-password /
+    // new-password) are left alone so login + password-manager autofill keep working.
+    (function suppressFreeTextAutocomplete() {
+      const FREE_TEXT_SELECTOR = 'input[type="text"], input[type="email"], input[type="tel"], input[type="number"], input[type="search"], input[type="url"], input:not([type]), textarea';
+      const FREE_TEXT_TYPES = ['', 'text', 'email', 'tel', 'number', 'search', 'url'];
+      const PRESERVED_TOKENS = /^(username|current-password|new-password)$/i;
+
+      function applyOff(el) {
+        if (!el || el.nodeType !== 1) return;
+        if (el.tagName === 'INPUT') {
+          const type = (el.getAttribute('type') || '').toLowerCase();
+          if (!FREE_TEXT_TYPES.includes(type)) return;
+        }
+        const current = (el.getAttribute('autocomplete') || '').trim().toLowerCase();
+        if (PRESERVED_TOKENS.test(current)) return;
+        if (current !== 'off') el.setAttribute('autocomplete', 'off');
+      }
+      function sweep(root) {
+        try { (root || document).querySelectorAll(FREE_TEXT_SELECTOR).forEach(applyOff); }
+        catch (e) { /* ignore */ }
+      }
+      sweep(document);
+      const obs = new MutationObserver((mutations) => {
+        for (const m of mutations) {
+          for (const node of m.addedNodes) {
+            if (node.nodeType !== 1) continue;
+            applyOff(node);
+            if (node.querySelectorAll) sweep(node);
+          }
+        }
+      });
+      const start = (root) => obs.observe(root, { childList: true, subtree: true });
+      if (document.body) start(document.body);
+      else document.addEventListener('DOMContentLoaded', () => start(document.body));
+    })();
+
     // Apply the quotation's currency code to every element that carries a
     // data-ccy="..." attribute. The attribute value is a literal token (e.g.
     // "Unit Price ({ccy})" or "Surcharge below MOQ ({ccy})") whose "{ccy}"
@@ -295,6 +347,83 @@
       });
     }
 
+    // ---- Supporting Documents (supplier uploads) ----
+    const SF_ALLOWED_EXT = /\.(pdf|docx?|xlsx?|jpe?g|png|gif|bmp|webp|tiff?)$/i;
+    function isAllowedFile(file) {
+      if (!file) return false;
+      if (file.type && file.type.startsWith('image/')) return true;
+      if (file.type === 'application/pdf') return true;
+      if (file.type && /word/.test(file.type)) return true;
+      if (file.type && /spreadsheet|excel/.test(file.type)) return true;
+      return SF_ALLOWED_EXT.test(file.name);
+    }
+    function fmtSize(n) {
+      if (!n) return '';
+      if (n < 1024) return n + ' B';
+      if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+      return (n / 1048576).toFixed(1) + ' MB';
+    }
+    function renderFileItem(f) {
+      const el = document.createElement('div');
+      el.className = 'file-item';
+      const a = document.createElement('a');
+      a.className = 'fname';
+      a.textContent = f.originalName;
+      a.href = '/' + f.filePath;
+      a.target = '_blank';
+      a.download = f.originalName;
+      const meta = document.createElement('span');
+      meta.className = 'fmeta';
+      const who = f.uploadedBy === 'buyer' ? 'by Buyer' : 'by You';
+      const when = f.uploadedAt ? new Date(f.uploadedAt).toLocaleString() : '';
+      meta.textContent = fmtSize(f.sizeBytes) + ' · ' + who + ' · ' + when;
+      el.appendChild(a);
+      el.appendChild(meta);
+      document.getElementById('filesList').appendChild(el);
+    }
+    async function loadFiles() {
+      try {
+        const r = await fetch('/api/supplier-portal/' + token + '/files');
+        const d = await r.json();
+        const list = document.getElementById('filesList');
+        list.innerHTML = '';
+        if (d.success && Array.isArray(d.files)) d.files.forEach(renderFileItem);
+      } catch (e) { /* ignore */ }
+    }
+    async function uploadFile(file) {
+      if (!isAllowedFile(file)) { alert('Unsupported file type. Use PDF, Excel, image, or Word.'); return; }
+      if (file.size > 10 * 1024 * 1024) { alert('File exceeds 10 MB.'); return; }
+      const fd = new FormData();
+      fd.append('supplierFile', file);
+      try {
+        const r = await fetch('/api/supplier-portal/' + token + '/files', { method: 'POST', body: fd });
+        const d = await r.json();
+        if (d.success && d.file) renderFileItem(d.file);
+        else alert(d.error || 'Upload failed');
+      } catch (e) { alert('Upload failed'); }
+    }
+    function initFilesZone() {
+      const zone = document.getElementById('filesDropZone');
+      const input = document.getElementById('filesInput');
+      if (!zone) return;
+      zone.addEventListener('click', () => input.click());
+      input.addEventListener('change', () => Array.from(input.files).forEach(uploadFile));
+      zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault(); zone.classList.remove('dragover');
+        Array.from(e.dataTransfer.files).forEach(uploadFile);
+      });
+      document.addEventListener('paste', (e) => {
+        if (!(document.activeElement && document.activeElement.closest('#filesDropZone'))) return;
+        const items = e.clipboardData && e.clipboardData.items;
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].kind === 'file') { const f = items[i].getAsFile(); if (f) { e.preventDefault(); uploadFile(f); } }
+        }
+      });
+    }
+
     const token = window.location.pathname.split('/supplier-portal/')[1]?.split('/')[0]
       || new URLSearchParams(window.location.search).get('token');
 
@@ -319,6 +448,9 @@
         }
 
         document.getElementById('main').style.display = 'block';
+        document.getElementById('filesSection').style.display = 'block';
+        initFilesZone();
+        loadFiles();
         document.getElementById('supplierName').textContent = data.supplier.memberName;
         document.getElementById('companyName').textContent = data.supplier.companyName;
         document.getElementById('customerName').textContent = data.quotation.customerName || '-';

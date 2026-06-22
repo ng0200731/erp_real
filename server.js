@@ -29,6 +29,8 @@ import {
   getAllBrands, getBrandById, createBrand, updateBrand, deleteBrand,
   // Currency functions
   getAllCurrencies, getCurrencyById, getCurrencyByCode, createCurrency, updateCurrency, deleteCurrency, getBaseCurrency,
+  // Product Spec Option functions
+  getAllProductSpecOptions, getProductSpecOptionsByType, getProductSpecOptionById, createProductSpecOption, updateProductSpecOption, deleteProductSpecOption, reorderProductSpecOptions,
   // Product Profile functions
   getAllProductProfiles, getProductProfileById, createProductProfile, updateProductProfile, deleteProductProfile, getProductProfilesByType,
   // Pricing Tier Table functions
@@ -40,7 +42,9 @@ import {
   recordOrderDepartmentScan, getOrderProgress, getLastOrderScan,
   // Profile SQL functions
   getProfiles, createProfile, updateProfile as updateProfileDb, deleteProfile as deleteProfileDb, activateProfile,
-  seedProfilesFromJson
+  seedProfilesFromJson,
+  // Supplier quotation file functions
+  getSupplierQuotationFiles, insertSupplierQuotationFile, getSupplierQuotationFileById, renameSupplierQuotationFile, deleteSupplierQuotationFile
 } from './db/tasksDb.js';
 import SkillManager from './skills/skillManager.js';
 import { getNormalizedRelativePath } from './utils/pathUtils.js';
@@ -50,15 +54,17 @@ import { createProfileRoutes } from './routes/profiles.js';
 import { createCustomerRoutes } from './routes/customers.js';
 import { createSupplierRoutes } from './routes/suppliers.js';
 import { createQuotationRoutes } from './routes/quotations.js';
+import { createSupplierFileRoutes } from './routes/supplier-files.js';
 import { createSkillRoutes } from './routes/skills.js';
 import { createEmailRoutes } from './routes/emails.js';
 import { createBrandRoutes } from './routes/brands.js';
 import { createCurrencyRoutes } from './routes/currencies.js';
+import { createProductSpecOptionRoutes } from './routes/productSpecOptions.js';
 import { createProductProfileRoutes } from './routes/product-profiles.js';
 import { createPricingTierTableRoutes } from './routes/pricing-tier-tables.js';
 import { createWorkshopRoutes } from './routes/workshops.js';
 import { createOrderRoutes } from './routes/orders.js';
-import supplierPortalRouter from './routes/supplier-portal.js';
+import { createSupplierPortalRoutes } from './routes/supplier-portal.js';
 
 // ---------- ENV ----------
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -70,12 +76,14 @@ const uploadsDir = path.join(__dirname, 'uploads');
 const profileImagesDir = path.join(uploadsDir, 'profile-images');
 const attachmentsDir = path.join(uploadsDir, 'attachments');
 const brandsDir = path.join(uploadsDir, 'brands');
+const supplierFilesDir = path.join(uploadsDir, 'supplier-files');
 
 // Ensure upload directories exist
 await fs.mkdir(uploadsDir, { recursive: true });
 await fs.mkdir(profileImagesDir, { recursive: true });
 await fs.mkdir(attachmentsDir, { recursive: true });
 await fs.mkdir(brandsDir, { recursive: true });
+await fs.mkdir(supplierFilesDir, { recursive: true });
 
 // Multer configuration
 // Preserve the user-facing filename (file.originalname) on disk instead of a random
@@ -112,12 +120,16 @@ const storage = multer.diskStorage({
       cb(null, profileImagesDir);
     } else if (file.fieldname === 'attachments') {
       cb(null, attachmentsDir);
+    } else if (file.fieldname === 'supplierFile') {
+      cb(null, supplierFilesDir);
     } else {
       cb(new Error('Invalid field name'), null);
     }
   },
   filename: (req, file, cb) => {
-    const dir = file.fieldname === 'profileImage' ? profileImagesDir : attachmentsDir;
+    const dir = file.fieldname === 'profileImage' ? profileImagesDir
+      : file.fieldname === 'supplierFile' ? supplierFilesDir
+      : attachmentsDir;
     cb(null, resolveUploadName(dir, file.originalname));
   }
 });
@@ -481,6 +493,19 @@ const quotationRoutes = createQuotationRoutes({
 });
 app.use('/api/quotations', quotationRoutes);
 
+// Supplier supporting-file management (buyer side). Mounted at /api so the routes
+// resolve to /api/quotations/:id/supplier-files and /api/supplier-files/:fileId.
+const supplierFileRoutes = createSupplierFileRoutes({
+  upload,
+  getNormalizedRelativePath,
+  getSupplierQuotationFiles,
+  insertSupplierQuotationFile,
+  getSupplierQuotationFileById,
+  renameSupplierQuotationFile,
+  deleteSupplierQuotationFile,
+});
+app.use('/api', supplierFileRoutes);
+
 // Skill routes
 const skillRoutes = createSkillRoutes({
   getAllSkills,
@@ -540,6 +565,18 @@ const currencyRoutes = createCurrencyRoutes({
 });
 app.use('/api/currencies', currencyRoutes);
 
+// Product Spec Option routes
+const productSpecOptionRoutes = createProductSpecOptionRoutes({
+  getAllProductSpecOptions,
+  getProductSpecOptionsByType,
+  getProductSpecOptionById,
+  createProductSpecOption,
+  updateProductSpecOption,
+  deleteProductSpecOption,
+  reorderProductSpecOptions
+});
+app.use('/api/product-spec-options', productSpecOptionRoutes);
+
 // Product Profile routes
 const productProfileRoutes = createProductProfileRoutes({
   getAllProductProfiles,
@@ -584,6 +621,7 @@ const orderRoutes = createOrderRoutes({
 app.use('/api/orders', orderRoutes);
 
 // Supplier portal routes
+const supplierPortalRouter = createSupplierPortalRoutes({ upload });
 app.use('/api/supplier-portal', supplierPortalRouter);
 
 // Serve uploaded files

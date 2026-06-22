@@ -9,6 +9,9 @@
         generateSupplierResponseTiersHtml: Q.generateSupplierResponseTiersHtml,
         generateStatusTierSectionHtml: Q.generateStatusTierSectionHtml,
         resolveStatusTierMode: Q.resolveStatusTierMode,
+        isConfirmPriceStatus: Q.isConfirmPriceStatus,
+        resolveCustomerMarkupTiers: Q.resolveCustomerMarkupTiers,
+        generateCustomerMarkupTiersHtml: Q.generateCustomerMarkupTiersHtml,
         formatStatusLabel: Q.formatStatusLabel,
         emailProductTypeDisplay: Q.emailProductTypeDisplay,
         resolveProductDetailValue: Q.resolveProductDetailValue,
@@ -794,6 +797,9 @@
     }
     .email-row-selected td {
       font-weight: normal !important;
+    }
+    .quotation-row-selected {
+      background: #e3f2fd !important;
     }
     .btn{
       appearance:none;
@@ -1643,6 +1649,7 @@
             </div>
           </div>
           <button id="menuProfilesBtn" class="submenu-btn">Profiles / Config</button>
+          <button id="menuOptionListBtn" class="submenu-btn">Option List</button>
         </div>
       </div>
       <div style="flex:1;"></div>
@@ -3796,6 +3803,27 @@
         </div>
       </div>
 
+      <!-- Option List Panel (Product Specifications dropdown manager) -->
+      <div id="optionListPanel" style="margin:0; display:none; width:100%;">
+        <div style="padding:15px;">
+          <h2 style="margin:0 0 5px 0; font-size:18px;">Product Specifications — Option List</h2>
+          <p style="font-size:12px; color:#666; margin:0 0 15px 0;">
+            Manage the dropdown options shown in Quotation Create, Outsourcing Create, and Email Quotation.
+            Pick a product type, then a field, then add / edit / delete / reorder its options and click <b>Save</b>.
+          </p>
+          <div style="display:flex; gap:15px; align-items:flex-start;">
+            <!-- Left: product types -->
+            <div id="optionListTypes" style="width:200px; border:1px solid #ddd; padding:8px; background:#fafafa;"></div>
+            <!-- Right: fields + option editor -->
+            <div style="flex:1; min-width:0;">
+              <div style="font-weight:600; margin-bottom:8px;">Dropdown fields:</div>
+              <div id="optionListFields" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:15px;"></div>
+              <div id="optionListEditor" style="border:1px solid #ddd; padding:12px; background:#fff;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Email UI (next step; hidden for now) -->
       <div id="emails" style="margin:0; display:none; width:100%;">
         <div class="topbar">
@@ -4028,6 +4056,49 @@
     </div>
   </div>
   <script>
+    // ---- Suppress the browser's "previously typed value" dropdown on free-text inputs ----
+    // The app builds most of its forms dynamically via innerHTML (quotation / outsourcing /
+    // email), so we sweep once for existing inputs and then watch the DOM for new ones.
+    // Password fields and fields that deliberately use a password-manager token
+    // (username / current-password / new-password) are left untouched so login +
+    // password-manager autofill keep working.
+    (function suppressFreeTextAutocomplete() {
+      const FREE_TEXT_SELECTOR = 'input[type="text"], input[type="email"], input[type="tel"], input[type="number"], input[type="search"], input[type="url"], input:not([type]), textarea';
+      const FREE_TEXT_TYPES = ['', 'text', 'email', 'tel', 'number', 'search', 'url'];
+      const PRESERVED_TOKENS = /^(username|current-password|new-password)$/i;
+
+      function applyOff(el) {
+        if (!el || el.nodeType !== 1) return;
+        if (el.tagName === 'INPUT') {
+          const type = (el.getAttribute('type') || '').toLowerCase();
+          if (!FREE_TEXT_TYPES.includes(type)) return; // password / checkbox / date / hidden / ...
+        }
+        const current = (el.getAttribute('autocomplete') || '').trim().toLowerCase();
+        if (PRESERVED_TOKENS.test(current)) return; // keep login/password-manager tokens
+        if (current !== 'off') el.setAttribute('autocomplete', 'off');
+      }
+
+      function sweep(root) {
+        try { (root || document).querySelectorAll(FREE_TEXT_SELECTOR).forEach(applyOff); }
+        catch (e) { /* ignore */ }
+      }
+
+      sweep(document);
+
+      const obs = new MutationObserver((mutations) => {
+        for (const m of mutations) {
+          for (const node of m.addedNodes) {
+            if (node.nodeType !== 1) continue;
+            applyOff(node);
+            if (node.querySelectorAll) sweep(node);
+          }
+        }
+      });
+      const start = (root) => obs.observe(root, { childList: true, subtree: true });
+      if (document.body) start(document.body);
+      else document.addEventListener('DOMContentLoaded', () => start(document.body));
+    })();
+
     const tabsBar = document.getElementById('tabsBar');
     const welcomePanel = document.getElementById('welcomePanel');
     const profilesListPanel = document.getElementById('profilesListPanel');
@@ -4853,6 +4924,7 @@
         'emails':           { btns: ['emailReceiveBtn', 'menuEmail'],                            open: ['emailSubmenu'] },
         'email-send':       { btns: ['emailSendBtn', 'menuEmail'],                               open: ['emailSubmenu'] },
         'profiles':         { btns: ['menuProfilesBtn', 'menuSettings'],                         open: ['settingSubmenu'] },
+        'option-list':      { btns: ['menuOptionListBtn', 'menuSettings'],                        open: ['settingSubmenu'] },
         'brand-create':     { btns: ['brandCreateBtn', 'menuBrand'],                             open: ['brandSubmenu'] },
         'brand-view':       { btns: ['brandViewBtn', 'menuBrand'],                               open: ['brandSubmenu'] },
         'customer':         { btns: ['customerCreateBtn', 'menuCustomer'],                       open: ['customerSubmenu'] },
@@ -4904,6 +4976,7 @@
       document.getElementById('productProfilesPanel').style.display = id === 'profiles' ? 'block' : 'none';
       document.getElementById('quotationTierPanel').style.display = id === 'profiles' ? 'block' : 'none';
       document.getElementById('currencyPanel').style.display = id === 'profiles' ? 'block' : 'none';
+      document.getElementById('optionListPanel').style.display = id === 'option-list' ? 'block' : 'none';
       document.getElementById('emails').style.display = id === 'emails' ? 'block' : 'none';
       document.getElementById('email-send').style.display = id === 'email-send' ? 'block' : 'none';
       document.getElementById('customerPanel').style.display = id === 'customer' ? 'block' : 'none';
@@ -8863,6 +8936,17 @@
       activateTab('profiles');
       loadProfilesList();
     };
+
+    // Menu click: show Option List (Product Specifications dropdown manager) — inside Setting group
+    const menuOptionListBtn = document.getElementById('menuOptionListBtn');
+    if (menuOptionListBtn) {
+      menuOptionListBtn.onclick = () => {
+        document.getElementById('settingSubmenu').style.display = 'none';
+        ensureTab('option-list', 'Setting (Option List)');
+        activateTab('option-list');
+        initializeOptionListPanel();
+      };
+    }
 
     // Expand / Collapse cycle: L1 only -> L1+L2 -> collapse all -> L1 ...
     const menuExpandToggle = document.getElementById('menuExpandToggle');
@@ -14165,8 +14249,7 @@
       const selectAllBtn = document.getElementById('selectAllQuotationsBtn');
       if (selectAllBtn) {
         selectAllBtn.onclick = () => {
-          const checkboxes = document.querySelectorAll('.quotation-checkbox');
-          checkboxes.forEach(cb => cb.checked = true);
+          setAllSelections('quotation-checkbox', '_checkedQuotationIds', true);
           const headerCb = document.getElementById('selectAllCheckbox');
           if (headerCb) headerCb.checked = true;
         };
@@ -14176,8 +14259,7 @@
       const deselectAllBtn = document.getElementById('deselectAllQuotationsBtn');
       if (deselectAllBtn) {
         deselectAllBtn.onclick = () => {
-          const checkboxes = document.querySelectorAll('.quotation-checkbox');
-          checkboxes.forEach(cb => cb.checked = false);
+          setAllSelections('quotation-checkbox', '_checkedQuotationIds', false);
           const headerCb = document.getElementById('selectAllCheckbox');
           if (headerCb) headerCb.checked = false;
         };
@@ -14187,8 +14269,7 @@
       const selectAllQuotationCb = document.getElementById('selectAllCheckbox');
       if (selectAllQuotationCb) {
         selectAllQuotationCb.onchange = () => {
-          const checkboxes = document.querySelectorAll('.quotation-checkbox');
-          checkboxes.forEach(cb => cb.checked = selectAllQuotationCb.checked);
+          setAllSelections('quotation-checkbox', '_checkedQuotationIds', selectAllQuotationCb.checked);
         };
       }
 
@@ -14255,8 +14336,7 @@
       const selectAllBtn = document.getElementById('selectAllOutsourcingBtn');
       if (selectAllBtn) {
         selectAllBtn.onclick = () => {
-          const checkboxes = document.querySelectorAll('.outsourcing-checkbox');
-          checkboxes.forEach(cb => cb.checked = true);
+          setAllSelections('outsourcing-checkbox', '_checkedOutsourcingIds', true);
           const headerCb = document.getElementById('selectAllOutsourcingCheckbox');
           if (headerCb) headerCb.checked = true;
         };
@@ -14266,8 +14346,7 @@
       const deselectAllBtn = document.getElementById('deselectAllOutsourcingBtn');
       if (deselectAllBtn) {
         deselectAllBtn.onclick = () => {
-          const checkboxes = document.querySelectorAll('.outsourcing-checkbox');
-          checkboxes.forEach(cb => cb.checked = false);
+          setAllSelections('outsourcing-checkbox', '_checkedOutsourcingIds', false);
           const headerCb = document.getElementById('selectAllOutsourcingCheckbox');
           if (headerCb) headerCb.checked = false;
         };
@@ -14277,8 +14356,7 @@
       const selectAllOutsourcingCb = document.getElementById('selectAllOutsourcingCheckbox');
       if (selectAllOutsourcingCb) {
         selectAllOutsourcingCb.onchange = () => {
-          const checkboxes = document.querySelectorAll('.outsourcing-checkbox');
-          checkboxes.forEach(cb => cb.checked = selectAllOutsourcingCb.checked);
+          setAllSelections('outsourcing-checkbox', '_checkedOutsourcingIds', selectAllOutsourcingCb.checked);
         };
       }
 
@@ -14542,8 +14620,16 @@
       const osRef = quotation.outsourcingSeq || quotation.quotationSeq || '';
 
       // 5. Generate HTML email body (reuse existing template, no threading).
-      //    Append the status-driven Supplier Quotations section after the card.
-      const tierSectionHtml = generateStatusTierSectionHtml({ status: quotation.status, ...tierCtx });
+      //    At the Confirm Price stage show ONLY the selected supplier's tiers with
+      //    markup applied (customer-facing price); otherwise the full supplier
+      //    comparison section. Falls back to the comparison when no selection/tiers.
+      let tierSectionHtml = '';
+      if (isConfirmPriceStatus(quotation.status)) {
+        tierSectionHtml = generateCustomerMarkupTiersHtml(tierCtx);
+      }
+      if (!tierSectionHtml) {
+        tierSectionHtml = generateStatusTierSectionHtml({ status: quotation.status, ...tierCtx });
+      }
       const emailHtml = generateQuotationEmailHtml(quotation, {
         brandName: getBrandName(quotation.brandId),
         profileImageSrc: profileImageBase64,
@@ -14565,11 +14651,17 @@
         console.warn(`PDF generation failed for quotation #${quotationId}; sending without PDF attachment.`);
       }
 
-      // 7. Per-row subject (includes OS reference + current status)
+      // 7. Per-row subject (includes brand + OS reference + current status)
       const productTypeName = quotation.productType || 'Product';
-      const baseSubject = osRef
-        ? `Quotation - ${quotation.customerName || 'Customer'} - ${productTypeName} - ${osRef}`
-        : `Quotation - ${quotation.customerName || 'Customer'} - ${productTypeName}`;
+      const brandName = getBrandName(quotation.brandId);
+      const subjectParts = [
+        'Quotation',
+        quotation.customerName || 'Customer',
+        ...(brandName ? [brandName] : []),
+        productTypeName,
+        ...(osRef ? [osRef] : [])
+      ];
+      const baseSubject = subjectParts.join(' - ');
       const emailSubject = quotation.status
         ? `${baseSubject} [${formatStatusLabel(quotation.status)}]`
         : baseSubject;
@@ -14876,6 +14968,25 @@
             (mode.selectedSupplierId != null && Number(r.supplierId) === mode.selectedSupplierId);
           const ccy = resolveCurrencyCode(quotation.currency);
 
+          // Confirm Price stage: customer-facing marked-up tiers ONLY (selected
+          // supplier), mirroring the email. Falls through to the comparison below
+          // when there is no selected supplier / no tiers.
+          const customerTiers = isConfirmPriceStatus(quotation.status)
+            ? resolveCustomerMarkupTiers({ ...tierCtx })
+            : null;
+          if (customerTiers && customerTiers.length > 0) {
+            drawHeading('Supplier Quoted Pricing');
+            doc.autoTable({
+              startY: y, theme: 'grid',
+              head: [['Quantity', 'Unit Price (' + ccy + ')']],
+              body: customerTiers.map((t) => [t.quantity.toLocaleString(), t.unitPrice.toFixed(4)]),
+              styles: { fontSize: 7.5, cellPadding: 1.3, textColor: [51, 51, 51], overflow: 'linebreak' },
+              headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255], fontSize: 7.5 },
+              columnStyles: { 1: { halign: 'right' } },
+              margin: { left: margin, right: margin },
+            });
+            y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 2.5;
+          } else {
           drawHeading('Supplier Quotations');
           if (mode.mode === 'empty') {
             // Pending / no responses: render the requested tier template when the
@@ -14953,6 +15064,7 @@
               y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 2.5;
             }
           }
+          } // end confirm-price (marked-up tiers) vs comparison branch
           doc.setTextColor(51, 51, 51);
         }
 
@@ -14985,6 +15097,56 @@
           otherButton.click();
         }, 100);
       }
+    }
+
+    // === Batch-selection state that survives table re-renders ===
+    // Re-renders (Refresh List / 15s auto-refresh / post-batch-send) rebuild the
+    // checkbox elements, so a box the user checked would reset to unchecked once the
+    // render finishes. We track checked quotation ids in a Set and restore the checked
+    // + highlight state after every render. A delegated change listener on the tbody
+    // (the tbody element itself is not replaced, only its innerHTML) keeps the Set in
+    // sync and toggles a row highlight for visibility.
+    function _getCheckedSet(name) {
+      if (!window[name]) window[name] = new Set();
+      return window[name];
+    }
+    function _toggleRowHighlight(cb, checked) {
+      const tr = cb.closest('tr');
+      if (tr) tr.classList.toggle('quotation-row-selected', checked);
+    }
+    // Wire a delegated change listener on a tbody exactly once.
+    function wireSelectionTracking(tbody, setName, cbClass) {
+      if (!tbody || tbody.dataset.selWired === '1') return;
+      tbody.dataset.selWired = '1';
+      tbody.addEventListener('change', (e) => {
+        const cb = e.target.closest('.' + cbClass);
+        if (!cb) return;
+        const set = _getCheckedSet(setName);
+        if (cb.checked) set.add(String(cb.dataset.quotationId));
+        else set.delete(String(cb.dataset.quotationId));
+        _toggleRowHighlight(cb, cb.checked);
+      });
+    }
+    // After a re-render, re-check + re-highlight rows whose ids are in the Set.
+    function restoreSelectionState(tbody, setName, cbClass) {
+      const set = window[setName];
+      if (!set || set.size === 0 || !tbody) return;
+      tbody.querySelectorAll('.' + cbClass).forEach(cb => {
+        if (set.has(String(cb.dataset.quotationId))) {
+          cb.checked = true;
+          _toggleRowHighlight(cb, true);
+        }
+      });
+    }
+    // Select-all / deselect-all: set every checkbox + sync the Set + highlight.
+    function setAllSelections(cbClass, setName, checked) {
+      const set = _getCheckedSet(setName);
+      document.querySelectorAll('.' + cbClass).forEach(cb => {
+        cb.checked = checked;
+        if (checked) set.add(String(cb.dataset.quotationId));
+        else set.delete(String(cb.dataset.quotationId));
+        _toggleRowHighlight(cb, checked);
+      });
     }
 
     // Display outsourcing quotations (only 'other' type)
@@ -15309,6 +15471,9 @@
 
       tbody.innerHTML = rows.join('');
       renderQuotationQrThumbnails();
+      // Preserve checkbox selection + row highlight across re-renders
+      wireSelectionTracking(tbody, '_checkedOutsourcingIds', 'outsourcing-checkbox');
+      restoreSelectionState(tbody, '_checkedOutsourcingIds', 'outsourcing-checkbox');
       } finally {
         _outsourcingRenderInProgress = false;
         // If another render was requested while this one ran, re-run it so the
@@ -16162,6 +16327,81 @@
     };
 
     // Show comparison popup for supplier quotations
+    // ---- Supplier supporting files (buyer CRUD) ----
+    // Shared by the Compare Quotation popup and the View Quotation modal. Files come
+    // from GET /api/quotations/:id/supplier-files; add/rename/delete via the buyer routes.
+    function escapeHtmlText(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+    function fmtSupplierFileSize(n){if(!n)return '';if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' KB';return (n/1048576).toFixed(1)+' MB';}
+    function groupSupplierFiles(files){
+      const byId={};
+      (files||[]).forEach(f=>{
+        if(!byId[f.supplierId]) byId[f.supplierId]={supplierId:f.supplierId, companyName:f.companyName||('Supplier #'+f.supplierId), files:[]};
+        byId[f.supplierId].files.push(f);
+      });
+      return Object.values(byId);
+    }
+    function renderSupplierFilesSectionHtml(quotationId, groups){
+      const body=(groups||[]).map(g=>{
+        const items=(g.files||[]).map(f=>{
+          const who=f.uploadedBy==='buyer'?'Buyer':'Supplier';
+          const when=f.uploadedAt?new Date(f.uploadedAt).toLocaleString():'';
+          return '<div class="sf-item" data-file-id="'+f.id+'" style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #eee;font-size:12px;">'+
+            '<a href="/'+f.filePath+'" target="_blank" download="'+escapeHtmlText(f.originalName)+'" style="flex:1;">'+escapeHtmlText(f.originalName)+'</a>'+
+            '<span style="color:#888;">'+fmtSupplierFileSize(f.sizeBytes)+' · '+who+' · '+when+'</span>'+
+            '<button class="btn sf-rename" style="font-size:10px;padding:2px 6px;">Rename</button>'+
+            '<button class="btn sf-delete" style="font-size:10px;padding:2px 6px;background:#ff6b6b;color:#fff;">×</button>'+
+          '</div>';
+        }).join('');
+        return '<div style="font-weight:600;margin:8px 0 4px;">'+escapeHtmlText(g.companyName)+'</div>'+items+
+          '<button class="btn sf-add" data-supplier-id="'+g.supplierId+'" style="font-size:11px;padding:3px 8px;margin:4px 0 8px;">+ Add file</button>'+
+          '<input type="file" class="sf-add-input" data-supplier-id="'+g.supplierId+'" style="display:none;" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*">';
+      }).join('');
+      const inner=(groups&&groups.length)?body:'<p style="color:#888;font-size:12px;margin:4px 0;">No supporting documents uploaded.</p>';
+      return '<div class="quotation-section supplier-files-section" data-quotation-id="'+quotationId+'" style="margin:12px 0;">'+
+        '<h3 style="margin:0 0 6px 0;border-bottom:1px solid #ccc;padding-bottom:4px;">Supplier Files</h3>'+inner+
+      '</div>';
+    }
+    async function fetchSupplierFiles(quotationId){
+      try{const r=await fetch('/api/quotations/'+quotationId+'/supplier-files',{cache:'no-store'});const d=await r.json();return d.success?(d.files||[]):[];}catch(e){return [];}
+    }
+    async function refreshSupplierFilesSection(quotationId){
+      const files=await fetchSupplierFiles(quotationId);
+      const groups=groupSupplierFiles(files);
+      document.querySelectorAll('.supplier-files-section[data-quotation-id="'+quotationId+'"]').forEach(sec=>{
+        sec.outerHTML=renderSupplierFilesSectionHtml(quotationId,groups);
+      });
+      wireSupplierFiles(quotationId);
+    }
+    function wireSupplierFiles(quotationId){
+      document.querySelectorAll('.supplier-files-section[data-quotation-id="'+quotationId+'"]').forEach(sec=>{
+        sec.querySelectorAll('.sf-rename').forEach(b=>b.onclick=()=>supplierFileRename(quotationId,b));
+        sec.querySelectorAll('.sf-delete').forEach(b=>b.onclick=()=>supplierFileDelete(quotationId,b));
+        sec.querySelectorAll('.sf-add').forEach(b=>b.onclick=()=>{const inp=sec.querySelector('.sf-add-input[data-supplier-id="'+b.getAttribute('data-supplier-id')+'"]');if(inp)inp.click();});
+        sec.querySelectorAll('.sf-add-input').forEach(inp=>inp.onchange=()=>supplierFileAdd(quotationId,inp));
+      });
+    }
+    async function supplierFileAdd(quotationId,input){
+      const file=input.files&&input.files[0];if(!file)return;
+      const fd=new FormData();fd.append('supplierFile',file);fd.append('supplierId',input.getAttribute('data-supplier-id'));
+      try{const r=await fetch('/api/quotations/'+quotationId+'/supplier-files',{method:'POST',body:fd});const d=await r.json();if(!d.success)await showModal({title:'Upload failed',body:d.error||'',okText:'OK'});}
+      catch(e){await showModal({title:'Upload failed',body:'Network error',okText:'OK'});}
+      input.value='';await refreshSupplierFilesSection(quotationId);
+    }
+    async function supplierFileRename(quotationId,btn){
+      const item=btn.closest('.sf-item');const fileId=item.getAttribute('data-file-id');
+      const cur=item.querySelector('a').textContent;const nm=window.prompt('New file name:',cur);if(nm===null||!nm.trim())return;
+      try{const r=await fetch('/api/supplier-files/'+fileId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({newName:nm})});const d=await r.json();if(!d.success)await showModal({title:'Rename failed',body:d.error||'',okText:'OK'});}
+      catch(e){await showModal({title:'Rename failed',body:'Network error',okText:'OK'});}
+      await refreshSupplierFilesSection(quotationId);
+    }
+    async function supplierFileDelete(quotationId,btn){
+      const item=btn.closest('.sf-item');const fileId=item.getAttribute('data-file-id');const nm=item.querySelector('a').textContent;
+      const ok=await showModal({title:'Delete file',body:'Delete "'+nm+'"?',okText:'Delete',cancelText:'Cancel'});if(!ok)return;
+      try{const r=await fetch('/api/supplier-files/'+fileId,{method:'DELETE'});const d=await r.json();if(!d.success)await showModal({title:'Delete failed',body:d.error||'',okText:'OK'});}
+      catch(e){await showModal({title:'Delete failed',body:'Network error',okText:'OK'});}
+      await refreshSupplierFilesSection(quotationId);
+    }
+
     window.showCompareQuotationPopup = async function(quotationId, viewOnly = false) {
       try {
         // 1. Fetch quotation details (cache: 'no-store' — always sync live data from the DB)
@@ -16296,6 +16536,9 @@
           tableHtml += `</tbody></table></div>`;
         }
 
+        // Supplier supporting files (buyer CRUD) — placeholder; refreshed once the modal is in the DOM.
+        tableHtml += '<div class="quotation-section supplier-files-section" data-quotation-id="' + quotationId + '"><h3 style="margin:0 0 6px 0;border-bottom:1px solid #ccc;padding-bottom:4px;">Supplier Files</h3><p style="color:#888;font-size:12px;">Loading…</p></div>';
+
         // 4. Create modal
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
@@ -16397,6 +16640,9 @@
         modal.appendChild(actions);
         overlay.appendChild(modal);
         document.body.appendChild(overlay);
+
+        // Load + wire the supplier supporting-files section (replaces the placeholder in tableHtml).
+        refreshSupplierFilesSection(quotationId);
 
         // Auto-select radio if only 1 supplier response
         if (!viewOnly && responses.length === 1) {
@@ -16900,6 +17146,9 @@
         </tr>
       `).join('');
       renderQuotationQrThumbnails();
+      // Preserve checkbox selection + row highlight across re-renders
+      wireSelectionTracking(tbody, '_checkedQuotationIds', 'quotation-checkbox');
+      restoreSelectionState(tbody, '_checkedQuotationIds', 'quotation-checkbox');
     }
 
     function applyQuotationFilters(quotations) {
@@ -17149,28 +17398,21 @@
         </div>
       `;
 
-      // Fetch linked suppliers for this quotation
+      // Fetch linked suppliers for this quotation.
+      // Outsourcing quotations always show the section (with an add-box + required
+      // marker, even when empty); other quotations only show it when suppliers are
+      // already linked.
       let suppliersHtml = '';
+      let linkedSuppliers = [];
+      const viewIsOutsourcing = isOutsourcingQuotation(quotation);
       try {
         const suppRes = await fetch(`/api/quotations/${quotation.id}/suppliers`);
         const suppData = await suppRes.json();
-        const suppliers = suppData.success ? suppData.suppliers : [];
-        if (suppliers.length > 0) {
-          suppliersHtml = '<div id="linkedSuppliersSection" style="margin-top:15px; padding:10px; border:1px solid #000; background:#f8f8f8;">' +
-            '<h4 style="margin:0 0 10px 0;">Linked Suppliers (<span id="linkedSuppliersCount">' + suppliers.length + '</span>)</h4>' +
-            suppliers.map(s => {
-              const members = (s.members || []).map(m => m.name).join(', ') || 'No members';
-              return '<div class="supplier-view-card" data-supplier-id="' + s.id + '" style="padding:8px; border:1px solid #ccc; margin-bottom:8px; background:#fff; position:relative;">' +
-                '<button class="supplier-remove-btn" onclick="removeLinkedSupplierFromView(' + quotation.id + ', ' + s.id + ')" style="position:absolute; top:4px; right:4px; background:#dc3545; color:#fff; border:none; border-radius:4px; padding:2px 8px; font-size:13px; line-height:1; cursor:pointer;" title="Remove supplier">×</button>' +
-                '<strong>' + (s.companyName || 'Unknown') + '</strong>' +
-                ' <span style="color:#666; font-size:12px;">(' + (s.companyType || '') + ')</span><br>' +
-                '<span style="font-size:12px;">Email: ' + (s.emailDomain || 'N/A') + ' | Phone: ' + (s.companyTel || 'N/A') + '</span><br>' +
-                '<span style="font-size:12px; color:#666;">Members: ' + members + '</span>' +
-              '</div>';
-            }).join('') +
-          '</div>';
-        }
+        linkedSuppliers = suppData.success ? suppData.suppliers : [];
       } catch (e) { console.error('Failed to fetch suppliers:', e); }
+      if (viewIsOutsourcing || linkedSuppliers.length > 0) {
+        suppliersHtml = buildLinkedSuppliersSectionHtml(quotation.id, linkedSuppliers, viewIsOutsourcing);
+      }
 
       // Create a custom modal overlay for the quotation form
       const overlay = document.createElement('div');
@@ -17195,7 +17437,9 @@
       body.style.overflowY = 'auto';
       body.style.flex = '1';
       body.style.minHeight = '0';
-      body.innerHTML = modalContent + suppliersHtml;
+      // Supplier supporting files (buyer CRUD) — placeholder; refreshed once the modal is in the DOM.
+      const supplierFilesPlaceholder = '<div class="quotation-section supplier-files-section" data-quotation-id="' + quotation.id + '"><h3 style="margin:0 0 6px 0;border-bottom:1px solid #ccc;padding-bottom:4px;">Supplier Files</h3><p style="color:#888;font-size:12px;">Loading…</p></div>';
+      body.innerHTML = modalContent + suppliersHtml + supplierFilesPlaceholder;
 
       const actions = document.createElement('div');
       actions.className = 'modal-actions';
@@ -17210,6 +17454,9 @@
       overlay.appendChild(modal);
       document.body.appendChild(overlay);
 
+      // Load + wire the supplier supporting-files section (replaces the placeholder above).
+      refreshSupplierFilesSection(quotation.id);
+
       // Prevent body scroll when modal is open
       document.body.classList.add('modal-open');
 
@@ -17218,6 +17465,9 @@
         const viewContainer = document.getElementById('quotationViewFormContainer');
         populateQuotationViewForm(quotation, viewContainer);
         populateViewPricing(quotation, viewContainer);
+        // Wire the supplier add-box for outsourcing quotations (section is outside
+        // the form, so it must be wired after the modal is in the DOM).
+        if (viewIsOutsourcing) wireViewSupplierAddBox(quotation.id);
       }, 100);
 
       // Global function to close the modal.
@@ -17425,6 +17675,92 @@
       const pd = (quotation && quotation.productDetails) || null;
       const savedPricing = (pd && pd.tierScopeMode ? pd : null) || (pd && pd.pricing) || null;
       initPricingMode(formContainer, savedPricing);
+
+      // Wire the customer-name autocomplete + contact-person cascade so edit mode
+      // behaves exactly like a fresh quotation/outsourcing/email create: the user
+      // fuzzy-searches the customer name, the contact-person dropdown re-populates
+      // from that ERP customer's members, and email/phone fill from the chosen
+      // contact. Mirrors the create-mode wiring in showQuotationSubBoard,
+      // showOutsourcingSubBoard and openEmailQuotationModal.
+      setTimeout(() => {
+        const customerNameField = formContainer.querySelector('#quotationCustomerName');
+        if (!customerNameField) return;
+
+        // 1) Autocomplete, scoped to THIS view modal so its getField() resolves
+        //    fields here even if a quotation/outsourcing create sub-board with the
+        //    same IDs is also in the DOM.
+        window.customerAutocomplete = new CustomerAutocomplete('quotationCustomerName', 'customerAutocompleteDropdown', formContainer);
+
+        // 2) Contact-person change → fill email & phone from the selected member.
+        const contactPersonField = formContainer.querySelector('#quotationContactPerson');
+        if (contactPersonField) {
+          contactPersonField.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const emailField = formContainer.querySelector('#quotationEmail');
+            const phoneField = formContainer.querySelector('#quotationPhone');
+            if (selectedOption && selectedOption.value && selectedOption.dataset.memberData) {
+              const memberData = JSON.parse(selectedOption.dataset.memberData);
+              if (emailField && memberData.emailPrefix && window.customerAutocomplete && window.customerAutocomplete.selectedCustomer) {
+                emailField.value = `${memberData.emailPrefix}@${window.customerAutocomplete.selectedCustomer.emailDomain}`;
+                emailField.disabled = true;
+                emailField.style.backgroundColor = '#f5f5f5';
+                emailField.style.color = '#666';
+              }
+              if (phoneField && memberData.tel) {
+                phoneField.value = memberData.tel;
+                phoneField.disabled = true;
+                phoneField.style.backgroundColor = '#f5f5f5';
+                phoneField.style.color = '#666';
+              }
+            } else {
+              // No contact selected — clear email/phone (same as create mode).
+              if (emailField) { emailField.value = ''; }
+              if (phoneField) { phoneField.value = ''; }
+            }
+          });
+        }
+
+        // 3) Pre-select the saved customer + contact so the existing values are
+        //    backed by real ERP records (must wait for the customer list to load,
+        //    since CustomerAutocomplete.init() loads async). Saved email/phone are
+        //    left untouched here — they refresh from the member only when the user
+        //    actually picks a contact, so we never silently overwrite stored data.
+        const prefillSavedCustomer = () => {
+          const ac = window.customerAutocomplete;
+          if (!ac || !ac.loaded) { setTimeout(prefillSavedCustomer, 50); return; }
+          if (!quotation || !quotation.customerName) return;
+          const savedName = String(quotation.customerName).trim().toLowerCase();
+          const customer = ac.customers.find(c => String(c.companyName || '').trim().toLowerCase() === savedName);
+          if (!customer) return; // Not in ERP DB — leave the saved values as-is.
+          ac.selectedCustomer = customer;
+          customerNameField.value = customer.companyName;
+          if (contactPersonField && customer.members && customer.members.length > 0) {
+            contactPersonField.innerHTML = '<option value="">Select Contact Person</option>';
+            customer.members.forEach(member => {
+              if (!member.name) return;
+              const option = document.createElement('option');
+              option.value = member.name;
+              option.textContent = `${member.name}${member.title ? ` (${member.title})` : ''}`;
+              option.dataset.memberData = JSON.stringify(member);
+              contactPersonField.appendChild(option);
+            });
+            contactPersonField.disabled = false;
+            contactPersonField.style.backgroundColor = '#fff';
+            contactPersonField.style.color = '#000';
+            contactPersonField.style.cursor = 'default';
+            // Restore the saved contact person if it is still a current member.
+            if (quotation.contactPerson) {
+              for (let i = 0; i < contactPersonField.options.length; i++) {
+                if (contactPersonField.options[i].value === quotation.contactPerson) {
+                  contactPersonField.selectedIndex = i;
+                  break;
+                }
+              }
+            }
+          }
+        };
+        prefillSavedCustomer();
+      }, 100);
     }
 
     // Initialize profile image drag-and-drop for the view/edit modal
@@ -17575,28 +17911,153 @@
       closeQuotationViewModal();
     };
 
-    // Remove a linked supplier from the quotation view modal (only visible in edit mode).
-    // Calls the unlink API and updates the DOM.
+    // ---- Linked-supplier management for the quotation view/edit modal (outsourcing) ----
+    // Supplier links in this modal are mutated immediately through the link/unlink API
+    // (mirroring the original remove flow), then the whole section is re-rendered so the
+    // add-search box, the count and the "required" marker stay consistent. This makes
+    // Supplier Selection a first-class, required part of an outsourcing quotation.
+    function isOutsourcingQuotation(q) {
+      return !!(q && (q.productType === 'outsource' || q.productType === 'other' || q.productType === 'others'));
+    }
+
+    // Build the Linked Suppliers section HTML. For outsourcing quotations the section is
+    // always rendered (even with zero suppliers) and includes a search-and-add box plus a
+    // "required" marker; other quotations only render it when they already have suppliers.
+    function buildLinkedSuppliersSectionHtml(quotationId, suppliers, isOutsourcing) {
+      const list = suppliers || [];
+      const required = isOutsourcing
+        ? ' <span style="color:#dc3545; font-size:12px; font-weight:normal;">* required for outsourcing</span>'
+        : '';
+      const addBox = isOutsourcing
+        ? '<div style="margin-bottom:10px; position:relative;">' +
+            '<input type="text" id="viewSupplierSearch" class="autocomplete-input" placeholder="Search suppliers to add..." autocomplete="off" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">' +
+            '<div id="viewSupplierDropdown" class="autocomplete-dropdown"></div>' +
+          '</div>'
+        : '';
+      const cards = list.map(s => {
+        const members = (s.members || []).map(m => m.name).join(', ') || 'No members';
+        return '<div class="supplier-view-card" data-supplier-id="' + s.id + '" style="padding:8px; border:1px solid #ccc; margin-bottom:8px; background:#fff; position:relative;">' +
+          '<button class="supplier-remove-btn" onclick="removeLinkedSupplierFromView(' + quotationId + ', ' + s.id + ')" style="position:absolute; top:4px; right:4px; background:#dc3545; color:#fff; border:none; border-radius:4px; padding:2px 8px; font-size:13px; line-height:1; cursor:pointer;" title="Remove supplier">×</button>' +
+          '<strong>' + escapeHtml(s.companyName || 'Unknown') + '</strong>' +
+          ' <span style="color:#666; font-size:12px;">(' + escapeHtml(s.companyType || '') + ')</span><br>' +
+          '<span style="font-size:12px;">Email: ' + escapeHtml(s.emailDomain || 'N/A') + ' | Phone: ' + escapeHtml(s.companyTel || 'N/A') + '</span><br>' +
+          '<span style="font-size:12px; color:#666;">Members: ' + escapeHtml(members) + '</span>' +
+        '</div>';
+      }).join('');
+      const empty = list.length === 0 ? '<div style="color:#999; font-size:14px;">No suppliers linked</div>' : '';
+      return '<div id="linkedSuppliersSection" data-outsourcing="' + (isOutsourcing ? '1' : '0') + '" style="margin-top:15px; padding:10px; border:1px solid #000; background:#f8f8f8;">' +
+        '<h4 style="margin:0 0 10px 0;">Linked Suppliers (<span id="linkedSuppliersCount">' + list.length + '</span>)' + required + '</h4>' +
+        addBox + cards + empty +
+      '</div>';
+    }
+
+    // Scope lookups to the open quotation view modal so stray matches elsewhere are ignored.
+    function getViewModalBody() {
+      const overlay = document.querySelector('.quotation-view-overlay');
+      return overlay ? overlay.querySelector('.modal-body') : null;
+    }
+
+    // Re-fetch linked suppliers and rebuild the section, then re-wire the add-box.
+    async function refreshLinkedSuppliersView(quotationId, isOutsourcing) {
+      let suppliers = [];
+      try {
+        const res = await fetch('/api/quotations/' + quotationId + '/suppliers');
+        const data = await res.json();
+        if (data.success) suppliers = data.suppliers || [];
+      } catch (e) { console.error('Failed to fetch linked suppliers:', e); }
+
+      const html = buildLinkedSuppliersSectionHtml(quotationId, suppliers, isOutsourcing);
+      const body = getViewModalBody();
+      if (!body) return;
+      const existing = body.querySelector('#linkedSuppliersSection');
+      if (existing) {
+        existing.outerHTML = html;
+      } else {
+        body.insertAdjacentHTML('beforeend', html);
+      }
+      if (isOutsourcing) wireViewSupplierAddBox(quotationId);
+    }
+
+    // Fuzzy search-and-add box shown for outsourcing quotations. Selecting a supplier
+    // links it immediately via the API and refreshes the section.
+    function wireViewSupplierAddBox(quotationId) {
+      const body = getViewModalBody();
+      if (!body) return;
+      const input = body.querySelector('#viewSupplierSearch');
+      const dropdown = body.querySelector('#viewSupplierDropdown');
+      if (!input || !dropdown) return;
+      // Avoid double-wiring if refresh re-rendered the box.
+      if (input.dataset.wired === '1') return;
+      input.dataset.wired = '1';
+
+      loadSuppliersFromStorage().then(allSuppliers => {
+        input.addEventListener('input', function() {
+          const term = this.value.toLowerCase().trim();
+          if (!term) { dropdown.style.display = 'none'; return; }
+          const linkedIds = new Set(
+            Array.from(body.querySelectorAll('.supplier-view-card[data-supplier-id]'))
+              .map(el => parseInt(el.getAttribute('data-supplier-id')))
+          );
+          const matches = allSuppliers.filter(s =>
+            !linkedIds.has(s.id) &&
+            ((s.companyName || '').toLowerCase().includes(term) || (s.emailDomain || '').toLowerCase().includes(term))
+          );
+          if (matches.length === 0) {
+            dropdown.innerHTML = '<div class="autocomplete-no-results">No suppliers found</div>';
+            dropdown.style.display = 'block';
+            return;
+          }
+          dropdown.innerHTML = matches.slice(0, 10).map(s =>
+            '<div class="autocomplete-item" data-supplier-id="' + s.id + '">' +
+              '<div style="font-weight:600;">' + escapeHtml(s.companyName) + '</div>' +
+              '<div style="font-size:12px; color:#666;">' + escapeHtml(s.emailDomain) + '</div>' +
+            '</div>'
+          ).join('');
+          dropdown.style.display = 'block';
+          dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
+            item.addEventListener('click', async function() {
+              const supplierId = parseInt(this.getAttribute('data-supplier-id'));
+              input.value = '';
+              dropdown.style.display = 'none';
+              await addLinkedSupplierToView(quotationId, supplierId);
+            });
+          });
+        });
+
+        // Hide the dropdown when clicking outside of it.
+        document.addEventListener('click', function(e) {
+          if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
+          }
+        });
+      });
+    }
+
+    window.addLinkedSupplierToView = async function(quotationId, supplierId) {
+      try {
+        const res = await fetch('/api/quotations/' + quotationId + '/suppliers/' + supplierId, { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          await refreshLinkedSuppliersView(quotationId, true);
+        } else {
+          alert('Failed to add supplier: ' + (data.error || 'Unknown error'));
+        }
+      } catch (e) {
+        alert('Error adding supplier: ' + e.message);
+      }
+    };
+
+    // Remove a linked supplier from the quotation view modal.
+    // Calls the unlink API and re-renders the section (preserving the add-box + marker).
     window.removeLinkedSupplierFromView = async function(quotationId, supplierId) {
       if (!confirm('Remove this supplier from the quotation?')) return;
+      const section = document.getElementById('linkedSuppliersSection');
+      const isOutsourcing = section ? section.getAttribute('data-outsourcing') === '1' : false;
       try {
         const res = await fetch('/api/quotations/' + quotationId + '/suppliers/' + supplierId, { method: 'DELETE' });
         const data = await res.json();
         if (data.success) {
-          // Remove the card from DOM
-          const card = document.querySelector('.supplier-view-card[data-supplier-id="' + supplierId + '"]');
-          if (card) card.remove();
-          // Update the count
-          const section = document.getElementById('linkedSuppliersSection');
-          if (section) {
-            const remaining = section.querySelectorAll('.supplier-view-card');
-            const countEl = document.getElementById('linkedSuppliersCount');
-            if (countEl) countEl.textContent = remaining.length;
-            // If no suppliers left, show empty message
-            if (remaining.length === 0) {
-              section.innerHTML = '<h4 style="margin:0 0 10px 0;">Linked Suppliers (0)</h4><div style="color:#999; font-size:14px;">No suppliers linked</div>';
-            }
-          }
+          await refreshLinkedSuppliersView(quotationId, isOutsourcing);
         } else {
           alert('Failed to remove supplier: ' + (data.error || 'Unknown error'));
         }
@@ -17658,6 +18119,17 @@
         if (!quantity || quantity <= 0) {
           showModal({ title: 'Validation Error', body: 'Quantity must be greater than 0.' });
           return;
+        }
+        // Outsourcing quotations require at least one linked supplier. The Linked
+        // Suppliers section lives outside the form (its links are mutated immediately
+        // via the API), so we count the rendered supplier cards.
+        if (isOutsourcingQuotation(originalQuotation)) {
+          const section = document.getElementById('linkedSuppliersSection');
+          const linkedCount = section ? section.querySelectorAll('.supplier-view-card').length : 0;
+          if (linkedCount === 0) {
+            showModal({ title: 'Validation Error', body: 'Supplier Selection is required for outsourcing quotations.' });
+            return;
+          }
         }
 
         // Get product-specific fields
@@ -19282,6 +19754,215 @@
       } catch (e) { console.error('Error loading currencies cache:', e); }
     }
 
+    // ========== PRODUCT SPEC OPTIONS CACHE & HELPERS ==========
+    // Drives the dynamic Product-Specification dropdowns across Quotation Create,
+    // Outsourcing Create, Email Quotation, and the Option List settings page.
+
+    // { productType: { fieldKey: [ { value, label }, ... ] } } — empty until fetched.
+    let cachedProductSpecOptions = {};
+    window.cachedProductSpecOptions = cachedProductSpecOptions;
+    // Per-fieldKey union value→label map (for email/PDF display). { fieldKey: { value: label } }
+    window.cachedSpecOptionLabels = {};
+
+    // Which dropdowns exist per product type + their display label / placeholder.
+    // Free-text fields (size, remark, raisedHeight, frontColor, backColor, pu thickness)
+    // are intentionally NOT here — only <select> dropdowns are user-managed.
+    const PRODUCT_SPEC_FIELDS = {
+      'hang-tag': [
+        { key: 'material',       label: 'Material',        placeholder: 'Select Material' },
+        { key: 'printingMethod', label: 'Printing Method', placeholder: 'Select Printing Method' },
+      ],
+      'woven-label': [
+        { key: 'colorCount', label: 'Color Count', placeholder: '' },
+        { key: 'edgeFinish', label: 'Edge Finish', placeholder: '' },
+      ],
+      'printed-label': [
+        { key: 'materialType', label: 'Material Type', placeholder: 'Select Material' },
+        { key: 'ink',          label: 'Ink',           placeholder: 'Select...' },
+        { key: 'flatRaised',   label: 'Flat / Raised', placeholder: 'Select...', onchange: 'window.togglePrintedLabelRaisedHeight()' },
+        { key: 'folding',      label: 'Folding',       placeholder: 'Select...' },
+      ],
+      'heat-transfer': [
+        { key: 'transferType', label: 'Transfer Type',      placeholder: 'Select Type' },
+        { key: 'application',  label: 'Application Method', placeholder: '' },
+      ],
+      'silicon-patch': [
+        { key: 'thickness',        label: 'Thickness',         placeholder: 'Select Thickness' },
+        { key: 'colorMode',        label: 'Color Mode',        placeholder: 'Select Color Mode' },
+        { key: 'backingType',      label: 'Backing Type',      placeholder: 'Select Backing' },
+        { key: 'designComplexity', label: 'Design Complexity', placeholder: 'Select Complexity' },
+      ],
+      'embroidery-patch': [
+        { key: 'stitchType',       label: 'Stitch Type',       placeholder: 'Select Stitch Type' },
+        { key: 'borderType',       label: 'Border Type',       placeholder: 'Select Border' },
+        { key: 'backingType',      label: 'Backing Type',      placeholder: 'Select Backing' },
+        { key: 'threadColorCount', label: 'Thread Color Count',placeholder: 'Select Colors' },
+      ],
+      'pu-patch': [
+        { key: 'material',      label: 'Material',       placeholder: 'Select Material' },
+        { key: 'screenPrint',   label: 'Screen Print',   placeholder: 'Select Screen Print' },
+        { key: 'hotPress',      label: 'Hot Press',      placeholder: 'Select Hot Press' },
+        { key: 'edge',          label: 'Edge',           placeholder: 'Select Edge' },
+        { key: 'metalEmbedded', label: 'Metal Embedded', placeholder: 'Select Metal Embedded' },
+      ],
+    };
+
+    const PRODUCT_SPEC_TYPE_LABELS = {
+      'hang-tag': 'Hang Tag',
+      'woven-label': 'Woven Label',
+      'printed-label': 'Printed Label',
+      'heat-transfer': 'Heat Transfer',
+      'silicon-patch': 'Silicon Patch',
+      'embroidery-patch': 'Embroidery Patch',
+      'pu-patch': 'PU Patch',
+    };
+
+    // Static fallback used before the cache loads or if the API is unavailable.
+    // Must stay in sync with DEFAULT_SPEC_OPTIONS in db/tasksDb.js.
+    const FALLBACK_SPEC_OPTIONS = {
+      'hang-tag': {
+        material: [
+          { value: 'paper', label: 'Paper' }, { value: 'cardboard', label: 'Cardboard' },
+          { value: 'plastic', label: 'Plastic' }, { value: 'fabric', label: 'Fabric' },
+        ],
+        printingMethod: [
+          { value: 'screen-printing', label: 'Screen Printing' }, { value: 'digital-printing', label: 'Digital Printing' },
+          { value: 'offset-printing', label: 'Offset Printing' }, { value: 'embroidery', label: 'Embroidery' },
+        ],
+      },
+      'woven-label': {
+        colorCount: [
+          { value: '1', label: '1 Color' }, { value: '2', label: '2 Colors' },
+          { value: '3', label: '3 Colors' }, { value: '4', label: '4+ Colors' },
+        ],
+        edgeFinish: [
+          { value: 'cut', label: 'Cut Edge' }, { value: 'hemmed', label: 'Hemmed Edge' },
+          { value: 'overlocked', label: 'Overlocked' }, { value: 'end-fold', label: 'End Fold' },
+          { value: 'loop-fold', label: 'Loop Fold' }, { value: '4-side-heat-cut', label: '4 Side Heat Cut' },
+        ],
+      },
+      'printed-label': {
+        materialType: [
+          { value: 'satin', label: 'Satin Tape' }, { value: 'cotton', label: 'Cotton Tape' },
+          { value: 'woven', label: 'Woven Fabric' }, { value: 'others', label: 'Others' },
+        ],
+        ink: [ { value: 'uv', label: 'UV' }, { value: 'silicon', label: 'Silicon' } ],
+        flatRaised: [ { value: 'flat', label: 'Flat' }, { value: 'raised', label: 'Raised' } ],
+        folding: [
+          { value: 'end-fold', label: 'End Fold' }, { value: 'loop-fold', label: 'Loop Fold' },
+          { value: 'manhattan-fold', label: 'Manhattan Fold' }, { value: 'mitre-fold', label: 'Mitre Fold' },
+          { value: 'straight-cut', label: 'Straight Cut' },
+        ],
+      },
+      'heat-transfer': {
+        transferType: [
+          { value: 'screen-print', label: 'Screen Print Transfer' }, { value: 'digital-print', label: 'Digital Print Transfer' },
+          { value: 'vinyl-cut', label: 'Vinyl Cut Transfer' }, { value: 'sublimation', label: 'Sublimation Transfer' },
+        ],
+        application: [
+          { value: 'heat-press', label: 'Heat Press' }, { value: 'iron', label: 'Household Iron' },
+          { value: 'commercial', label: 'Commercial Press' },
+        ],
+      },
+      'silicon-patch': {
+        thickness: [
+          { value: '0.5mm', label: '0.5mm' }, { value: '1mm', label: '1mm' }, { value: '1.5mm', label: '1.5mm' },
+          { value: '2mm', label: '2mm' }, { value: '3mm', label: '3mm' }, { value: 'as-per-sample', label: 'As Per Sample' },
+        ],
+        colorMode: [
+          { value: 'single-color', label: 'Single Color' }, { value: 'multi-color', label: 'Multi-Color' },
+          { value: 'full-color', label: 'Full Color' }, { value: 'as-per-sample', label: 'As Per Sample' },
+        ],
+        backingType: [
+          { value: 'adhesive', label: 'Adhesive' }, { value: 'sew-on', label: 'Sew-on' },
+          { value: 'velcro', label: 'Velcro' }, { value: 'magnetic', label: 'Magnetic' },
+        ],
+        designComplexity: [
+          { value: 'simple', label: 'Simple' }, { value: 'medium', label: 'Medium' },
+          { value: 'complex', label: 'Complex' }, { value: 'custom', label: 'Custom' },
+        ],
+      },
+      'embroidery-patch': {
+        stitchType: [
+          { value: 'flat-stitch', label: 'Flat Stitch' }, { value: '3d-puff', label: '3D Puff' },
+          { value: 'applique', label: 'Applique' }, { value: 'chenille', label: 'Chenille' },
+        ],
+        borderType: [
+          { value: 'merrow', label: 'Merrow Border' }, { value: 'heat-cut', label: 'Heat Cut Border' },
+          { value: 'laser-cut', label: 'Laser Cut' },
+        ],
+        backingType: [
+          { value: 'iron-on', label: 'Iron-on' }, { value: 'sew-on', label: 'Sew-on' },
+          { value: 'velcro', label: 'Velcro' }, { value: 'adhesive', label: 'Adhesive' }, { value: 'none', label: 'None' },
+        ],
+        threadColorCount: [
+          { value: '1-3', label: '1-3 Colors' }, { value: '4-6', label: '4-6 Colors' },
+          { value: '7-9', label: '7-9 Colors' }, { value: '10+', label: '10+ Colors' },
+        ],
+      },
+      'pu-patch': {
+        material: [
+          { value: 'Real Leather', label: 'Real Leather' }, { value: 'PU Leather', label: 'PU Leather' },
+          { value: 'Jacron', label: 'Jacron' }, { value: 'Suede', label: 'Suede' },
+        ],
+        screenPrint: [
+          { value: 'No', label: 'No' }, { value: '1', label: '1' }, { value: '2', label: '2' },
+          { value: '3', label: '3' }, { value: '4', label: '4' },
+        ],
+        hotPress: [ { value: 'YES', label: 'YES' }, { value: 'NO', label: 'NO' } ],
+        edge: [ { value: 'Paint', label: 'Paint' }, { value: 'Embroidery', label: 'Embroidery' }, { value: 'No Treatment', label: 'No Treatment' } ],
+        metalEmbedded: [ { value: 'YES', label: 'YES' }, { value: 'NO', label: 'NO' } ],
+      },
+    };
+
+    async function loadProductSpecOptions() {
+      try {
+        const r = await fetch('/api/product-spec-options');
+        const data = await r.json();
+        if (data.success) {
+          const grouped = {};
+          for (const o of (data.options || [])) {
+            if (o.isActive === 0) continue;
+            (grouped[o.productType] ??= {})[o.fieldKey] ??= [];
+            grouped[o.productType][o.fieldKey].push({ value: o.value, label: o.label });
+          }
+          cachedProductSpecOptions = grouped;
+          window.cachedProductSpecOptions = grouped;
+          buildSpecOptionLabels();
+        }
+      } catch (e) { console.error('Error loading product spec options:', e); }
+    }
+
+    // Build a per-fieldKey union value→label map from the cache (for email/PDF display).
+    function buildSpecOptionLabels() {
+      const map = {};
+      for (const pt of Object.keys(cachedProductSpecOptions)) {
+        for (const fk of Object.keys(cachedProductSpecOptions[pt])) {
+          (map[fk] ??= {});
+          for (const o of cachedProductSpecOptions[pt][fk]) {
+            map[fk][String(o.value)] = o.label;
+          }
+        }
+      }
+      window.cachedSpecOptionLabels = map;
+    }
+
+    // Resolve the option list for a dropdown, preferring the DB cache over the static fallback.
+    function getSpecOptionList(productType, fieldKey) {
+      return (cachedProductSpecOptions[productType] && cachedProductSpecOptions[productType][fieldKey])
+        || (FALLBACK_SPEC_OPTIONS[productType] && FALLBACK_SPEC_OPTIONS[productType][fieldKey])
+        || [];
+    }
+
+    // Render <option> tags for one dropdown. selectedValue (optional) marks the matching option.
+    function renderSpecOptions(productType, fieldKey, selectedValue) {
+      const list = getSpecOptionList(productType, fieldKey);
+      return list.map(o => {
+        const sel = (selectedValue !== undefined && selectedValue !== null && String(selectedValue) === String(o.value)) ? ' selected' : '';
+        return `<option value="${escapeHtml(o.value)}"${sel}>${escapeHtml(o.label)}</option>`;
+      }).join('');
+    }
+
     // Re-fill every currency <select> on the page from the cache, preserving the
     // currently selected value where possible.
     function populateCurrencyDropdowns() {
@@ -19843,7 +20524,7 @@
         // Left side: Form (70% width)
         '<div style="flex:0 0 70%; overflow-y:auto; padding-right:10px;">' +
           '<form id="quotationForm">' +
-            '<div style="display:flex; gap:6px; margin:6px 0 12px 0;">' +
+            '<div style="display:flex; gap:6px; margin:0 0 12px 0; padding:8px 0; position:sticky; top:0; background:#fff; z-index:5; border-bottom:1px solid #eee;">' +
               '<button type="button" id="miniTabBtnDetails" class="page-btn mini-tab-btn selected" style="padding:6px 10px; font-size:12px;">Product Details</button>' +
               '<button type="button" id="miniTabBtnPricing" class="page-btn mini-tab-btn" style="padding:6px 10px; font-size:12px;">Quotation</button>' +
             '</div>' +
@@ -21068,6 +21749,213 @@
       };
     }
 
+    // ========== OPTION LIST (PRODUCT SPECIFICATIONS) PANEL ==========
+    // 3-pane master-detail: product types → fields → option editor.
+    let optionListState = { productType: null, fieldKey: null, options: [] };
+    window.optionListState = optionListState;
+
+    function initializeOptionListPanel() {
+      const types = Object.keys(PRODUCT_SPEC_FIELDS);
+      if (!optionListState.productType || !PRODUCT_SPEC_FIELDS[optionListState.productType]) {
+        optionListState.productType = types[0];
+      }
+      const fields = PRODUCT_SPEC_FIELDS[optionListState.productType] || [];
+      if (!optionListState.fieldKey || !fields.some(f => f.key === optionListState.fieldKey)) {
+        optionListState.fieldKey = fields[0] ? fields[0].key : null;
+      }
+      renderOptionListTypes();
+      renderOptionListFields(optionListState.productType);
+      renderOptionListEditor(optionListState.productType, optionListState.fieldKey);
+    }
+
+    function renderOptionListTypes() {
+      const wrap = document.getElementById('optionListTypes');
+      if (!wrap) return;
+      const types = Object.keys(PRODUCT_SPEC_FIELDS);
+      wrap.innerHTML = '<div style="font-weight:600; margin-bottom:6px; font-size:12px;">Product Type</div>' +
+        types.map(pt => {
+          const active = pt === optionListState.productType ? 'background:#1f6feb;color:#fff;border-color:#1f6feb;' : '';
+          return `<button type="button" class="page-btn" onclick="selectOptionListType('${pt}')" style="display:block; width:100%; text-align:left; margin-bottom:4px; ${active}">${escapeHtml(PRODUCT_SPEC_TYPE_LABELS[pt] || pt)}</button>`;
+        }).join('');
+    }
+
+    window.selectOptionListType = function (pt) {
+      optionListState.productType = pt;
+      const fields = PRODUCT_SPEC_FIELDS[pt] || [];
+      optionListState.fieldKey = fields[0] ? fields[0].key : null;
+      renderOptionListTypes();
+      renderOptionListFields(pt);
+      renderOptionListEditor(pt, optionListState.fieldKey);
+    };
+
+    function renderOptionListFields(pt) {
+      const wrap = document.getElementById('optionListFields');
+      if (!wrap) return;
+      const fields = PRODUCT_SPEC_FIELDS[pt] || [];
+      wrap.innerHTML = fields.map(f => {
+        const active = f.key === optionListState.fieldKey ? 'background:#1f6feb;color:#fff;border-color:#1f6feb;' : '';
+        return `<button type="button" class="page-btn" onclick="selectOptionListField('${pt}','${f.key}')" style="${active}">${escapeHtml(f.label)}</button>`;
+      }).join('') || '<span style="color:#999; font-size:12px;">No dropdown fields.</span>';
+    }
+
+    window.selectOptionListField = function (pt, key) {
+      optionListState.productType = pt;
+      optionListState.fieldKey = key;
+      renderOptionListTypes();
+      renderOptionListFields(pt);
+      renderOptionListEditor(pt, key);
+    };
+
+    async function renderOptionListEditor(pt, key) {
+      const editor = document.getElementById('optionListEditor');
+      if (!editor || !pt || !key) { if (editor) editor.innerHTML = ''; return; }
+      const fieldMeta = (PRODUCT_SPEC_FIELDS[pt] || []).find(f => f.key === key) || {};
+      editor.innerHTML = `<div style="color:#999; font-size:12px;">Loading options…</div>`;
+      try {
+        const r = await fetch('/api/product-spec-options/' + encodeURIComponent(pt));
+        const data = await r.json();
+        const all = (data && data.success) ? (data.options || []) : [];
+        const options = all.filter(o => o.fieldKey === key).sort((a, b) => (a.sortOrder - b.sortOrder) || (a.id - b.id));
+        optionListState.options = options;
+
+        let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <div style="font-weight:600;">Options for “${escapeHtml(fieldMeta.label || key)}”</div>
+          <button type="button" class="page-btn" onclick="saveSpecOptions()">Save</button>
+        </div>`;
+
+        if (!options.length) {
+          html += '<div style="color:#999; font-size:12px; margin-bottom:10px;">No options yet — add one below.</div>';
+        }
+
+        html += '<table style="width:100%; border-collapse:collapse; font-size:12px;">';
+        html += '<thead><tr style="background:#f0f0f0;">' +
+          '<th style="border:1px solid #ccc; padding:6px; width:70px;">Order</th>' +
+          '<th style="border:1px solid #ccc; padding:6px; width:35%;">Value (stored)</th>' +
+          '<th style="border:1px solid #ccc; padding:6px;">Label (shown)</th>' +
+          '<th style="border:1px solid #ccc; padding:6px; width:70px;">Action</th>' +
+          '</tr></thead><tbody id="optionListRows">';
+        options.forEach((o, i) => {
+          html += `<tr data-id="${o.id}">
+            <td style="border:1px solid #ccc; padding:6px; text-align:center; white-space:nowrap;">
+              <button type="button" class="page-btn" onclick="moveSpecOption(${i},-1)" style="padding:2px 6px;"${i === 0 ? ' disabled' : ''}>▲</button>
+              <button type="button" class="page-btn" onclick="moveSpecOption(${i},1)" style="padding:2px 6px;"${i === options.length - 1 ? ' disabled' : ''}>▼</button>
+            </td>
+            <td style="border:1px solid #ccc; padding:6px;"><input type="text" class="specOptValue" data-id="${o.id}" value="${escapeHtml(o.value)}" style="width:100%; padding:4px; border:1px solid #ccc; font-size:12px;"></td>
+            <td style="border:1px solid #ccc; padding:6px;"><input type="text" class="specOptLabel" data-id="${o.id}" value="${escapeHtml(o.label)}" style="width:100%; padding:4px; border:1px solid #ccc; font-size:12px;"></td>
+            <td style="border:1px solid #ccc; padding:6px; text-align:center;">
+              <button type="button" class="page-btn" onclick="deleteSpecOption(${o.id})" style="padding:2px 6px;">🗑</button>
+            </td>
+          </tr>`;
+        });
+        // Add-new row
+        html += `<tr>
+          <td style="border:1px solid #ccc; padding:6px; text-align:center; color:#999;">new</td>
+          <td style="border:1px solid #ccc; padding:6px;"><input type="text" id="specOptNewValue" placeholder="value" style="width:100%; padding:4px; border:1px solid #ccc; font-size:12px;"></td>
+          <td style="border:1px solid #ccc; padding:6px;"><input type="text" id="specOptNewLabel" placeholder="label" style="width:100%; padding:4px; border:1px solid #ccc; font-size:12px;"></td>
+          <td style="border:1px solid #ccc; padding:6px; text-align:center;"><button type="button" class="page-btn" onclick="addSpecOption()" style="padding:2px 6px;">+ Add</button></td>
+        </tr>`;
+        html += '</tbody></table>';
+        html += '<p style="font-size:11px; color:#888; margin:8px 0 0 0;">▲/▼ and Add/Delete are saved instantly. Editing Value/Label boxes needs the Save button. Existing quotations keep their saved value even if you rename it here.</p>';
+
+        editor.innerHTML = html;
+      } catch (e) {
+        console.error('Error loading option list:', e);
+        editor.innerHTML = '<div style="color:#c00; font-size:12px;">Failed to load options.</div>';
+      }
+    }
+
+    window.addSpecOption = async function () {
+      const pt = optionListState.productType;
+      const key = optionListState.fieldKey;
+      const vEl = document.getElementById('specOptNewValue');
+      const lEl = document.getElementById('specOptNewLabel');
+      const value = (vEl && vEl.value || '').trim();
+      const label = (lEl && lEl.value || '').trim();
+      if (!value || !label) { alert('Both value and label are required.'); return; }
+      try {
+        const r = await fetch('/api/product-spec-options', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productType: pt, fieldKey: key, value, label })
+        });
+        const data = await r.json();
+        if (!r.ok || !data.success) { alert((data && data.error) || 'Failed to add option'); return; }
+        if (vEl) vEl.value = '';
+        if (lEl) lEl.value = '';
+        await afterSpecChange();
+      } catch (e) { console.error(e); alert('Failed to add option'); }
+    };
+
+    window.deleteSpecOption = async function (id) {
+      if (!confirm('Delete this option? Existing quotations that used it will keep their saved value.')) return;
+      try {
+        const r = await fetch('/api/product-spec-options/' + id, { method: 'DELETE' });
+        const data = await r.json();
+        if (!r.ok || !data.success) { alert((data && data.error) || 'Failed to delete option'); return; }
+        await afterSpecChange();
+      } catch (e) { console.error(e); alert('Failed to delete option'); }
+    };
+
+    window.moveSpecOption = async function (idx, dir) {
+      const arr = optionListState.options;
+      const j = idx + dir;
+      if (idx < 0 || j < 0 || idx >= arr.length || j >= arr.length) return;
+      // Swap, then persist the new order via the reorder endpoint.
+      const swapped = arr.slice();
+      const tmp = swapped[idx]; swapped[idx] = swapped[j]; swapped[j] = tmp;
+      const orderedIds = swapped.map(o => o.id);
+      try {
+        const r = await fetch('/api/product-spec-options/reorder', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productType: optionListState.productType, fieldKey: optionListState.fieldKey, orderedIds })
+        });
+        const data = await r.json();
+        if (!r.ok || !data.success) { alert((data && data.error) || 'Failed to reorder'); return; }
+        await afterSpecChange();
+      } catch (e) { console.error(e); alert('Failed to reorder'); }
+    };
+
+    window.saveSpecOptions = async function () {
+      const pt = optionListState.productType;
+      const key = optionListState.fieldKey;
+      const rows = document.querySelectorAll('#optionListRows tr[data-id]');
+      const orderedIds = [];
+      let failed = null;
+      for (const tr of rows) {
+        const id = Number(tr.getAttribute('data-id'));
+        orderedIds.push(id);
+        const value = (tr.querySelector('.specOptValue') || {}).value;
+        const label = (tr.querySelector('.specOptLabel') || {}).value;
+        try {
+          const r = await fetch('/api/product-spec-options/' + id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value, label })
+          });
+          const data = await r.json();
+          if (!r.ok || !data.success) { failed = (data && data.error) || 'Failed to save an option'; break; }
+        } catch (e) { failed = 'Failed to save an option'; break; }
+      }
+      if (failed) { alert(failed); await afterSpecChange(); return; }
+      // Persist current order as well.
+      try {
+        await fetch('/api/product-spec-options/reorder', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productType: pt, fieldKey: key, orderedIds })
+        });
+      } catch (e) { /* order best-effort */ }
+      await afterSpecChange();
+    };
+
+    // After any mutation: reload the editor and refresh the global cache so the
+    // Quotation / Outsourcing / Email forms pick up the new options.
+    async function afterSpecChange() {
+      await renderOptionListEditor(optionListState.productType, optionListState.fieldKey);
+      try { await loadProductSpecOptions(); } catch (e) { /* ignore */ }
+    }
+
     function getProductSpecificFields(tagType) {
       const fields = {
         'hang-tag': `
@@ -21076,10 +21964,7 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Material</label>
               <select id="quotationMaterial" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Material</option>
-                <option value="paper">Paper</option>
-                <option value="cardboard">Cardboard</option>
-                <option value="plastic">Plastic</option>
-                <option value="fabric">Fabric</option>
+                ${renderSpecOptions('hang-tag','material')}
               </select>
             </div>
             <div>
@@ -21094,10 +21979,7 @@
             <label style="display:block; margin-bottom:5px; font-weight:600;">Printing Method</label>
             <select id="quotationPrintingMethod" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
               <option value="">Select Printing Method</option>
-              <option value="screen-printing">Screen Printing</option>
-              <option value="digital-printing">Digital Printing</option>
-              <option value="offset-printing">Offset Printing</option>
-              <option value="embroidery">Embroidery</option>
+              ${renderSpecOptions('hang-tag','printingMethod')}
             </select>
           </div>
           <div style="margin-bottom:15px;">
@@ -21110,21 +21992,13 @@
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Color Count</label>
               <select id="quotationColorCount" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
-                <option value="1">1 Color</option>
-                <option value="2">2 Colors</option>
-                <option value="3">3 Colors</option>
-                <option value="4">4+ Colors</option>
+                ${renderSpecOptions('woven-label','colorCount')}
               </select>
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Edge Finish</label>
               <select id="quotationEdgeFinish" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
-                <option value="cut">Cut Edge</option>
-                <option value="hemmed">Hemmed Edge</option>
-                <option value="overlocked">Overlocked</option>
-                <option value="end-fold">End Fold</option>
-                <option value="loop-fold">Loop Fold</option>
-                <option value="4-side-heat-cut">4 Side Heat Cut</option>
+                ${renderSpecOptions('woven-label','edgeFinish')}
               </select>
             </div>
           </div>
@@ -21139,18 +22013,14 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Material Type</label>
               <select id="quotationMaterialType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Material</option>
-                <option value="satin">Satin Tape</option>
-                <option value="cotton">Cotton Tape</option>
-                <option value="woven">Woven Fabric</option>
-                <option value="others">Others</option>
+                ${renderSpecOptions('printed-label','materialType')}
               </select>
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Ink</label>
               <select id="quotationInk" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select...</option>
-                <option value="uv">UV</option>
-                <option value="silicon">Silicon</option>
+                ${renderSpecOptions('printed-label','ink')}
               </select>
             </div>
           </div>
@@ -21159,8 +22029,7 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Flat / Raised</label>
               <select id="quotationFlatRaised" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" onchange="window.togglePrintedLabelRaisedHeight()">
                 <option value="">Select...</option>
-                <option value="flat">Flat</option>
-                <option value="raised">Raised</option>
+                ${renderSpecOptions('printed-label','flatRaised')}
               </select>
             </div>
             <div>
@@ -21172,11 +22041,7 @@
             <label style="display:block; margin-bottom:5px; font-weight:600;">Folding</label>
             <select id="quotationFolding" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
               <option value="">Select...</option>
-              <option value="end-fold">End Fold</option>
-              <option value="loop-fold">Loop Fold</option>
-              <option value="manhattan-fold">Manhattan Fold</option>
-              <option value="mitre-fold">Mitre Fold</option>
-              <option value="straight-cut">Straight Cut</option>
+              ${renderSpecOptions('printed-label','folding')}
             </select>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
@@ -21200,18 +22065,13 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Transfer Type</label>
               <select id="quotationTransferType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Type</option>
-                <option value="screen-print">Screen Print Transfer</option>
-                <option value="digital-print">Digital Print Transfer</option>
-                <option value="vinyl-cut">Vinyl Cut Transfer</option>
-                <option value="sublimation">Sublimation Transfer</option>
+                ${renderSpecOptions('heat-transfer','transferType')}
               </select>
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Application Method</label>
               <select id="quotationApplication" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
-                <option value="heat-press">Heat Press</option>
-                <option value="iron">Household Iron</option>
-                <option value="commercial">Commercial Press</option>
+                ${renderSpecOptions('heat-transfer','application')}
               </select>
             </div>
           </div>
@@ -21246,12 +22106,7 @@
             <label style="display:block; margin-bottom:5px; font-weight:600;">Thickness</label>
             <select id="quotationThickness" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
               <option value="">Select Thickness</option>
-              <option value="0.5mm">0.5mm</option>
-              <option value="1mm">1mm</option>
-              <option value="1.5mm">1.5mm</option>
-              <option value="2mm">2mm</option>
-              <option value="3mm">3mm</option>
-              <option value="as-per-sample">As Per Sample</option>
+              ${renderSpecOptions('silicon-patch','thickness')}
             </select>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
@@ -21259,20 +22114,14 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Color Mode</label>
               <select id="quotationColorMode" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Color Mode</option>
-                <option value="single-color">Single Color</option>
-                <option value="multi-color">Multi-Color</option>
-                <option value="full-color">Full Color</option>
-                <option value="as-per-sample">As Per Sample</option>
+                ${renderSpecOptions('silicon-patch','colorMode')}
               </select>
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Backing Type</label>
               <select id="quotationBackingType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Backing</option>
-                <option value="adhesive">Adhesive</option>
-                <option value="sew-on">Sew-on</option>
-                <option value="velcro">Velcro</option>
-                <option value="magnetic">Magnetic</option>
+                ${renderSpecOptions('silicon-patch','backingType')}
               </select>
             </div>
           </div>
@@ -21280,10 +22129,7 @@
             <label style="display:block; margin-bottom:5px; font-weight:600;">Design Complexity</label>
             <select id="quotationDesignComplexity" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
               <option value="">Select Complexity</option>
-              <option value="simple">Simple</option>
-              <option value="medium">Medium</option>
-              <option value="complex">Complex</option>
-              <option value="custom">Custom</option>
+              ${renderSpecOptions('silicon-patch','designComplexity')}
             </select>
           </div>
           <div style="margin-bottom:15px;">
@@ -21304,10 +22150,7 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Stitch Type</label>
               <select id="quotationStitchType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Stitch Type</option>
-                <option value="flat-stitch">Flat Stitch</option>
-                <option value="3d-puff">3D Puff</option>
-                <option value="applique">Applique</option>
-                <option value="chenille">Chenille</option>
+                ${renderSpecOptions('embroidery-patch','stitchType')}
               </select>
             </div>
           </div>
@@ -21316,20 +22159,14 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Border Type</label>
               <select id="quotationBorderType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Border</option>
-                <option value="merrow">Merrow Border</option>
-                <option value="heat-cut">Heat Cut Border</option>
-                <option value="laser-cut">Laser Cut</option>
+                ${renderSpecOptions('embroidery-patch','borderType')}
               </select>
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Backing Type</label>
               <select id="quotationBackingType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Backing</option>
-                <option value="iron-on">Iron-on</option>
-                <option value="sew-on">Sew-on</option>
-                <option value="velcro">Velcro</option>
-                <option value="adhesive">Adhesive</option>
-                <option value="none">None</option>
+                ${renderSpecOptions('embroidery-patch','backingType')}
               </select>
             </div>
           </div>
@@ -21337,10 +22174,7 @@
             <label style="display:block; margin-bottom:5px; font-weight:600;">Thread Color Count</label>
             <select id="quotationThreadColorCount" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
               <option value="">Select Colors</option>
-              <option value="1-3">1-3 Colors</option>
-              <option value="4-6">4-6 Colors</option>
-              <option value="7-9">7-9 Colors</option>
-              <option value="10+">10+ Colors</option>
+              ${renderSpecOptions('embroidery-patch','threadColorCount')}
             </select>
           </div>
           <div style="margin-bottom:15px;">
@@ -21354,8 +22188,7 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Material</label>
               <select id="quotationMaterial" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Material</option>
-                <option value="Real Leather">Real Leather</option>
-                <option value="PU Leather">PU Leather</option>
+                ${renderSpecOptions('pu-patch','material')}
               </select>
             </div>
             <div>
@@ -21368,19 +22201,14 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Screen Print</label>
               <select id="quotationScreenPrint" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Screen Print</option>
-                <option value="No">No</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-                <option value="3">3</option>
-                <option value="4">4</option>
+                ${renderSpecOptions('pu-patch','screenPrint')}
               </select>
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Hot Press</label>
               <select id="quotationHotPress" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Hot Press</option>
-                <option value="YES">YES</option>
-                <option value="NO">NO</option>
+                ${renderSpecOptions('pu-patch','hotPress')}
               </select>
             </div>
           </div>
@@ -21389,16 +22217,15 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Edge</label>
               <select id="quotationEdge" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Edge</option>
-                <option value="Paint">Paint</option>
-                <option value="Embroidery">Embroidery</option>
+                ${renderSpecOptions('pu-patch','edge')}
+                <option value="No Treatment">No Treatment</option>
               </select>
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Metal Embedded</label>
               <select id="quotationMetalEmbedded" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Metal Embedded</option>
-                <option value="YES">YES</option>
-                <option value="NO">NO</option>
+                ${renderSpecOptions('pu-patch','metalEmbedded')}
               </select>
             </div>
           </div>
@@ -21420,10 +22247,7 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Material</label>
               <select id="quotationMaterial" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Material</option>
-                <option value="paper" ${productDetails.material === 'paper' ? 'selected' : ''}>Paper</option>
-                <option value="cardboard" ${productDetails.material === 'cardboard' ? 'selected' : ''}>Cardboard</option>
-                <option value="plastic" ${productDetails.material === 'plastic' ? 'selected' : ''}>Plastic</option>
-                <option value="fabric" ${productDetails.material === 'fabric' ? 'selected' : ''}>Fabric</option>
+                ${renderSpecOptions('hang-tag','material', productDetails.material)}
               </select>
             </div>
             <div>
@@ -21438,10 +22262,7 @@
             <label style="display:block; margin-bottom:5px; font-weight:600;">Printing Method</label>
             <select id="quotationPrintingMethod" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
               <option value="">Select Printing Method</option>
-              <option value="screen-printing" ${productDetails.printingMethod === 'screen-printing' ? 'selected' : ''}>Screen Printing</option>
-              <option value="digital-printing" ${productDetails.printingMethod === 'digital-printing' ? 'selected' : ''}>Digital Printing</option>
-              <option value="offset-printing" ${productDetails.printingMethod === 'offset-printing' ? 'selected' : ''}>Offset Printing</option>
-              <option value="embroidery" ${productDetails.printingMethod === 'embroidery' ? 'selected' : ''}>Embroidery</option>
+              ${renderSpecOptions('hang-tag','printingMethod', productDetails.printingMethod)}
             </select>
           </div>
           <div style="margin-bottom:15px;">
@@ -21454,21 +22275,13 @@
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Color Count</label>
               <select id="quotationColorCount" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
-                <option value="1" ${productDetails.colorCount === '1' ? 'selected' : ''}>1 Color</option>
-                <option value="2" ${productDetails.colorCount === '2' ? 'selected' : ''}>2 Colors</option>
-                <option value="3" ${productDetails.colorCount === '3' ? 'selected' : ''}>3 Colors</option>
-                <option value="4" ${productDetails.colorCount === '4' ? 'selected' : ''}>4+ Colors</option>
+                ${renderSpecOptions('woven-label','colorCount', productDetails.colorCount)}
               </select>
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Edge Finish</label>
               <select id="quotationEdgeFinish" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
-                <option value="cut" ${productDetails.edgeFinish === 'cut' ? 'selected' : ''}>Cut Edge</option>
-                <option value="hemmed" ${productDetails.edgeFinish === 'hemmed' ? 'selected' : ''}>Hemmed Edge</option>
-                <option value="overlocked" ${productDetails.edgeFinish === 'overlocked' ? 'selected' : ''}>Overlocked</option>
-                <option value="end-fold" ${productDetails.edgeFinish === 'end-fold' ? 'selected' : ''}>End Fold</option>
-                <option value="loop-fold" ${productDetails.edgeFinish === 'loop-fold' ? 'selected' : ''}>Loop Fold</option>
-                <option value="4-side-heat-cut" ${productDetails.edgeFinish === '4-side-heat-cut' ? 'selected' : ''}>4 Side Heat Cut</option>
+                ${renderSpecOptions('woven-label','edgeFinish', productDetails.edgeFinish)}
               </select>
             </div>
           </div>
@@ -21483,18 +22296,14 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Material Type</label>
               <select id="quotationMaterialType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Material</option>
-                <option value="satin" ${productDetails.materialType === 'satin' ? 'selected' : ''}>Satin Tape</option>
-                <option value="cotton" ${productDetails.materialType === 'cotton' ? 'selected' : ''}>Cotton Tape</option>
-                <option value="woven" ${productDetails.materialType === 'woven' ? 'selected' : ''}>Woven Fabric</option>
-                <option value="others" ${productDetails.materialType === 'others' ? 'selected' : ''}>Others</option>
+                ${renderSpecOptions('printed-label','materialType', productDetails.materialType)}
               </select>
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Ink</label>
               <select id="quotationInk" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="" ${productDetails.ink === '' || !productDetails.ink ? 'selected' : ''}>Select...</option>
-                <option value="uv" ${productDetails.ink === 'uv' ? 'selected' : ''}>UV</option>
-                <option value="silicon" ${productDetails.ink === 'silicon' ? 'selected' : ''}>Silicon</option>
+                ${renderSpecOptions('printed-label','ink', productDetails.ink)}
               </select>
             </div>
           </div>
@@ -21503,8 +22312,7 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Flat / Raised</label>
               <select id="quotationFlatRaised" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" onchange="window.togglePrintedLabelRaisedHeight()">
                 <option value="" ${productDetails.flatRaised === '' || !productDetails.flatRaised ? 'selected' : ''}>Select...</option>
-                <option value="flat" ${productDetails.flatRaised === 'flat' ? 'selected' : ''}>Flat</option>
-                <option value="raised" ${productDetails.flatRaised === 'raised' ? 'selected' : ''}>Raised</option>
+                ${renderSpecOptions('printed-label','flatRaised', productDetails.flatRaised)}
               </select>
             </div>
             <div>
@@ -21516,11 +22324,7 @@
             <label style="display:block; margin-bottom:5px; font-weight:600;">Folding</label>
             <select id="quotationFolding" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
               <option value="" ${!productDetails.folding ? 'selected' : ''}>Select...</option>
-              <option value="end-fold" ${productDetails.folding === 'end-fold' ? 'selected' : ''}>End Fold</option>
-              <option value="loop-fold" ${productDetails.folding === 'loop-fold' ? 'selected' : ''}>Loop Fold</option>
-              <option value="manhattan-fold" ${productDetails.folding === 'manhattan-fold' ? 'selected' : ''}>Manhattan Fold</option>
-              <option value="mitre-fold" ${productDetails.folding === 'mitre-fold' ? 'selected' : ''}>Mitre Fold</option>
-              <option value="straight-cut" ${productDetails.folding === 'straight-cut' ? 'selected' : ''}>Straight Cut</option>
+              ${renderSpecOptions('printed-label','folding', productDetails.folding)}
             </select>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
@@ -21544,18 +22348,13 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Transfer Type</label>
               <select id="quotationTransferType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Type</option>
-                <option value="screen-print" ${productDetails.transferType === 'screen-print' ? 'selected' : ''}>Screen Print Transfer</option>
-                <option value="digital-print" ${productDetails.transferType === 'digital-print' ? 'selected' : ''}>Digital Print Transfer</option>
-                <option value="vinyl-cut" ${productDetails.transferType === 'vinyl-cut' ? 'selected' : ''}>Vinyl Cut Transfer</option>
-                <option value="sublimation" ${productDetails.transferType === 'sublimation' ? 'selected' : ''}>Sublimation Transfer</option>
+                ${renderSpecOptions('heat-transfer','transferType', productDetails.transferType)}
               </select>
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Application Method</label>
               <select id="quotationApplication" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
-                <option value="heat-press" ${productDetails.application === 'heat-press' ? 'selected' : ''}>Heat Press</option>
-                <option value="iron" ${productDetails.application === 'iron' ? 'selected' : ''}>Household Iron</option>
-                <option value="commercial" ${productDetails.application === 'commercial' ? 'selected' : ''}>Commercial Press</option>
+                ${renderSpecOptions('heat-transfer','application', productDetails.application)}
               </select>
             </div>
           </div>
@@ -21591,12 +22390,7 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Thickness</label>
               <select id="quotationThickness" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Thickness</option>
-                <option value="0.5mm" ${productDetails.thickness === '0.5mm' ? 'selected' : ''}>0.5mm</option>
-                <option value="1mm" ${productDetails.thickness === '1mm' ? 'selected' : ''}>1mm</option>
-                <option value="1.5mm" ${productDetails.thickness === '1.5mm' ? 'selected' : ''}>1.5mm</option>
-                <option value="2mm" ${productDetails.thickness === '2mm' ? 'selected' : ''}>2mm</option>
-                <option value="3mm" ${productDetails.thickness === '3mm' ? 'selected' : ''}>3mm</option>
-                <option value="as-per-sample" ${productDetails.thickness === 'as-per-sample' ? 'selected' : ''}>As Per Sample</option>
+                ${renderSpecOptions('silicon-patch','thickness', productDetails.thickness)}
               </select>
             </div>
           </div>
@@ -21605,20 +22399,14 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Color Mode</label>
               <select id="quotationColorMode" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Color Mode</option>
-                <option value="single-color" ${productDetails.colorMode === 'single-color' ? 'selected' : ''}>Single Color</option>
-                <option value="multi-color" ${productDetails.colorMode === 'multi-color' ? 'selected' : ''}>Multi-Color</option>
-                <option value="full-color" ${productDetails.colorMode === 'full-color' ? 'selected' : ''}>Full Color</option>
-                <option value="as-per-sample" ${productDetails.colorMode === 'as-per-sample' ? 'selected' : ''}>As Per Sample</option>
+                ${renderSpecOptions('silicon-patch','colorMode', productDetails.colorMode)}
               </select>
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Backing Type</label>
               <select id="quotationBackingType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Backing</option>
-                <option value="adhesive" ${productDetails.backingType === 'adhesive' ? 'selected' : ''}>Adhesive</option>
-                <option value="sew-on" ${productDetails.backingType === 'sew-on' ? 'selected' : ''}>Sew-on</option>
-                <option value="velcro" ${productDetails.backingType === 'velcro' ? 'selected' : ''}>Velcro</option>
-                <option value="magnetic" ${productDetails.backingType === 'magnetic' ? 'selected' : ''}>Magnetic</option>
+                ${renderSpecOptions('silicon-patch','backingType', productDetails.backingType)}
               </select>
             </div>
           </div>
@@ -21626,10 +22414,7 @@
             <label style="display:block; margin-bottom:5px; font-weight:600;">Design Complexity</label>
             <select id="quotationDesignComplexity" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
               <option value="">Select Complexity</option>
-              <option value="simple" ${productDetails.designComplexity === 'simple' ? 'selected' : ''}>Simple</option>
-              <option value="medium" ${productDetails.designComplexity === 'medium' ? 'selected' : ''}>Medium</option>
-              <option value="complex" ${productDetails.designComplexity === 'complex' ? 'selected' : ''}>Complex</option>
-              <option value="custom" ${productDetails.designComplexity === 'custom' ? 'selected' : ''}>Custom</option>
+              ${renderSpecOptions('silicon-patch','designComplexity', productDetails.designComplexity)}
             </select>
           </div>
           <div style="margin-bottom:15px;">
@@ -21650,10 +22435,7 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Stitch Type</label>
               <select id="quotationStitchType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Stitch Type</option>
-                <option value="flat-stitch" ${productDetails.stitchType === 'flat-stitch' ? 'selected' : ''}>Flat Stitch</option>
-                <option value="3d-puff" ${productDetails.stitchType === '3d-puff' ? 'selected' : ''}>3D Puff</option>
-                <option value="applique" ${productDetails.stitchType === 'applique' ? 'selected' : ''}>Applique</option>
-                <option value="chenille" ${productDetails.stitchType === 'chenille' ? 'selected' : ''}>Chenille</option>
+                ${renderSpecOptions('embroidery-patch','stitchType', productDetails.stitchType)}
               </select>
             </div>
           </div>
@@ -21662,20 +22444,14 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Border Type</label>
               <select id="quotationBorderType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Border</option>
-                <option value="merrow" ${productDetails.borderType === 'merrow' ? 'selected' : ''}>Merrow Border</option>
-                <option value="heat-cut" ${productDetails.borderType === 'heat-cut' ? 'selected' : ''}>Heat Cut Border</option>
-                <option value="laser-cut" ${productDetails.borderType === 'laser-cut' ? 'selected' : ''}>Laser Cut</option>
+                ${renderSpecOptions('embroidery-patch','borderType', productDetails.borderType)}
               </select>
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Backing Type</label>
               <select id="quotationBackingType" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Backing</option>
-                <option value="iron-on" ${productDetails.backingType === 'iron-on' ? 'selected' : ''}>Iron-on</option>
-                <option value="sew-on" ${productDetails.backingType === 'sew-on' ? 'selected' : ''}>Sew-on</option>
-                <option value="velcro" ${productDetails.backingType === 'velcro' ? 'selected' : ''}>Velcro</option>
-                <option value="adhesive" ${productDetails.backingType === 'adhesive' ? 'selected' : ''}>Adhesive</option>
-                <option value="none" ${productDetails.backingType === 'none' ? 'selected' : ''}>None</option>
+                ${renderSpecOptions('embroidery-patch','backingType', productDetails.backingType)}
               </select>
             </div>
           </div>
@@ -21683,10 +22459,7 @@
             <label style="display:block; margin-bottom:5px; font-weight:600;">Thread Color Count</label>
             <select id="quotationThreadColorCount" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
               <option value="">Select Colors</option>
-              <option value="1-3" ${productDetails.threadColorCount === '1-3' ? 'selected' : ''}>1-3 Colors</option>
-              <option value="4-6" ${productDetails.threadColorCount === '4-6' ? 'selected' : ''}>4-6 Colors</option>
-              <option value="7-9" ${productDetails.threadColorCount === '7-9' ? 'selected' : ''}>7-9 Colors</option>
-              <option value="10+" ${productDetails.threadColorCount === '10+' ? 'selected' : ''}>10+ Colors</option>
+              ${renderSpecOptions('embroidery-patch','threadColorCount', productDetails.threadColorCount)}
             </select>
           </div>
           <div style="margin-bottom:15px;">
@@ -21700,8 +22473,7 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Material</label>
               <select id="quotationMaterial" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Material</option>
-                <option value="Real Leather" ${productDetails.material === 'Real Leather' ? 'selected' : ''}>Real Leather</option>
-                <option value="PU Leather" ${productDetails.material === 'PU Leather' ? 'selected' : ''}>PU Leather</option>
+                ${renderSpecOptions('pu-patch','material', productDetails.material)}
               </select>
             </div>
             <div>
@@ -21714,19 +22486,14 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Screen Print</label>
               <select id="quotationScreenPrint" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Screen Print</option>
-                <option value="No" ${productDetails.screenPrint === 'No' ? 'selected' : ''}>No</option>
-                <option value="1" ${productDetails.screenPrint === '1' ? 'selected' : ''}>1</option>
-                <option value="2" ${productDetails.screenPrint === '2' ? 'selected' : ''}>2</option>
-                <option value="3" ${productDetails.screenPrint === '3' ? 'selected' : ''}>3</option>
-                <option value="4" ${productDetails.screenPrint === '4' ? 'selected' : ''}>4</option>
+                ${renderSpecOptions('pu-patch','screenPrint', productDetails.screenPrint)}
               </select>
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Hot Press</label>
               <select id="quotationHotPress" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Hot Press</option>
-                <option value="YES" ${productDetails.hotPress === 'YES' ? 'selected' : ''}>YES</option>
-                <option value="NO" ${productDetails.hotPress === 'NO' ? 'selected' : ''}>NO</option>
+                ${renderSpecOptions('pu-patch','hotPress', productDetails.hotPress)}
               </select>
             </div>
           </div>
@@ -21735,16 +22502,14 @@
               <label style="display:block; margin-bottom:5px; font-weight:600;">Edge</label>
               <select id="quotationEdge" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Edge</option>
-                <option value="Paint" ${productDetails.edge === 'Paint' ? 'selected' : ''}>Paint</option>
-                <option value="Embroidery" ${productDetails.edge === 'Embroidery' ? 'selected' : ''}>Embroidery</option>
+                ${renderSpecOptions('pu-patch','edge', productDetails.edge)}
               </select>
             </div>
             <div>
               <label style="display:block; margin-bottom:5px; font-weight:600;">Metal Embedded</label>
               <select id="quotationMetalEmbedded" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;">
                 <option value="">Select Metal Embedded</option>
-                <option value="YES" ${productDetails.metalEmbedded === 'YES' ? 'selected' : ''}>YES</option>
-                <option value="NO" ${productDetails.metalEmbedded === 'NO' ? 'selected' : ''}>NO</option>
+                ${renderSpecOptions('pu-patch','metalEmbedded', productDetails.metalEmbedded)}
               </select>
             </div>
           </div>
@@ -22410,6 +23175,16 @@
         }
         // Printed Label: Raised Height required when Flat / Raised is "Raised"
         if (tagType === 'printed-label' && !validatePrintedLabelRaisedHeight(getField)) {
+          return;
+        }
+        // Outsourcing quotations require at least one supplier. This mirrors
+        // toggleSupplierSection(): the supplier picker is shown for outsourcing
+        // product types (and when _outsourcingProductTag is set), so it must be
+        // populated before saving.
+        const isOutsourcingSave = !!(window._outsourcingProductTag) ||
+          tagType === 'outsource' || tagType === 'other' || tagType === 'others';
+        if (isOutsourcingSave && getSelectedSupplierIds().length === 0) {
+          showModal({ title: 'Validation Error', body: 'Supplier Selection is required for outsourcing quotations.' });
           return;
         }
 
@@ -24245,6 +25020,7 @@
 
     loadBrandsCache();
     loadCurrenciesCache();
+    loadProductSpecOptions();
     load();
 
     // ========== STATUS HISTORY FUNCTIONS ==========
