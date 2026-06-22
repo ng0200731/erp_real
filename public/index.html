@@ -4774,17 +4774,15 @@
     }
 
     async function closeTab(id) {
-      // Always prompt warning before closing profiles tab
-      if (id === 'profiles') {
-        const confirmed = await showModal({
-          title: 'Warning',
-          body: 'Closing this tag will lose everything.',
-          okText: 'Close',
-          cancelText: 'Cancel'
-        });
-        if (!confirmed) {
-          return; // Do not close if user cancels
-        }
+      // Warn before closing any tab — all unsaved information will be removed.
+      const confirmed = await showModal({
+        title: 'Warning',
+        body: 'All information in this tab will be removed.',
+        okText: 'Close',
+        cancelText: 'Cancel'
+      });
+      if (!confirmed) {
+        return; // Do not close if user cancels
       }
       
       // Hide all panels first
@@ -4815,6 +4813,27 @@
 
       // Reset unsaved changes flag
       settingsHasUnsavedChanges = false;
+    }
+
+    // Per-tab reset functions run every time a tab is (re)opened so the user
+    // always starts from a clean/default state. Create tabs clear the form;
+    // view/email tabs re-run their initializer (idempotent).
+    const TAB_RESETS = {
+      'quotation': () => { if (window.clearQuotationForm) window.clearQuotationForm(); },
+      'outsourcing': () => { if (window.clearQuotationForm) window.clearQuotationForm(); },
+      'quotation-view': () => { if (typeof initializeQuotationViewPanel === 'function') initializeQuotationViewPanel(); },
+      'outsourcing-view': () => { if (typeof initializeOutsourcingViewPanel === 'function') initializeOutsourcingViewPanel(); },
+      'emails': () => { if (typeof load === 'function' && (!currentEmails || currentEmails.length === 0)) load(true); },
+      'email-send': () => { if (typeof initializeEmailSendPanel === 'function') initializeEmailSendPanel(); },
+    };
+
+    // Open (or re-open) a tab: create/activate it, then reset its content to
+    // the default state via TAB_RESETS.
+    function openTab(id, label) {
+      ensureTab(id, label);
+      activateTab(id);
+      const reset = TAB_RESETS[id];
+      if (typeof reset === 'function') reset();
     }
 
     function activateTab(id) {
@@ -8812,21 +8831,13 @@
     emailReceiveBtn.onclick = () => {
       // Hide submenu and go to email receive board
       document.getElementById('emailSubmenu').style.display = 'none';
-      ensureTab('emails', 'Email (receive)');
-      activateTab('emails');
-      // Load emails if not already loaded
-      if (!currentEmails || currentEmails.length === 0) {
-        load(true);
-      }
+      openTab('emails', 'Email (receive)');
     };
 
     emailSendBtn.onclick = () => {
       // Hide submenu and go to email send board
       document.getElementById('emailSubmenu').style.display = 'none';
-      ensureTab('email-send', 'Email (send)');
-      activateTab('email-send');
-      // Initialize email send panel
-      initializeEmailSendPanel();
+      openTab('email-send', 'Email (send)');
     };
 
     // Sidebar stays expanded (full labels always shown).
@@ -8919,16 +8930,13 @@
     quotationCreateBtn.onclick = () => {
       // Hide submenu and go to quotation creation board
       document.getElementById('quotationSubmenu').style.display = 'none';
-      ensureTab('quotation', 'Quotation (create)');
-      activateTab('quotation');
+      openTab('quotation', 'Quotation (create)');
     };
 
     quotationViewBtn.onclick = () => {
       // Hide submenu and go to quotation view
       document.getElementById('quotationSubmenu').style.display = 'none';
-      ensureTab('quotation-view', 'Quotation (View)');
-      activateTab('quotation-view');
-      initializeQuotationViewPanel();
+      openTab('quotation-view', 'Quotation (View)');
     };
 
     // Outsourcing submenu buttons
@@ -8938,16 +8946,13 @@
     outsourcingCreateBtn.onclick = () => {
       // Hide submenu and go to outsourcing creation board
       document.getElementById('outsourcingSubmenu').style.display = 'none';
-      ensureTab('outsourcing', 'Outsourcing (create)');
-      activateTab('outsourcing');
+      openTab('outsourcing', 'Outsourcing (create)');
     };
 
     outsourcingViewBtn.onclick = () => {
       // Hide submenu and go to outsourcing view
       document.getElementById('outsourcingSubmenu').style.display = 'none';
-      ensureTab('outsourcing-view', 'Outsourcing (View)');
-      activateTab('outsourcing-view');
-      initializeOutsourcingViewPanel();
+      openTab('outsourcing-view', 'Outsourcing (View)');
     };
 
     // Workshop submenu buttons
@@ -14280,11 +14285,25 @@
         console.warn('Failed to fetch supplier responses for batch email:', e);
         responses = [];
       }
+      // Normalize the buyer-requested tiers from productDetails so the
+      // status-driven section can render an empty tier template under Pending
+      // (no supplier responses yet). Accepts raw numbers or {quantity} objects.
+      let requestedTiers = [];
+      try {
+        const pd = typeof quotation.productDetails === 'string'
+          ? JSON.parse(quotation.productDetails || '{}')
+          : (quotation.productDetails || {});
+        if (Array.isArray(pd.tiers)) requestedTiers = pd.tiers;
+      } catch (e) {
+        requestedTiers = [];
+      }
       const tierCtx = {
         responses,
         selectedSupplierId: quotation.selectedSupplierId,
         selectedResponseId: quotation.selectedSupplierResponseId,
         markupPercent: quotation.markupPercent || 0,
+        currency: quotation.currency,
+        requestedTiers,
       };
 
       // 2. Fetch profile image as base64 data URL (embedded in HTML body)
@@ -14674,31 +14693,49 @@
           const isSel = (r) =>
             (mode.selectedResponseId != null && Number(r.id) === mode.selectedResponseId) ||
             (mode.selectedSupplierId != null && Number(r.supplierId) === mode.selectedSupplierId);
+          const ccy = resolveCurrencyCode(quotation.currency);
 
           drawHeading('Supplier Quotations');
           if (mode.mode === 'empty') {
-            doc.autoTable({
-              startY: y, theme: 'grid',
-              body: [['No supplier quotations to show at this stage.']],
-              styles: { fontSize: 7.5, cellPadding: 1.3, textColor: [51, 51, 51], overflow: 'linebreak' },
-              margin: { left: margin, right: margin },
-            });
+            // Pending / no responses: render the requested tier template when the
+            // buyer defined tiers (quantities only, blank unit-price cells).
+            const req = (Array.isArray(tierCtx.requestedTiers) ? tierCtx.requestedTiers : [])
+              .map((t) => Number(typeof t === 'object' && t ? t.quantity : t))
+              .filter((q) => Number.isFinite(q));
+            if (req.length > 0) {
+              doc.autoTable({
+                startY: y, theme: 'grid',
+                head: [['Quantity', 'Unit Price (' + ccy + ')']],
+                body: req.map((q) => [Number(q).toLocaleString(), '—']),
+                styles: { fontSize: 7.5, cellPadding: 1.3, textColor: [51, 51, 51], overflow: 'linebreak' },
+                headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255], fontSize: 7.5 },
+                margin: { left: margin, right: margin },
+              });
+            } else {
+              doc.autoTable({
+                startY: y, theme: 'grid',
+                body: [['No supplier quotations to show at this stage.']],
+                styles: { fontSize: 7.5, cellPadding: 1.3, textColor: [51, 51, 51], overflow: 'linebreak' },
+                margin: { left: margin, right: margin },
+              });
+            }
             y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 2.5;
           } else {
             const body = mode.responses.map((r) => {
               const sel = isSel(r);
-              const up = (sel && mode.markupPercent > 0) ? Number(r.unitPrice) * mk : Number(r.unitPrice);
               const name = (sel ? '✓ ' : '') + String(r.companyName || 'Supplier');
-              const unitCell = fmtMoney(up) + (sel && mode.markupPercent > 0 ? ` (+${mode.markupPercent}%)` : '');
-              return [name, unitCell, String(r.deliveryDays != null ? r.deliveryDays : 'N/A'), String(r.notes || '-')];
+              const email = (r.emailPrefix && r.emailDomain) ? String(r.emailPrefix) + '@' + String(r.emailDomain) : '-';
+              const moq = (r.moq != null && r.moq !== '') ? Number(r.moq).toLocaleString() : '-';
+              const surcharge = (r.surchargeBelowMoq != null && r.surchargeBelowMoq !== '') ? fmtMoney(r.surchargeBelowMoq) : '-';
+              return [name, String(r.memberName || '-'), email, String(r.deliveryDays != null ? r.deliveryDays : 'N/A'), moq, surcharge, String(r.notes || '-')];
             });
             doc.autoTable({
               startY: y, theme: 'grid',
-              head: [['Supplier', 'Unit Price (' + resolveCurrencyCode(quotation.currency) + ')', 'Delivery', 'Notes']],
+              head: [['Supplier', 'Contact', 'Email', 'Delivery', 'MOQ (pcs)', 'Surcharge below MOQ (' + ccy + ')', 'Notes']],
               body,
               styles: { fontSize: 7.5, cellPadding: 1.3, textColor: [51, 51, 51], overflow: 'linebreak' },
               headStyles: { fillColor: [0, 0, 0], textColor: [255, 255, 255], fontSize: 7.5 },
-              columnStyles: { 0: { cellWidth: 45 }, 3: { cellWidth: 45 } },
+              columnStyles: { 0: { cellWidth: 36 }, 2: { cellWidth: 44 }, 6: { cellWidth: 32 } },
               margin: { left: margin, right: margin },
             });
             y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 3;
@@ -14721,7 +14758,7 @@
                 mode.responses.forEach((r) => {
                   let u = tierU(r, i);
                   if (isSel(r) && mode.markupPercent > 0 && u != null) u *= mk;
-                  row.push(u != null ? u.toFixed(2) : '-');
+                  row.push(u != null ? u.toFixed(4) : '-');
                 });
                 mBody.push(row);
               }
@@ -15325,7 +15362,7 @@
               if (sel && Array.isArray(sel.tiers) && sel.tiers.length > 0) {
                 const rows = sel.tiers.map(t => {
                   const q = Number(t.quantity) || 0;
-                  const u = t.unitPrice != null ? Number(t.unitPrice).toFixed(2) : '0.00';
+                  const u = t.unitPrice != null ? Number(t.unitPrice).toFixed(4) : '0.0000';
                   return `<tr><td style="padding:8px; border:1px solid #ccc;">${q.toLocaleString()}</td><td style="padding:8px; border:1px solid #ccc;">${u}</td></tr>`;
                 }).join('');
                 responseTiersHtml = `
@@ -15632,7 +15669,7 @@
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Description</td><td style="padding:8px; border:1px solid #ccc;">${productDetails.description || 'N/A'}</td></tr>
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Category</td><td style="padding:8px; border:1px solid #ccc;">${productDetails.category || 'N/A'}</td></tr>
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Quantity</td><td style="padding:8px; border:1px solid #ccc;">${quotation.quantity ? quotation.quantity.toLocaleString() : 'N/A'}</td></tr>
-            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Unit Price (${ccy})</td><td style="padding:8px; border:1px solid #ccc;">${quotation.unitPrice ? quotation.unitPrice.toFixed(2) : 'N/A'}</td></tr>
+            <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Unit Price (${ccy})</td><td style="padding:8px; border:1px solid #ccc;">${quotation.unitPrice ? quotation.unitPrice.toFixed(4) : 'N/A'}</td></tr>
             <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Total (${ccy})</td><td style="padding:8px; border:1px solid #ccc;">${quotation.total ? quotation.total.toFixed(2) : 'N/A'}</td></tr>
           </table>
           ${quotation.notes ? '<p><strong>Notes:</strong> ' + quotation.notes + '</p>' : ''}
@@ -15682,7 +15719,7 @@
       if (productDetails && productDetails.tierScopeMode && productDetails.tierScopeMode !== 'none' && Array.isArray(productDetails.tiers) && productDetails.tiers.length > 0) {
         const rows = productDetails.tiers.map(t => {
           const q = t.quantity || 0;
-          const u = t.unitPrice != null ? Number(t.unitPrice).toFixed(2) : '0.00';
+          const u = t.unitPrice != null ? Number(t.unitPrice).toFixed(4) : '0.0000';
           return `<tr><td style="padding:6px; border:1px solid #ccc;">${q.toLocaleString()}</td><td style="padding:6px; border:1px solid #ccc;">${u}</td></tr>`;
         }).join('');
         tiersHtml = `
@@ -15727,7 +15764,7 @@
       if (productDetails && productDetails.tierScopeMode && productDetails.tierScopeMode !== 'none' && Array.isArray(productDetails.tiers) && productDetails.tiers.length > 0) {
         const rows = productDetails.tiers.map(t => {
           const q = t.quantity || 0;
-          const u = t.unitPrice != null ? Number(t.unitPrice).toFixed(2) : '0.00';
+          const u = t.unitPrice != null ? Number(t.unitPrice).toFixed(4) : '0.0000';
           return `<tr><td style="padding:6px; border:1px solid #ccc;">${q.toLocaleString()}</td><td style="padding:6px; border:1px solid #ccc;">${u}</td></tr>`;
         }).join('');
         tiersHtml = `
@@ -16087,7 +16124,7 @@
               const u = tierUnit(r, i);
               let bg = '';
               if (!equal && u != null) { if (u === mn) bg = 'background:#d4edda;'; else if (u === mx) bg = 'background:#f8d7da;'; }
-              tableHtml += `<td style="border:1px solid #ccc; padding:8px; text-align:right; ${bg}">${u != null ? u.toFixed(2) : '-'}</td>`;
+              tableHtml += `<td style="border:1px solid #ccc; padding:8px; text-align:right; ${bg}">${u != null ? u.toFixed(4) : '-'}</td>`;
             });
             tableHtml += `</tr>`;
           }
@@ -16219,7 +16256,7 @@
       const tierRowsHtml = hasTiers ? r.tiers.map(t => {
         const q = Number(t.quantity) || 0;
         const rawU = t.unitPrice != null ? Number(t.unitPrice) : 0;
-        return `<tr><td style="padding:8px; border:1px solid #ccc;">${q.toLocaleString()}</td><td style="padding:8px; border:1px solid #ccc; text-align:right;">${(rawU * markupMultiplier).toFixed(2)}</td></tr>`;
+        return `<tr><td style="padding:8px; border:1px solid #ccc;">${q.toLocaleString()}</td><td style="padding:8px; border:1px solid #ccc; text-align:right;">${(rawU * markupMultiplier).toFixed(4)}</td></tr>`;
       }).join('') : '';
       const tierTableHtml = hasTiers ? `
           <h3 style="margin-top:30px;">Pricing Tiers</h3>
@@ -16452,14 +16489,14 @@
         // Log which supplier was selected + markup in history
         try {
           const markupMultiplier = 1 + (markupPercent / 100);
-          const markedUpUnitPrice = selectedResponse.unitPrice ? (selectedResponse.unitPrice * markupMultiplier).toFixed(2) : 'N/A';
+          const markedUpUnitPrice = selectedResponse.unitPrice ? (selectedResponse.unitPrice * markupMultiplier).toFixed(4) : 'N/A';
           await fetch(`/api/quotations/${quotationId}/log-history`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               fromStatus: 'await quotation',
               toStatus: 'send to customer',
-              note: `Selected supplier: ${selectedResponse.companyName || 'Unknown'} | Markup: ${markupPercent}% | Original Unit: $${selectedResponse.unitPrice ? selectedResponse.unitPrice.toFixed(2) : 'N/A'} → Marked-up Unit: $${markedUpUnitPrice} | Delivery: ${selectedResponse.deliveryDays || 'N/A'} days`
+              note: `Selected supplier: ${selectedResponse.companyName || 'Unknown'} | Markup: ${markupPercent}% | Original Unit: $${selectedResponse.unitPrice ? selectedResponse.unitPrice.toFixed(4) : 'N/A'} → Marked-up Unit: $${markedUpUnitPrice} | Delivery: ${selectedResponse.deliveryDays || 'N/A'} days`
             })
           });
         } catch (e) { console.warn('Failed to log supplier selection history:', e); }
@@ -17618,7 +17655,7 @@
 
       const unitPriceField = document.getElementById('quotationUnitPrice');
       if (unitPriceField) {
-        unitPriceField.value = quotation.unitPrice.toFixed(2);
+        unitPriceField.value = quotation.unitPrice.toFixed(4);
         unitPriceField.dispatchEvent(new Event('input', { bubbles: true }));
       }
 
@@ -19031,6 +19068,25 @@
       } catch (e) { console.error('Error loading brands cache:', e); }
     }
 
+    // Reload the brand DB cache and re-render the create-form brand <select>
+    // (#quotationBrandId) so newly-added brands appear without re-opening the form.
+    async function refreshBrandDropdown() {
+      try { await loadBrandsCache(); } catch (e) { /* ignore */ }
+      const sel = document.getElementById('quotationBrandId');
+      if (!sel) return;
+      const currentVal = sel.value;
+      sel.innerHTML = '<option value="">Select brand...</option>' + cachedBrands.map(b =>
+        '<option value="' + b.id + '"' + (String(b.id) === String(currentVal) ? ' selected' : '') + '>' + escapeHtml(b.name) + '</option>'
+      ).join('');
+    }
+
+    // Reload the customer list for the active create form's autocomplete.
+    function refreshCustomerAutocomplete() {
+      if (window.customerAutocomplete && typeof window.customerAutocomplete.refreshCustomers === 'function') {
+        window.customerAutocomplete.refreshCustomers();
+      }
+    }
+
     function getBrandNameSelectHtml(selectedValue = '') {
       const options = cachedBrands.map(b =>
         '<option value="' + b.id + '"' + (String(b.id) === String(selectedValue) ? ' selected' : '') + '>' + escapeHtml(b.name) + '</option>'
@@ -19039,6 +19095,7 @@
         '<select id="quotationBrandId" style="flex:1; padding:4px; font-size:12px; border:1px solid #ccc; background:#fff;">' +
         '<option value="">Select brand...</option>' + options +
         '</select>' +
+        '<button type="button" onclick="refreshBrandDropdown()" title="Sync brand database" style="padding:4px 8px; font-size:12px; border:1px solid #ccc; background:#f5f5f5; cursor:pointer;">🔄</button>' +
         '<div id="quotationBrandPreview" style="display:none;">' +
         '<img id="quotationBrandLogo" src="" style="max-width:40px; max-height:40px; border:1px solid #000;">' +
         '</div>' +
@@ -19437,7 +19494,7 @@
               '<h4>Customer Information</h4>' +
               '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">' +
                 '<div>' +
-                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Customer Name *</label>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Customer Name * <button type="button" onclick="refreshCustomerAutocomplete()" title="Sync customer database" style="font-size:11px; margin-left:4px; padding:1px 6px; border:1px solid #ccc; background:#f5f5f5; cursor:pointer; font-weight:normal;">🔄</button></label>' +
                   '<div class="autocomplete-container">' +
                     '<input type="text" id="quotationCustomerName" class="autocomplete-input" placeholder="Enter customer name" autocomplete="off" value="' + (quotation.customerName || '') + '">' +
                     '<div id="customerAutocompleteDropdown" class="autocomplete-dropdown"></div>' +
@@ -19519,7 +19576,7 @@
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Unit Price (' + resolveCurrencyCode(quotation.currency) + ')</label>' +
-                  '<input type="number" id="quotationUnitPrice" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="0.50" step="0.01" min="0" value="' + (quotation.unitPrice ? quotation.unitPrice.toFixed(2) : '') + '">' +
+                  '<input type="number" id="quotationUnitPrice" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="0.5000" step="0.0001" min="0" value="' + (quotation.unitPrice ? quotation.unitPrice.toFixed(4) : '') + '">' +
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Total (Auto)</label>' +
@@ -19633,7 +19690,7 @@
               '<h4>Customer Information</h4>' +
               '<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">' +
                 '<div>' +
-                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Customer Name *</label>' +
+                  '<label style="display:block; margin-bottom:5px; font-weight:600;">Customer Name * <button type="button" onclick="refreshCustomerAutocomplete()" title="Sync customer database" style="font-size:11px; margin-left:4px; padding:1px 6px; border:1px solid #ccc; background:#f5f5f5; cursor:pointer; font-weight:normal;">🔄</button></label>' +
                   '<div class="autocomplete-container">' +
                     '<input type="text" id="quotationCustomerName" class="autocomplete-input" placeholder="Enter customer name" autocomplete="off" ' + disabledAttr + ' style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc; ' + disabledStyle + '">' +
                     '<div id="customerAutocompleteDropdown" class="autocomplete-dropdown"></div>' +
@@ -19746,7 +19803,7 @@
                 '</div>' +
                 '<div>' +
                   '<label id="quotationUnitPriceLabel" style="display:block; margin-bottom:5px; font-weight:600;">Unit Price (' + resolveCurrencyCode() + ')</label>' +
-                  '<input type="number" id="quotationUnitPrice" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="0.50" step="0.01" min="0">' +
+                  '<input type="number" id="quotationUnitPrice" style="width:100%; padding:4px; font-size:12px; border:1px solid #ccc;" placeholder="0.5000" step="0.0001" min="0">' +
                 '</div>' +
                 '<div>' +
                   '<label style="display:block; margin-bottom:5px; font-weight:600;">Total (Auto)</label>' +
@@ -20057,7 +20114,7 @@
           row.style.cssText = 'display:grid; grid-template-columns:1fr 1fr 80px; gap:8px; margin-bottom:6px;';
           row.innerHTML =
             '<input type="number" class="tier-qty" value="' + q + '" disabled style="padding:4px; border:1px solid #ccc; background:#f5f5f5;">' +
-            '<input type="number" class="tier-unit" value="' + u.toFixed(2) + '" disabled style="padding:4px; border:1px solid #ccc; background:#f5f5f5;">' +
+            '<input type="number" class="tier-unit" value="' + u.toFixed(4) + '" disabled style="padding:4px; border:1px solid #ccc; background:#f5f5f5;">' +
             '<span></span>';
           rowsWrap.appendChild(row);
         });
@@ -20089,7 +20146,7 @@
         const q = parseInt(qRaw || '0', 10) || 0;
         const u = parseFloat(uRaw || '0') || 0;
         qty.value = qRaw !== '' ? String(q) : '';
-        unit.value = uRaw !== '' ? u.toFixed(2) : '';
+        unit.value = uRaw !== '' ? u.toFixed(4) : '';
         tot.value = (qRaw !== '' && uRaw !== '') ? (q * u).toFixed(2) : '';
       }
 

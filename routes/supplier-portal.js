@@ -563,7 +563,8 @@ router.get('/:token', async (req, res) => {
         requestedTiers,
         hasProfileImage: quotation.hasProfileImage,
         quantity: quotation.quantity,
-        notes: quotation.notes
+        notes: quotation.notes,
+        currency: quotation.currency
       },
       supplier: {
         companyName: supplier.companyName,

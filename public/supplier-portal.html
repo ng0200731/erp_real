@@ -265,7 +265,7 @@
           : '<input type="number" class="tier-qty" min="1" required placeholder="Qty">';
         tr.innerHTML =
           '<td>' + qtyCell + '</td>' +
-          '<td><input type="number" class="tier-unit" step="0.01" min="0" required placeholder="0.00"></td>';
+          '<td><input type="number" class="tier-unit" step="0.0001" min="0" required placeholder="0.0000"></td>';
         body.appendChild(tr);
       });
     }
@@ -350,13 +350,13 @@
               ? '<div style="margin-top:10px;"><strong style="font-size:13px;">Pricing Tiers</strong>' +
                 '<table class="tier-table" style="margin-top:6px;"><thead><tr><th style="text-align:left;">Quantity</th><th style="text-align:left;">Unit Price</th></tr></thead><tbody>' +
                 r.tiers.map(function (t) {
-                  return '<tr><td>' + Number(t.quantity || 0) + '</td><td>' + Number(t.unitPrice || 0).toFixed(2) + '</td></tr>';
+                  return '<tr><td>' + Number(t.quantity || 0) + '</td><td>' + Number(t.unitPrice || 0).toFixed(4) + '</td></tr>';
                 }).join('') +
                 '</tbody></table></div>'
               : '';
             document.getElementById('submittedDetails').innerHTML = `
               <div style="border-top:1px solid #ccc; padding-top:10px;">
-                <div class="info-row"><span class="info-label">Unit Price</span><span class="info-value">${r.unitPrice != null ? Number(r.unitPrice).toFixed(2) : '-'}</span></div>
+                <div class="info-row"><span class="info-label">Unit Price</span><span class="info-value">${r.unitPrice != null ? Number(r.unitPrice).toFixed(4) : '-'}</span></div>
                 <div class="info-row"><span class="info-label">Delivery Days</span><span class="info-value">${r.deliveryDays || '-'}</span></div>
                 ${r.moq != null ? `<div class="info-row"><span class="info-label">MOQ (pcs)</span><span class="info-value">${Number(r.moq)}</span></div>` : ''}
                 ${r.surchargeBelowMoq != null ? `<div class="info-row"><span class="info-label">Surcharge below MOQ (${submittedCcy})</span><span class="info-value">${Number(r.surchargeBelowMoq).toFixed(2)}</span></div>` : ''}

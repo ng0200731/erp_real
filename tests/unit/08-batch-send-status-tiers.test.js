@@ -53,11 +53,21 @@ ok(emptySec.includes('Supplier Quotations'), 'empty section still has the sectio
 ok(emptySec.includes('No supplier quotations to show at this stage'), 'empty section has placeholder text');
 ok(!emptySec.includes('ABC Mfg'), 'empty section has no supplier rows');
 
+// --- empty mode WITH requested tiers (Pending): render the tier template ---
+const pendingTiers = generateStatusTierSectionHtml({ status: 'pending', responses: [], requestedTiers: [2, 5, 8], currency: 'USD' });
+ok(pendingTiers.includes('Unit Price (USD)'), 'pending with requested tiers shows Unit Price header in quotation currency');
+ok(pendingTiers.includes('Quantity'), 'pending tier table has a Quantity column');
+ok(pendingTiers.includes('—'), 'pending tier table shows blank (em-dash) unit-price cells');
+ok(!pendingTiers.includes('No supplier quotations to show'), 'pending with tiers hides the empty placeholder');
+const pendingObjs = generateStatusTierSectionHtml({ status: 'pending', responses: [], requestedTiers: [{ quantity: 100 }, { quantity: 500 }] });
+ok(pendingObjs.includes('100') && pendingObjs.includes('500'), 'pending tier table accepts {quantity} object form');
+
 // --- fixtures for populated modes ---
 const respA = {
   id: 10, supplierId: 1, companyName: 'ABC Mfg', memberName: 'John',
   emailPrefix: 'john', emailDomain: 'abc.com',
   unitPrice: 2.00, totalPrice: 200.00, deliveryDays: 14, notes: 'fast turnaround',
+  moq: 3000, surchargeBelowMoq: 80.00,
   tiers: [
     { tierIndex: 0, quantity: 1000, unitPrice: 1.00, total: 1000 },
     { tierIndex: 1, quantity: 5000, unitPrice: 0.80, total: 4000 },
@@ -67,6 +77,7 @@ const respB = {
   id: 11, supplierId: 2, companyName: 'XYZ Co', memberName: 'Mary',
   emailPrefix: 'mary', emailDomain: 'xyz.com',
   unitPrice: 3.00, totalPrice: 300.00, deliveryDays: 21, notes: '',
+  moq: 1500, surchargeBelowMoq: 45.50,
   tiers: [],
 };
 
@@ -76,9 +87,14 @@ const compSec = generateStatusTierSectionHtml({
 });
 ok(compSec.includes('ABC Mfg'), 'comparison shows supplier A');
 ok(compSec.includes('XYZ Co'), 'comparison shows supplier B');
-ok(compSec.includes('2.00'), 'comparison shows supplier A raw unit price');
+ok(compSec.includes('john@abc.com'), 'comparison shows supplier A email');
+ok(compSec.includes('mary@xyz.com'), 'comparison shows supplier B email');
+ok(compSec.includes('MOQ (pcs)'), 'comparison table has MOQ column');
+ok(compSec.includes('Surcharge below MOQ'), 'comparison table has Surcharge column');
+ok(compSec.includes('3,000'), 'comparison shows supplier A MOQ (pcs)');
+ok(compSec.includes('80.00'), 'comparison shows supplier A surcharge (2dp)');
+ok(!compSec.includes('Unit Price ('), 'comparison omits Unit Price column');
 ok(!compSec.includes('200.00'), 'comparison omits supplier A total column');
-ok(compSec.includes('3.00'), 'comparison shows supplier B raw unit price');
 ok(!compSec.includes('✓ Selected'), 'comparison has no selected badge when nothing selected');
 ok(!compSec.includes('markup'), 'comparison has no markup text when markupPercent 0');
 ok(compSec.includes('1,000') && compSec.includes('5,000'), 'comparison per-tier matrix shows quantities');
@@ -93,12 +109,12 @@ const selSec = generateStatusTierSectionHtml({
   markupPercent: 15,
 });
 ok(selSec.includes('✓ Selected'), 'selected mode marks the selected supplier');
-ok(selSec.includes('2.30'), 'selected supplier unit price marked up (2.00 * 1.15 = 2.30)');
+ok(!selSec.includes('Unit Price ('), 'selected mode omits Unit Price column');
+ok(!selSec.includes('2.30'), 'selected supplier unit-price markup not shown (column removed)');
 ok(!selSec.includes('230.00'), 'selected supplier total column omitted');
-ok(selSec.includes('1.15'), 'selected supplier tier unit price marked up (1.00 * 1.15 = 1.15)');
-ok(selSec.includes('3.00'), 'non-selected supplier keeps raw price (no markup)');
+ok(selSec.includes('1.1500'), 'selected supplier tier unit price marked up (1.00 * 1.15, 4dp)');
 ok(selSec.includes('line-through'), 'non-selected supplier row is struck through');
-ok(selSec.includes('15% markup'), 'selected row notes the markup percentage');
+ok(!selSec.includes('15% markup'), 'summary row no longer carries the markup annotation');
 
 // selection by supplierId when selectedResponseId absent
 const selBySupplier = generateStatusTierSectionHtml({

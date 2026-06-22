@@ -129,7 +129,7 @@ export function generateSupplierResponseTiersHtml(tiers, currency = 'HKD') {
   const ccy = currency || 'HKD';
   const rows = arr.map((t) => {
     const q = Number(t.quantity) || 0;
-    const u = t.unitPrice != null ? Number(t.unitPrice).toFixed(2) : '0.00';
+    const u = t.unitPrice != null ? Number(t.unitPrice).toFixed(4) : '0.0000';
     return `<tr><td style="padding:6px; border:1px solid #ccc;">${q.toLocaleString()}</td><td style="padding:6px; border:1px solid #ccc;">${u}</td></tr>`;
   }).join('');
   return `
@@ -179,8 +179,8 @@ export function resolveStatusTierMode({ status, responses, selectedSupplierId, s
 // optional per-tier matrix when populated). Mirrors the Compare Quotation popup's
 // conventions: ✓ Selected badge, strike-through of non-selected rows, green/red
 // min/max highlight, and a quantity-aligned per-tier matrix with a Tier-total row.
-// When a supplier is selected and markupPercent > 0, its prices are multiplied
-// by (1 + markupPercent/100) and the row is annotated "(incl. N% markup)".
+// When a supplier is selected and markupPercent > 0, its per-tier unit prices
+// are multiplied by (1 + markupPercent/100) in the per-tier matrix.
 export function generateStatusTierSectionHtml(ctx = {}) {
   const m = resolveStatusTierMode(ctx);
   const ccy = (ctx && ctx.currency) || 'HKD';
@@ -188,7 +188,32 @@ export function generateStatusTierSectionHtml(ctx = {}) {
   const h3Open = '<h3 style="margin-top:0; margin-bottom:8px; border-bottom:2px solid #000; padding-bottom:8px;">';
   const close = '</div>';
 
+  const cellLbl = 'padding:8px; border:1px solid #ccc; font-weight:bold; vertical-align:top;';
+  const cell = 'padding:8px; border:1px solid #ccc; vertical-align:top;';
+
+  // Normalize requested tiers (buyer-fixed quantities) — accept either raw
+  // numbers or {quantity} objects. Rendered as an empty template under Pending
+  // (no supplier has quoted yet, so unit-price cells are blank).
+  const rawRequested = (ctx && Array.isArray(ctx.requestedTiers)) ? ctx.requestedTiers : [];
+  const requestedTiers = rawRequested
+    .map((t) => Number(typeof t === 'object' && t ? t.quantity : t))
+    .filter((q) => Number.isFinite(q))
+    .map((q) => ({ quantity: q }));
+
   if (m.mode === 'empty') {
+    if (requestedTiers.length > 0) {
+      const tierRows = requestedTiers.map((t) =>
+        `<tr><td style="${cell}">${Number(t.quantity).toLocaleString()}</td><td style="${cell} text-align:right;">—</td></tr>`
+      ).join('');
+      return `${sectionOpen}${h3Open}Supplier Quotations</h3>
+    <table style="width:100%; border-collapse:collapse; margin:8px 0;">
+      <thead><tr>
+        <th style="${cellLbl} text-align:left;">Quantity</th>
+        <th style="${cellLbl} text-align:right;">Unit Price (${ccy})</th>
+      </tr></thead>
+      <tbody>${tierRows}</tbody>
+    </table>${close}`;
+    }
     return `${sectionOpen}${h3Open}Supplier Quotations</h3><p style="color:#666; margin:0;">No supplier quotations to show at this stage.</p>${close}`;
   }
 
@@ -198,24 +223,24 @@ export function generateStatusTierSectionHtml(ctx = {}) {
     (selectedSupplierId != null && Number(r.supplierId) === selectedSupplierId);
   const hasSelection = responses.some(isSelected);
   const mk = 1 + (markupPercent / 100);
-  const money = (n) => (n != null && !isNaN(Number(n))) ? Number(n).toFixed(2) : 'N/A';
+  const money2 = (n) => (n != null && !isNaN(Number(n))) ? Number(n).toFixed(2) : 'N/A';
 
-  const cellLbl = 'padding:8px; border:1px solid #ccc; font-weight:bold; vertical-align:top;';
-  const cell = 'padding:8px; border:1px solid #ccc; vertical-align:top;';
-
-  // Summary table — Total column removed; only Supplier / Contact / Unit Price /
-  // Delivery Days / Notes are shown.
+  // Summary table — Supplier / Contact / Email / Delivery Days / MOQ (pcs) /
+  // Surcharge below MOQ / Notes.
   const rows = responses.map((r) => {
     const sel = isSelected(r);
-    const up = (sel && markupPercent > 0) ? Number(r.unitPrice) * mk : Number(r.unitPrice);
     const strike = (!sel && hasSelection) ? 'opacity:0.5; text-decoration:line-through; color:#999;' : '';
     const badge = sel ? ' <span style="background:#28a745;color:#fff;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:bold;">✓ Selected</span>' : '';
-    const markupNote = (sel && markupPercent > 0) ? ` <span style="font-size:10px; color:#666;">(incl. ${markupPercent}% markup)</span>` : '';
+    const email = (r.emailPrefix && r.emailDomain) ? `${r.emailPrefix}@${r.emailDomain}` : '-';
+    const moq = (r.moq != null && r.moq !== '') ? Number(r.moq).toLocaleString() : '-';
+    const surcharge = (r.surchargeBelowMoq != null && r.surchargeBelowMoq !== '') ? money2(r.surchargeBelowMoq) : '-';
     return `<tr style="${strike}">
         <td style="${cell}">${escapeHtml(r.companyName || 'Supplier')}${badge}</td>
         <td style="${cell}">${escapeHtml(r.memberName || '-')}</td>
-        <td style="${cell} text-align:right;">${money(up)}${markupNote}</td>
+        <td style="${cell}">${escapeHtml(email)}</td>
         <td style="${cell} text-align:center;">${r.deliveryDays != null ? r.deliveryDays : 'N/A'}</td>
+        <td style="${cell} text-align:right;">${moq}</td>
+        <td style="${cell} text-align:right;">${surcharge}</td>
         <td style="${cell}">${r.notes ? escapeHtml(r.notes) : '-'}</td>
       </tr>`;
   }).join('');
@@ -225,8 +250,10 @@ export function generateStatusTierSectionHtml(ctx = {}) {
       <thead><tr>
         <th style="${cellLbl} text-align:left;">Supplier</th>
         <th style="${cellLbl} text-align:left;">Contact</th>
-        <th style="${cellLbl} text-align:right;">Unit Price (${ccy})</th>
+        <th style="${cellLbl} text-align:left;">Email</th>
         <th style="${cellLbl} text-align:center;">Delivery Days</th>
+        <th style="${cellLbl} text-align:right;">MOQ (pcs)</th>
+        <th style="${cellLbl} text-align:right;">Surcharge below MOQ (${ccy})</th>
         <th style="${cellLbl} text-align:left;">Notes</th>
       </tr></thead>
       <tbody>${rows}</tbody>
@@ -263,7 +290,7 @@ export function generateStatusTierSectionHtml(ctx = {}) {
       displayed.forEach((u) => {
         let bg = '';
         if (!equal && u != null) { if (u === mn) bg = 'background:#d4edda;'; else if (u === mx2) bg = 'background:#f8d7da;'; }
-        cells += `<td style="${cell} text-align:right; ${bg}">${u != null ? u.toFixed(2) : '-'}</td>`;
+        cells += `<td style="${cell} text-align:right; ${bg}">${u != null ? u.toFixed(4) : '-'}</td>`;
       });
       bodyRows += `<tr>${cells}</tr>`;
     }
