@@ -318,15 +318,24 @@ export function generateStatusTierSectionHtml(ctx = {}) {
   return html + close;
 }
 
-// The "Confirm Price" action band. Once a quotation reaches this stage a supplier
-// has been chosen and the customer-facing (marked-up) price is what matters: the
-// batch-send email/PDF must show ONLY the selected supplier's tiers with markup
-// applied, never the raw supplier comparison. Covers the statuses whose action
-// button reads "Confirm Price" ("send to customer", "await customer confirm
-// price") plus the subsequent "price confirmed". Pure; case-insensitive.
-export function isConfirmPriceStatus(status) {
+// Every status that comes AFTER "compare quotation" in the outsourcing workflow —
+// i.e. every stage where a supplier has already been chosen and the markup added.
+// Once a quotation is past Compare Quotation the customer-facing (marked-up) price
+// is what matters: the batch-send email/PDF must show ONLY the selected supplier's
+// tiers with markup applied, never the raw supplier comparison — this holds for the
+// later sampling/approval/complete stages too, not just the pricing-confirmation
+// ones. "compare quotation" itself is NOT included (the buyer is still comparing,
+// no markup yet). Pure; case-insensitive.
+export function isPostCompareStatus(status) {
   const s = String(status || '').toLowerCase();
-  return s === 'send to customer' || s === 'await customer confirm price' || s === 'price confirmed';
+  return s === 'send to customer'
+    || s === 'await customer confirm price'
+    || s === 'price confirmed'
+    || s === 'sampling'
+    || s === 'await sample ready date'
+    || s === 'await approval'
+    || s === 'approved'
+    || s === 'complete';
 }
 
 // Resolve the customer-facing marked-up tiers for the SELECTED supplier at the
@@ -354,9 +363,9 @@ export function resolveCustomerMarkupTiers(ctx = {}) {
 }
 
 // The SELECTED supplier's sample charge (a number in the quotation's currency),
-// for the customer-facing Confirm Price email / PDF. Unlike MOQ / surcharge
-// (internal supplier-comparison terms that are hidden from the customer), sample
-// charge is shown to the customer. Returns null when nothing is selected or the
+// for the customer-facing Confirm Price email / PDF. Shown to the customer under
+// the marked-up pricing table alongside the other selected-supplier terms (see
+// resolveSelectedSupplierTerms). Returns null when nothing is selected or the
 // selected response carries no sample charge. Pure; consumed by both the HTML and
 // the jsPDF renderers so the email and PDF cannot drift.
 export function resolveSelectedSampleCharge(ctx = {}) {
@@ -372,26 +381,66 @@ export function resolveSelectedSampleCharge(ctx = {}) {
   return (sc != null && sc !== '' && !isNaN(Number(sc))) ? Number(sc) : null;
 }
 
+// The SELECTED supplier's commercial terms for the customer-facing Confirm Price
+// email / PDF: deliveryDays, MOQ, surcharge-below-MOQ, and notes. Shown to the
+// customer under the marked-up pricing table, alongside the sample charge
+// (resolved separately by resolveSelectedSampleCharge). Numeric fields are
+// coerced; blank ones come back as null so the renderer can omit empty rows.
+// Returns null when no supplier is selected. Pure; consumed by both the HTML and
+// the jsPDF renderers so the email and PDF cannot drift.
+export function resolveSelectedSupplierTerms(ctx = {}) {
+  const responses = Array.isArray(ctx.responses) ? ctx.responses : [];
+  const selectedSupplierId = ctx.selectedSupplierId != null ? Number(ctx.selectedSupplierId) : null;
+  const selectedResponseId = ctx.selectedResponseId != null ? Number(ctx.selectedResponseId) : null;
+  const isSelected = (r) =>
+    (selectedResponseId != null && Number(r.id) === selectedResponseId) ||
+    (selectedSupplierId != null && Number(r.supplierId) === selectedSupplierId);
+  const sel = responses.find(isSelected);
+  if (!sel) return null;
+  const num = (v) => (v != null && v !== '' && !isNaN(Number(v))) ? Number(v) : null;
+  return {
+    deliveryDays: (sel.deliveryDays != null && sel.deliveryDays !== '') ? sel.deliveryDays : null,
+    moq: num(sel.moq),
+    surchargeBelowMoq: num(sel.surchargeBelowMoq),
+    notes: (sel.notes != null && sel.notes !== '') ? String(sel.notes) : null,
+  };
+}
+
 // Customer-facing tier section for the batch-send email at the Confirm Price
 // stage. Renders ONLY the selected supplier's Quantity / Unit Price (after
-// markup). Returns '' when resolveCustomerMarkupTiers yields nothing, so the
-// caller can fall back to the status-driven comparison section.
+// markup), followed by a key/value block of that supplier's commercial terms
+// (Delivery Days / MOQ / Surcharge below MOQ / Sample Charge / Notes — only the
+// rows that carry a value). Returns '' when resolveCustomerMarkupTiers yields
+// nothing, so the caller can fall back to the status-driven comparison section.
 export function generateCustomerMarkupTiersHtml(ctx = {}) {
   const tiers = resolveCustomerMarkupTiers(ctx);
   if (!tiers) return '';
   const markupPercent = Number(ctx.markupPercent) || 0;
   const ccy = (ctx && ctx.currency) || 'HKD';
   const sampleCharge = resolveSelectedSampleCharge(ctx);
+  const terms = resolveSelectedSupplierTerms(ctx);
   const rows = tiers.map((t) =>
     `<tr><td style="padding:8px; border:1px solid #ccc;">${t.quantity.toLocaleString()}</td><td style="padding:8px; border:1px solid #ccc; text-align:right;">${t.unitPrice.toFixed(4)}</td></tr>`
   ).join('');
   const subtitle = markupPercent > 0
     ? `<div style="font-size:12px; color:#666; margin-bottom:8px;">(after ${markupPercent}% markup)</div>`
     : '';
-  const sampleChargeHtml = sampleCharge != null
-    ? `<table style="width:100%; border-collapse:collapse; margin-top:8px;">
-        <tr><td style="padding:8px; border:1px solid #ccc; font-weight:bold;">Sample Charge</td><td style="padding:8px; border:1px solid #ccc; text-align:right;">${sampleCharge.toFixed(2)} ${escapeHtml(ccy)}</td></tr>
-      </table>`
+
+  // Selected-supplier commercial terms, in column order: Delivery Days / MOQ /
+  // Surcharge below MOQ / Sample Charge / Notes. Only rows with a value render,
+  // so no stray labels appear for blank fields.
+  const termCellLbl = 'padding:8px; border:1px solid #ccc; font-weight:bold; width:45%; vertical-align:top;';
+  const termCell = 'padding:8px; border:1px solid #ccc; vertical-align:top;';
+  const termRows = [];
+  if (terms) {
+    if (terms.deliveryDays != null) termRows.push(`<tr><td style="${termCellLbl}">Delivery Days</td><td style="${termCell}">${escapeHtml(String(terms.deliveryDays))}</td></tr>`);
+    if (terms.moq != null) termRows.push(`<tr><td style="${termCellLbl}">MOQ (pcs)</td><td style="${termCell}">${terms.moq.toLocaleString()}</td></tr>`);
+    if (terms.surchargeBelowMoq != null) termRows.push(`<tr><td style="${termCellLbl}">Surcharge below MOQ (${ccy})</td><td style="${termCell}">${terms.surchargeBelowMoq.toFixed(2)}</td></tr>`);
+  }
+  if (sampleCharge != null) termRows.push(`<tr><td style="${termCellLbl}">Sample Charge (${ccy})</td><td style="${termCell}">${sampleCharge.toFixed(2)}</td></tr>`);
+  if (terms && terms.notes) termRows.push(`<tr><td style="${termCellLbl}">Notes</td><td style="${termCell}">${escapeHtml(terms.notes)}</td></tr>`);
+  const termsHtml = termRows.length
+    ? `<table style="width:100%; border-collapse:collapse; margin-top:8px;">${termRows.join('')}</table>`
     : '';
   return `
   <div class="quotation-section" style="margin:20px 0;">
@@ -404,7 +453,7 @@ export function generateCustomerMarkupTiersHtml(ctx = {}) {
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    ${sampleChargeHtml}
+    ${termsHtml}
   </div>`;
 }
 

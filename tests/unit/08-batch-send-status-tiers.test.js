@@ -7,7 +7,8 @@ const {
   generateCustomerMarkupTiersHtml,
   resolveCustomerMarkupTiers,
   resolveSelectedSampleCharge,
-  isConfirmPriceStatus,
+  resolveSelectedSupplierTerms,
+  isPostCompareStatus,
   generateQuotationCardHtml,
   generateQuotationEmailHtml,
 } = await import('../../shared/quotationEmailHtml.js');
@@ -175,15 +176,21 @@ const docWithoutExtra = generateQuotationEmailHtml(
 );
 ok(!docWithoutExtra.includes('tier-section'), 'wrapper without afterCardHtml is unchanged (no marker)');
 
-// --- isConfirmPriceStatus: the "Confirm Price" action band ---
-eq(isConfirmPriceStatus('await customer confirm price'), true, 'await customer confirm price is a confirm-price status');
-eq(isConfirmPriceStatus('send to customer'), true, 'send to customer is a confirm-price status');
-eq(isConfirmPriceStatus('price confirmed'), true, 'price confirmed is a confirm-price status');
-eq(isConfirmPriceStatus('Await Customer Confirm Price'), true, 'confirm-price check is case-insensitive');
-eq(isConfirmPriceStatus('compare quotation'), false, 'compare quotation is NOT confirm-price (still comparing)');
-eq(isConfirmPriceStatus('await quotation'), false, 'await quotation is NOT confirm-price');
-eq(isConfirmPriceStatus(''), false, 'empty status is NOT confirm-price');
-eq(isConfirmPriceStatus(null), false, 'null status is NOT confirm-price');
+// --- isPostCompareStatus: every status AFTER "compare quotation" shows markup ---
+eq(isPostCompareStatus('send to customer'), true, 'send to customer is post-compare (markup added)');
+eq(isPostCompareStatus('await customer confirm price'), true, 'await customer confirm price is post-compare');
+eq(isPostCompareStatus('price confirmed'), true, 'price confirmed is post-compare');
+eq(isPostCompareStatus('sampling'), true, 'sampling is post-compare (markup still applies)');
+eq(isPostCompareStatus('await sample ready date'), true, 'await sample ready date is post-compare');
+eq(isPostCompareStatus('await approval'), true, 'await approval is post-compare');
+eq(isPostCompareStatus('approved'), true, 'approved is post-compare');
+eq(isPostCompareStatus('complete'), true, 'complete is post-compare');
+eq(isPostCompareStatus('Send To Customer'), true, 'post-compare check is case-insensitive');
+eq(isPostCompareStatus('compare quotation'), false, 'compare quotation is NOT post-compare (still comparing, no markup yet)');
+eq(isPostCompareStatus('await quotation'), false, 'await quotation is NOT post-compare');
+eq(isPostCompareStatus('send to outsourcing supplier'), false, 'send to outsourcing supplier is NOT post-compare');
+eq(isPostCompareStatus(''), false, 'empty status is NOT post-compare');
+eq(isPostCompareStatus(null), false, 'null status is NOT post-compare');
 
 // --- generateCustomerMarkupTiersHtml: Confirm Price stage, marked-up only ---
 const mkHtml = generateCustomerMarkupTiersHtml({
@@ -223,6 +230,16 @@ ok(mkZero.includes('1.0000'), 'raw tier shown when markup is 0');
 // customer-facing confirm-price section includes the selected supplier's sample charge
 ok(mkZero.includes('Sample Charge'), 'customer confirm-price section shows a Sample Charge row');
 ok(mkZero.includes('150.00'), 'customer confirm-price section shows the selected supplier sample charge value');
+// customer-facing confirm-price section now also surfaces the other selected-supplier
+// terms (Delivery Days / MOQ / Surcharge below MOQ / Notes), in column order.
+ok(mkZero.includes('Delivery Days'), 'customer confirm-price section shows a Delivery Days row');
+ok(mkZero.includes('>14<'), 'customer confirm-price section shows the selected supplier delivery days');
+ok(mkZero.includes('MOQ (pcs)'), 'customer confirm-price section shows a MOQ row');
+ok(mkZero.includes('3,000'), 'customer confirm-price section shows the selected supplier MOQ, locale-formatted');
+ok(mkZero.includes('Surcharge below MOQ'), 'customer confirm-price section shows a Surcharge below MOQ row');
+ok(mkZero.includes('80.00'), 'customer confirm-price section shows the selected supplier surcharge');
+ok(mkZero.includes('Notes'), 'customer confirm-price section shows a Notes row');
+ok(mkZero.includes('fast turnaround'), 'customer confirm-price section shows the selected supplier notes');
 // a selected supplier with no sample charge omits the row (no stray label)
 const mkNoSample = generateCustomerMarkupTiersHtml({ responses: [respB], selectedSupplierId: 2, selectedResponseId: 11, markupPercent: 0 });
 // respB has no tiers -> generateCustomerMarkupTiersHtml returns '' (falls back); confirm no sample row leaks
@@ -244,5 +261,28 @@ eq(resolveSelectedSampleCharge({ responses: [respA, respB], selectedSupplierId: 
   'null when nothing is selected');
 eq(resolveSelectedSampleCharge({ responses: [{ id: 1, supplierId: 1, sampleCharge: null }], selectedSupplierId: 1 }), null,
   'null when the selected response has no sample charge');
+
+// --- resolveSelectedSupplierTerms: selected supplier's commercial terms for the customer ---
+eq(resolveSelectedSupplierTerms({ responses: [respA, respB], selectedSupplierId: 1 }),
+  { deliveryDays: 14, moq: 3000, surchargeBelowMoq: 80, notes: 'fast turnaround' },
+  'returns the selected supplier A terms (numbers coerced, notes kept)');
+eq(resolveSelectedSupplierTerms({ responses: [respA, respB], selectedResponseId: 11 }),
+  { deliveryDays: 21, moq: 1500, surchargeBelowMoq: 45.5, notes: null },
+  'returns supplier B terms by response id; blank notes -> null');
+eq(resolveSelectedSupplierTerms({ responses: [respA, respB], selectedSupplierId: 999 }), null,
+  'null when nothing is selected');
+eq(resolveSelectedSupplierTerms({ responses: [{ id: 1, supplierId: 1, moq: '', surchargeBelowMoq: null, deliveryDays: undefined, notes: '' }], selectedSupplierId: 1 }),
+  { deliveryDays: null, moq: null, surchargeBelowMoq: null, notes: null },
+  'all-blank terms come back as null fields (renderer omits every row)');
+
+// selected supplier with blank notes omits the Notes row (no stray label)
+const mkNoNotes = generateCustomerMarkupTiersHtml({
+  responses: [{ id: 99, supplierId: 7, deliveryDays: 10, moq: 500, surchargeBelowMoq: 25, sampleCharge: 50, notes: '',
+    tiers: [{ quantity: 100, unitPrice: 1.5 }] }],
+  selectedSupplierId: 7, markupPercent: 0, currency: 'USD',
+});
+ok(mkNoNotes.includes('Delivery Days') && mkNoNotes.includes('>10<'), 'terms block renders delivery days (USD currency)');
+ok(mkNoNotes.includes('Sample Charge (USD)'), 'sample charge label carries the quotation currency');
+ok(!mkNoNotes.includes('>Notes<'), 'blank notes -> no Notes row rendered');
 
 summary('batch send status + tier section (shared module)');

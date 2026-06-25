@@ -44,7 +44,9 @@ import {
   getProfiles, createProfile, updateProfile as updateProfileDb, deleteProfile as deleteProfileDb, activateProfile,
   seedProfilesFromJson,
   // Supplier quotation file functions
-  getSupplierQuotationFiles, insertSupplierQuotationFile, getSupplierQuotationFileById, renameSupplierQuotationFile, deleteSupplierQuotationFile
+  getSupplierQuotationFiles, insertSupplierQuotationFile, getSupplierQuotationFileById, renameSupplierQuotationFile, deleteSupplierQuotationFile,
+  // Email address book (Batch Send recipients)
+  getAllEmailAddressBookEntries, getEmailAddressBookEntryById, createEmailAddressBookEntry, updateEmailAddressBookEntry, deleteEmailAddressBookEntry
 } from './db/tasksDb.js';
 import SkillManager from './skills/skillManager.js';
 import { getNormalizedRelativePath } from './utils/pathUtils.js';
@@ -59,11 +61,13 @@ import { createSkillRoutes } from './routes/skills.js';
 import { createEmailRoutes } from './routes/emails.js';
 import { createBrandRoutes } from './routes/brands.js';
 import { createCurrencyRoutes } from './routes/currencies.js';
+import { createEmailAddressBookRoutes } from './routes/emailAddressBook.js';
 import { createProductSpecOptionRoutes } from './routes/productSpecOptions.js';
 import { createProductProfileRoutes } from './routes/product-profiles.js';
 import { createPricingTierTableRoutes } from './routes/pricing-tier-tables.js';
 import { createWorkshopRoutes } from './routes/workshops.js';
 import { createOrderRoutes } from './routes/orders.js';
+import { createDocumentRoutes } from './routes/documents.js';
 import { createSupplierPortalRoutes } from './routes/supplier-portal.js';
 
 // ---------- ENV ----------
@@ -565,6 +569,16 @@ const currencyRoutes = createCurrencyRoutes({
 });
 app.use('/api/currencies', currencyRoutes);
 
+// Email address book routes (Batch Send recipients)
+const emailAddressBookRoutes = createEmailAddressBookRoutes({
+  getAllEmailAddressBookEntries,
+  getEmailAddressBookEntryById,
+  createEmailAddressBookEntry,
+  updateEmailAddressBookEntry,
+  deleteEmailAddressBookEntry,
+});
+app.use('/api/email-address-book', emailAddressBookRoutes);
+
 // Product Spec Option routes
 const productSpecOptionRoutes = createProductSpecOptionRoutes({
   getAllProductSpecOptions,
@@ -619,6 +633,10 @@ const orderRoutes = createOrderRoutes({
   recordOrderDepartmentScan, getOrderProgress, getLastOrderScan
 });
 app.use('/api/orders', orderRoutes);
+
+// Document generator routes (Proforma Invoice / Purchase Order / Packing List / Commercial Invoice)
+const documentRoutes = createDocumentRoutes();
+app.use('/api/documents', documentRoutes);
 
 // Supplier portal routes
 const supplierPortalRouter = createSupplierPortalRoutes({ upload });

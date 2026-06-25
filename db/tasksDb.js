@@ -302,6 +302,14 @@ async function ensureSchema(db) {
 
     CREATE INDEX IF NOT EXISTS idx_currencies_code ON currencies(code);
 
+    CREATE TABLE IF NOT EXISTS email_address_book (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL DEFAULT '',
+      email TEXT NOT NULL UNIQUE,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS product_spec_options (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       productType TEXT NOT NULL,
@@ -603,6 +611,30 @@ async function ensureSchema(db) {
   } catch (err) {
     if (!err.message.includes('duplicate column name')) {
       console.warn('Error adding sampleCharge column:', err);
+    }
+  }
+
+  try {
+    await db.exec(`ALTER TABLE quotations ADD COLUMN customerId INTEGER;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding quotations.customerId column:', err);
+    }
+  }
+
+  try {
+    await db.exec(`ALTER TABLE orders ADD COLUMN customerId INTEGER;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding orders.customerId column:', err);
+    }
+  }
+
+  try {
+    await db.exec(`ALTER TABLE customer_members ADD COLUMN isPrimary INTEGER DEFAULT 0;`);
+  } catch (err) {
+    if (!err.message.includes('duplicate column name')) {
+      console.warn('Error adding customer_members.isPrimary column:', err);
     }
   }
 
@@ -918,6 +950,45 @@ async function ensureSchema(db) {
     console.warn('Error creating quotation_status_history table:', err);
   }
 
+  // Backfill markupPercent for quotations sent to customer BEFORE the column was
+  // wired into updateQuotation/getQuotationById. The markup was only recorded as
+  // text in the status-history note ("Markup: N%"); parse it back into the numeric
+  // column so the batch-send email/PDF can apply it. Idempotent: only touches rows
+  // still at the default 0 that carry a non-zero Markup note, so re-runs are no-ops
+  // and values the now-fixed write path has already persisted are never clobbered.
+  try {
+    const noteRows = await db.all(`
+      SELECT quotationId, note, changedAt
+      FROM quotation_status_history
+      WHERE note LIKE '%Markup:%'
+      ORDER BY quotationId ASC, changedAt DESC
+    `);
+    // Keep the LATEST Markup note per quotation (first row per quotationId, since
+    // rows are ordered changedAt DESC).
+    const latestByQuotation = new Map();
+    for (const row of noteRows) {
+      if (latestByQuotation.has(row.quotationId)) continue;
+      const match = String(row.note || '').match(/Markup:\s*(-?\d+(?:\.\d+)?)\s*%/i);
+      if (match) {
+        const pct = parseFloat(match[1]);
+        if (!isNaN(pct) && pct !== 0) latestByQuotation.set(row.quotationId, pct);
+      }
+    }
+    let backfilled = 0;
+    for (const [quotationId, pct] of latestByQuotation) {
+      const res = await db.run(
+        `UPDATE quotations SET markupPercent = ? WHERE id = ? AND (markupPercent IS NULL OR markupPercent = 0)`,
+        [pct, quotationId]
+      );
+      if (res && res.changes > 0) backfilled++;
+    }
+    if (backfilled > 0) {
+      console.log(`Backfilled markupPercent for ${backfilled} quotation(s) from status-history notes`);
+    }
+  } catch (err) {
+    console.warn('Error backfilling markupPercent:', err);
+  }
+
   // Migrate profiles: add customerName and contactPerson columns if missing
   try {
     await db.exec(`ALTER TABLE profiles ADD COLUMN customerName TEXT NOT NULL DEFAULT ''`);
@@ -991,6 +1062,58 @@ async function ensureSchema(db) {
     }
   } catch (err) {
     console.warn('Error migrating legacy pricing tier tables:', err);
+  }
+
+  // ── Master-data sync backfill (idempotent) ────────────────────────────
+  // 1. One primary member per customer (promote lowest-id if none).
+  try {
+    await db.run(
+      `UPDATE customer_members SET isPrimary = 1
+       WHERE id IN (
+         SELECT MIN(id) FROM customer_members
+         WHERE customerId NOT IN (SELECT DISTINCT customerId FROM customer_members WHERE isPrimary = 1)
+         GROUP BY customerId
+       )`
+    );
+
+    // 2. Link quotations by company name.
+    await db.run(
+      `UPDATE quotations
+       SET customerId = (SELECT id FROM customers WHERE customers.companyName = quotations.customerName COLLATE NOCASE LIMIT 1)
+       WHERE customerId IS NULL AND customerName IS NOT NULL`
+    );
+
+    // 3. Link orders — customer by name, workshop by name.
+    await db.run(
+      `UPDATE orders
+       SET customerId = (SELECT id FROM customers WHERE customers.companyName = orders.customerName COLLATE NOCASE LIMIT 1)
+       WHERE customerId IS NULL AND customerName IS NOT NULL`
+    );
+    await db.run(
+      `UPDATE orders
+       SET workshopId = (SELECT id FROM workshops WHERE workshops.fullCompanyName = orders.workshopName COLLATE NOCASE LIMIT 1)
+       WHERE workshopId IS NULL AND workshopName IS NOT NULL`
+    );
+
+    // 4. Normalize all linked rows to current master values.
+    const custIds = await db.all(`SELECT DISTINCT customerId FROM quotations WHERE customerId IS NOT NULL
+                                  UNION SELECT DISTINCT customerId FROM orders WHERE customerId IS NOT NULL`);
+    for (const { customerId } of custIds) {
+      await _propagateCustomerWith(db, customerId);
+    }
+    const wsIds = await db.all(`SELECT DISTINCT workshopId FROM orders WHERE workshopId IS NOT NULL`);
+    for (const { workshopId } of wsIds) {
+      await _propagateWorkshopWith(db, workshopId);
+    }
+
+    // 5. Report unmatched legacy rows (no link -> cannot auto-update).
+    const unlinkedQ = await db.get(`SELECT COUNT(*) AS c FROM quotations WHERE customerId IS NULL`);
+    const unlinkedO = await db.get(`SELECT COUNT(*) AS c FROM orders WHERE customerId IS NULL AND workshopId IS NULL`);
+    if (unlinkedQ.c || unlinkedO.c) {
+      console.warn(`[master-data-sync] unlinked rows left on stale snapshots: quotations=${unlinkedQ.c}, orders(no customer & no workshop)=${unlinkedO.c}`);
+    }
+  } catch (err) {
+    console.warn('Error running master-data sync backfill:', err);
   }
 }
 
@@ -1422,18 +1545,21 @@ export async function updateCustomer(id, customerData) {
       if (member.id) {
         // Update existing
         await db.run(
-          `UPDATE customer_members SET name = ?, emailPrefix = ?, title = ?, tel = ?, updatedAt = ? WHERE id = ? AND customerId = ?`,
-          [member.name, member.emailPrefix || null, member.title || null, member.tel || null, now, Number(member.id), id]
+          `UPDATE customer_members SET name = ?, emailPrefix = ?, title = ?, tel = ?, isPrimary = ?, updatedAt = ? WHERE id = ? AND customerId = ?`,
+          [member.name, member.emailPrefix || null, member.title || null, member.tel || null, member.isPrimary ? 1 : 0, now, Number(member.id), id]
         );
       } else {
         // Create new
         await db.run(
-          `INSERT INTO customer_members (customerId, name, emailPrefix, title, tel, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [id, member.name, member.emailPrefix || null, member.title || null, member.tel || null, now, now]
+          `INSERT INTO customer_members (customerId, name, emailPrefix, title, tel, isPrimary, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [id, member.name, member.emailPrefix || null, member.title || null, member.tel || null, member.isPrimary ? 1 : 0, now, now]
         );
       }
     }
   }
+
+  await enforceSinglePrimaryCustomerMember(id);
+  await propagateCustomer(id);
 
   return true;
 }
@@ -1450,8 +1576,8 @@ export async function createCustomerMember(customerId, memberData) {
 
   const result = await db.run(
     `
-      INSERT INTO customer_members (customerId, name, emailPrefix, title, tel, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO customer_members (customerId, name, emailPrefix, title, tel, isPrimary, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       customerId,
@@ -1459,10 +1585,14 @@ export async function createCustomerMember(customerId, memberData) {
       memberData.emailPrefix || null,
       memberData.title || null,
       memberData.tel || null,
+      memberData.isPrimary ? 1 : 0,
       now,
       now
     ]
   );
+
+  await enforceSinglePrimaryCustomerMember(customerId);
+  await propagateCustomer(customerId);
 
   return result.lastID;
 }
@@ -1474,7 +1604,7 @@ export async function updateCustomerMember(id, memberData) {
   await db.run(
     `
       UPDATE customer_members
-      SET name = ?, emailPrefix = ?, title = ?, tel = ?, updatedAt = ?
+      SET name = ?, emailPrefix = ?, title = ?, tel = ?, isPrimary = ?, updatedAt = ?
       WHERE id = ?
     `,
     [
@@ -1482,17 +1612,28 @@ export async function updateCustomerMember(id, memberData) {
       memberData.emailPrefix || null,
       memberData.title || null,
       memberData.tel || null,
+      memberData.isPrimary ? 1 : 0,
       now,
       id
     ]
   );
 
+  const row = await db.get(`SELECT customerId FROM customer_members WHERE id = ?`, [id]);
+  if (row) {
+    await enforceSinglePrimaryCustomerMember(row.customerId);
+    await propagateCustomer(row.customerId);
+  }
   return true;
 }
 
 export async function deleteCustomerMember(id) {
   const db = await getTasksDb();
+  const row = await db.get(`SELECT customerId FROM customer_members WHERE id = ?`, [id]);
   await db.run(`DELETE FROM customer_members WHERE id = ?`, [id]);
+  if (row) {
+    await enforceSinglePrimaryCustomerMember(row.customerId);
+    await propagateCustomer(row.customerId);
+  }
   return true;
 }
 
@@ -1537,6 +1678,119 @@ export async function findCustomerByEmail(email) {
   return null;
 }
 
+// ========== MASTER-DATA SYNC HELPERS ==========
+
+async function _getCustomerPrimaryMemberWith(db, customerId) {
+  let member = await db.get(
+    `SELECT * FROM customer_members WHERE customerId = ? AND isPrimary = 1 ORDER BY id LIMIT 1`,
+    [customerId]
+  );
+  if (!member) {
+    member = await db.get(
+      `SELECT * FROM customer_members WHERE customerId = ? ORDER BY id LIMIT 1`,
+      [customerId]
+    );
+  }
+  return member || null;
+}
+
+export async function getCustomerPrimaryMember(customerId) {
+  const db = await getTasksDb();
+  return _getCustomerPrimaryMemberWith(db, customerId);
+}
+
+export async function buildCustomerSnapshot(customerId) {
+  const db = await getTasksDb();
+  const customer = await db.get(`SELECT * FROM customers WHERE id = ?`, [customerId]);
+  if (!customer) return null;
+  const member = await getCustomerPrimaryMember(customerId);
+  let email = null;
+  if (member && member.emailPrefix && customer.emailDomain) {
+    email = `${member.emailPrefix}@${customer.emailDomain}`;
+  }
+  return {
+    customerName: customer.companyName,
+    contactPerson: member ? (member.name || null) : null,
+    email,
+    phone: member ? (member.tel || null) : null
+  };
+}
+
+async function _buildCustomerSnapshotWith(db, customerId) {
+  const customer = await db.get(`SELECT * FROM customers WHERE id = ?`, [customerId]);
+  if (!customer) return null;
+  const member = await _getCustomerPrimaryMemberWith(db, customerId);
+  let email = null;
+  if (member && member.emailPrefix && customer.emailDomain) {
+    email = `${member.emailPrefix}@${customer.emailDomain}`;
+  }
+  return {
+    customerName: customer.companyName,
+    contactPerson: member ? (member.name || null) : null,
+    email,
+    phone: member ? (member.tel || null) : null
+  };
+}
+
+async function _propagateCustomerWith(db, customerId) {
+  if (!customerId) return;
+  const snap = await _buildCustomerSnapshotWith(db, customerId);
+  if (!snap) return;
+  await db.run(
+    `UPDATE quotations SET customerName = ?, contactPerson = ?, email = ?, phone = ? WHERE customerId = ?`,
+    [snap.customerName, snap.contactPerson, snap.email, snap.phone, customerId]
+  );
+  await db.run(
+    `UPDATE orders SET customerName = ?, contactPerson = ?, email = ?, phone = ? WHERE customerId = ?`,
+    [snap.customerName, snap.contactPerson, snap.email, snap.phone, customerId]
+  );
+}
+
+async function _propagateWorkshopWith(db, workshopId) {
+  if (!workshopId) return;
+  const workshop = await db.get(`SELECT fullCompanyName, country FROM workshops WHERE id = ?`, [workshopId]);
+  if (!workshop) return;
+  // Note: this overwrites orders.country with the workshop's country. createOrder keeps
+  // the passed-in country (a ship-to destination). They only stay consistent today because
+  // orders are created from the same workshop. If orders ever need a country distinct from
+  // the workshop's, drop `country` from this UPDATE.
+  await db.run(
+    `UPDATE orders SET workshopName = ?, country = ? WHERE workshopId = ?`,
+    [workshop.fullCompanyName, workshop.country != null ? workshop.country : null, workshopId]
+  );
+}
+
+export async function propagateCustomer(customerId) {
+  const db = await getTasksDb();
+  await _propagateCustomerWith(db, customerId);
+}
+
+export async function propagateWorkshop(workshopId) {
+  const db = await getTasksDb();
+  await _propagateWorkshopWith(db, workshopId);
+}
+
+async function enforceSinglePrimaryCustomerMember(customerId) {
+  const db = await getTasksDb();
+  const primaries = await db.all(
+    `SELECT id FROM customer_members WHERE customerId = ? AND isPrimary = 1 ORDER BY id`,
+    [customerId]
+  );
+  if (primaries.length === 0) {
+    await db.run(
+      `UPDATE customer_members SET isPrimary = 1
+       WHERE id = (SELECT id FROM customer_members WHERE customerId = ? ORDER BY id LIMIT 1)`,
+      [customerId]
+    );
+  } else if (primaries.length > 1) {
+    const extraIds = primaries.slice(1).map(r => r.id);
+    await db.run(
+      `UPDATE customer_members SET isPrimary = 0 WHERE id IN (${extraIds.map(() => '?').join(',')})`,
+      extraIds
+    );
+  }
+}
+
 // ========== QUOTATION FUNCTIONS ==========
 
 export async function createQuotation(quotationData) {
@@ -1560,12 +1814,21 @@ export async function createQuotation(quotationData) {
     outsourcingSeq = 'OS' + String(nextSeq).padStart(7, '0');
   }
 
+  const customerId = quotationData.customerId ? Number(quotationData.customerId) : null;
+  if (customerId) {
+    const snap = await buildCustomerSnapshot(customerId);
+    if (snap) {
+      quotationData = { ...quotationData, ...snap };
+    }
+  }
+
   const result = await db.run(
     `
-      INSERT INTO quotations (customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, outsourcingSeq, quotationSeq, brandId, customerItemName, height_mm, width_mm, variable, currency)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO quotations (customerId, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, status, outsourcingSeq, quotationSeq, brandId, customerItemName, height_mm, width_mm, variable, currency)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
+      customerId,
       quotationData.customerName,
       quotationData.contactPerson || null,
       quotationData.email || null,
@@ -1602,7 +1865,7 @@ export async function getQuotationById(id) {
   const db = await getTasksDb();
   // Exclude profileImageBlob from general queries to avoid transferring large BLOB data
   const quotation = await db.get(
-    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, dateRevised, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, height_mm, width_mm, variable, currency, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations WHERE id = ?`,
+    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, dateRevised, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, markupPercent, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, height_mm, width_mm, variable, currency, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations WHERE id = ?`,
     [id]
   );
 
@@ -1618,7 +1881,7 @@ export async function getAllQuotations() {
   const db = await getTasksDb();
   // Exclude profileImageBlob from general queries to avoid transferring large BLOB data
   let quotations = await db.all(
-    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, dateRevised, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, height_mm, width_mm, variable, currency, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations ORDER BY dateCreated DESC`
+    `SELECT id, customerName, contactPerson, email, phone, productType, productDetails, quantity, unitPrice, total, notes, type, sourceEmailUid, sourceEmailSubject, sourceEmailMessageId, profileImagePath, attachmentPaths, dateCreated, dateRevised, status, resendCount, outsourcingSeq, quotationSeq, selectedSupplierId, selectedSupplierResponseId, markupPercent, sampleReadyDate, brandId, profileImageMime, customerItemName, chaseSampleCount, resubmitCount, height_mm, width_mm, variable, currency, CASE WHEN profileImageBlob IS NOT NULL THEN 1 ELSE 0 END as hasProfileImage FROM quotations ORDER BY dateCreated DESC`
   );
 
   // Parse JSON fields
@@ -1637,7 +1900,7 @@ export async function updateQuotation(id, quotationData) {
   await db.run(
     `
       UPDATE quotations
-      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?, outsourcingSeq = ?, quotationSeq = ?, selectedSupplierId = ?, selectedSupplierResponseId = ?, sampleReadyDate = ?, brandId = ?, customerItemName = ?, chaseSampleCount = ?, resubmitCount = ?, height_mm = ?, width_mm = ?, variable = ?, currency = ?, dateRevised = ?
+      SET customerName = ?, contactPerson = ?, email = ?, phone = ?, productType = ?, productDetails = ?, quantity = ?, unitPrice = ?, total = ?, notes = ?, type = ?, sourceEmailUid = ?, sourceEmailSubject = ?, sourceEmailMessageId = ?, profileImagePath = ?, attachmentPaths = ?, status = ?, resendCount = ?, outsourcingSeq = ?, quotationSeq = ?, selectedSupplierId = ?, selectedSupplierResponseId = ?, markupPercent = ?, sampleReadyDate = ?, brandId = ?, customerItemName = ?, chaseSampleCount = ?, resubmitCount = ?, height_mm = ?, width_mm = ?, variable = ?, currency = ?, dateRevised = ?
       WHERE id = ?
     `,
     [
@@ -1663,6 +1926,7 @@ export async function updateQuotation(id, quotationData) {
       quotationData.quotationSeq || null,
       quotationData.selectedSupplierId || null,
       quotationData.selectedSupplierResponseId || null,
+      quotationData.markupPercent != null ? Number(quotationData.markupPercent) || 0 : 0,
       quotationData.sampleReadyDate || null,
       quotationData.brandId || null,
       quotationData.customerItemName || null,
@@ -2264,6 +2528,71 @@ export async function deleteCurrency(id) {
     throw new Error('Cannot delete the base currency');
   }
   await db.run(`DELETE FROM currencies WHERE id = ?`, [id]);
+  return true;
+}
+
+// --- Email Address Book (Batch Send recipients) ---
+// Shared address book that pre-fills the Batch Send recipient modal in both the
+// Quotation and Outsourcing views. Email is normalized to lowercase + trimmed and
+// is unique (UNIQUE constraint); name is optional display text.
+
+export async function getAllEmailAddressBookEntries(query) {
+  const db = await getTasksDb();
+  const raw = query != null ? String(query).trim() : '';
+  if (!raw) {
+    return await db.all(`SELECT * FROM email_address_book ORDER BY name ASC, email ASC`);
+  }
+  const q = raw.toLowerCase();
+  // Substring search (INSTR avoids LIKE wildcard pitfalls). email is stored
+  // lowercase; name is lowered on the fly. Best matches first: exact email,
+  // then email-prefix, then alphabetical by name.
+  return await db.all(
+    `SELECT * FROM email_address_book
+     WHERE INSTR(LOWER(name), ?) > 0 OR INSTR(email, ?) > 0
+     ORDER BY
+       (email = ?) DESC,
+       (INSTR(email, ?) = 1) DESC,
+       name ASC, email ASC`,
+    [q, q, q, q]
+  );
+}
+
+export async function getEmailAddressBookEntryById(id) {
+  const db = await getTasksDb();
+  return await db.get(`SELECT * FROM email_address_book WHERE id = ?`, [id]);
+}
+
+export async function createEmailAddressBookEntry({ name, email }) {
+  const db = await getTasksDb();
+  const now = new Date().toISOString();
+  const nm = String(name || '').trim();
+  const em = String(email || '').trim().toLowerCase();
+  if (!em) throw new Error('Email is required');
+  const result = await db.run(
+    `INSERT INTO email_address_book (name, email, createdAt, updatedAt) VALUES (?, ?, ?, ?)`,
+    [nm, em, now, now]
+  );
+  return result.lastID;
+}
+
+export async function updateEmailAddressBookEntry(id, { name, email }) {
+  const db = await getTasksDb();
+  const now = new Date().toISOString();
+  const existing = await getEmailAddressBookEntryById(id);
+  if (!existing) throw new Error('Address book entry not found');
+  const nm = (name != null ? String(name) : existing.name).trim();
+  const em = String(email != null ? email : existing.email).trim().toLowerCase();
+  if (!em) throw new Error('Email is required');
+  await db.run(
+    `UPDATE email_address_book SET name = ?, email = ?, updatedAt = ? WHERE id = ?`,
+    [nm, em, now, id]
+  );
+  return true;
+}
+
+export async function deleteEmailAddressBookEntry(id) {
+  const db = await getTasksDb();
+  await db.run(`DELETE FROM email_address_book WHERE id = ?`, [id]);
   return true;
 }
 
@@ -3020,6 +3349,7 @@ export async function updateWorkshop(id, data) {
   vals.push(id);
 
   await db.run(`UPDATE workshops SET ${sets.join(', ')} WHERE id = ?`, vals);
+  await propagateWorkshop(id);
   return true;
 }
 
@@ -3042,26 +3372,47 @@ export async function createOrder(orderData) {
   const nextSeq = (seqRow && seqRow.maxSeq ? seqRow.maxSeq : 0) + 1;
   const orderSeq = 'PO' + String(nextSeq).padStart(7, '0');
 
+  const customerId = orderData.customerId ? Number(orderData.customerId) : null;
+  let customerName = orderData.customerName;
+  let contactPerson = orderData.contactPerson || null;
+  let email = orderData.email || null;
+  let phone = orderData.phone || null;
+  if (customerId) {
+    const snap = await buildCustomerSnapshot(customerId);
+    if (snap) {
+      customerName = snap.customerName;
+      contactPerson = snap.contactPerson;
+      email = snap.email;
+      phone = snap.phone;
+    }
+  }
+  let workshopName = orderData.workshopName || null;
+  if (orderData.workshopId) {
+    const ws = await db.get(`SELECT fullCompanyName FROM workshops WHERE id = ?`, [orderData.workshopId]);
+    if (ws && ws.fullCompanyName) workshopName = ws.fullCompanyName;
+  }
+
   const result = await db.run(
     `INSERT INTO orders (
       orderSeq, quotationId, quotationType, quotationSeq,
-      workshopId, workshopName, country,
+      workshopId, workshopName, country, customerId,
       customerName, contactPerson, email, phone,
       productType, productDetails, quantity, unitPrice, total,
       customerItemName, brandId, status, dateCreated, createdAt, updatedAt
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       orderSeq,
       orderData.quotationId,
       orderData.quotationType || 'quotation',
       orderData.quotationSeq || null,
       orderData.workshopId || null,
-      orderData.workshopName || null,
+      workshopName,
       orderData.country || null,
-      orderData.customerName,
-      orderData.contactPerson || null,
-      orderData.email || null,
-      orderData.phone || null,
+      customerId,
+      customerName,
+      contactPerson,
+      email,
+      phone,
       orderData.productType,
       JSON.stringify(orderData.productDetails || {}),
       orderData.quantity,

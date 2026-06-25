@@ -3,15 +3,25 @@
 <head>
     <script type="module">
       import * as Q from '/shared/quotationEmailHtml.js';
+      import * as DocTpl from '/shared/documentTemplates.js';
       Object.assign(window, {
+        DOCUMENT_TYPES: DocTpl.DOCUMENT_TYPES,
+        COLUMN_LABELS: DocTpl.COLUMN_LABELS,
+        TOTALS_LABELS: DocTpl.TOTALS_LABELS,
+        getDocumentType: DocTpl.getDocumentType,
+        computeDocTotals: DocTpl.computeTotals,
+        getDummyDocData: DocTpl.getDummyData,
+        getRandomDummyData: DocTpl.getRandomDummyData,
+        buildDocumentHtml: DocTpl.buildDocumentHtml,
         generateQuotationEmailHtml: Q.generateQuotationEmailHtml,
         generateQuotationDetailSectionsHtml: Q.generateQuotationDetailSectionsHtml,
         generateSupplierResponseTiersHtml: Q.generateSupplierResponseTiersHtml,
         generateStatusTierSectionHtml: Q.generateStatusTierSectionHtml,
         resolveStatusTierMode: Q.resolveStatusTierMode,
-        isConfirmPriceStatus: Q.isConfirmPriceStatus,
+        isPostCompareStatus: Q.isPostCompareStatus,
         resolveCustomerMarkupTiers: Q.resolveCustomerMarkupTiers,
         resolveSelectedSampleCharge: Q.resolveSelectedSampleCharge,
+        resolveSelectedSupplierTerms: Q.resolveSelectedSupplierTerms,
         generateCustomerMarkupTiersHtml: Q.generateCustomerMarkupTiersHtml,
         formatStatusLabel: Q.formatStatusLabel,
         emailProductTypeDisplay: Q.emailProductTypeDisplay,
@@ -29,6 +39,8 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📧</text></svg>">
   <style>
     /* STRICT monochrome: only black (#000) and white (#fff) */
+    .doc-tab { padding:4px 10px; font-size:12px; border:1px solid #ccc; background:#fff; cursor:pointer; }
+    .doc-tab.active { background:#1a1a1a; color:#fff; border-color:#1a1a1a; }
     /* Outsourcing panel: supplier section is ALWAYS visible (never hidden by JS) */
     #outsourcingSubBoardContent #supplierSelectionSection {
       display: block !important;
@@ -1651,6 +1663,8 @@
           </div>
           <button id="menuProfilesBtn" class="submenu-btn">Profiles / Config</button>
           <button id="menuOptionListBtn" class="submenu-btn">Option List</button>
+          <button id="menuDocumentBtn" class="submenu-btn">Document</button>
+          <button id="menuBatchSendEmailBtn" class="submenu-btn">Batch Send Email</button>
         </div>
       </div>
       <div style="flex:1;"></div>
@@ -3825,6 +3839,47 @@
         </div>
       </div>
 
+      <!-- Document Panel (Proforma Invoice / Purchase Order / Packing List / Commercial Invoice) -->
+      <div id="documentPanel" style="margin:0; padding:12px; display:none; width:100%;">
+      <div id="docToolbar" style="display:flex; gap:6px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
+        <button type="button" id="docTabPI" class="doc-tab">Proforma Invoice</button>
+        <button type="button" id="docTabPO" class="doc-tab">Purchase Order</button>
+        <button type="button" id="docTabPL" class="doc-tab">Packing List</button>
+        <button type="button" id="docTabCI" class="doc-tab">Commercial Invoice</button>
+        <span style="flex:1 1 auto;"></span>
+        <button type="button" id="docResetBtn">Dummy input</button>
+        <button type="button" id="docDownloadBtn">Download PDF</button>
+      </div>
+      <div style="display:flex; gap:12px; align-items:flex-start;">
+        <div id="docFormContainer" style="flex:1 1 50%; min-width:300px;"></div>
+        <div id="docPreviewContainer" style="flex:1 1 50%; min-width:300px; background:#fafafa; border:1px solid #ddd; padding:8px;"></div>
+      </div>
+      </div>
+
+      <!-- Batch Send Email address book (Setting panel) -->
+      <div id="batchSendEmailPanel" style="margin:0; display:none; width:100%;">
+        <div style="padding:15px;">
+          <h2 style="margin:0 0 5px 0; font-size:18px;">Batch Send Email — Address Book</h2>
+          <p style="font-size:12px; color:#666; margin:0 0 15px 0;">
+            Manage the default recipient list for Batch Send in the Quotation and Outsourcing views.
+            When you Batch Send, every address here is pre-filled into the recipient box — you can still add or remove before sending.
+          </p>
+          <div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; margin-bottom:15px;">
+            <div>
+              <label style="font-size:12px; display:block; margin-bottom:3px;">Name (optional)</label>
+              <input type="text" id="batchSendEmailNameInput" placeholder="e.g. Sales Team" style="width:220px;">
+            </div>
+            <div>
+              <label style="font-size:12px; display:block; margin-bottom:3px;">Email</label>
+              <input type="email" id="batchSendEmailInput" placeholder="name@example.com" style="width:280px;">
+            </div>
+            <button id="batchSendEmailAddBtn" class="btn primary" type="button">Add</button>
+            <button id="batchSendEmailCancelBtn" class="btn" type="button" style="display:none;">Cancel</button>
+          </div>
+          <div id="batchSendEmailList" style="border:1px solid #ddd; background:#fff;"></div>
+        </div>
+      </div>
+
       <!-- Email UI (next step; hidden for now) -->
       <div id="emails" style="margin:0; display:none; width:100%;">
         <div class="topbar">
@@ -4926,6 +4981,8 @@
         'email-send':       { btns: ['emailSendBtn', 'menuEmail'],                               open: ['emailSubmenu'] },
         'profiles':         { btns: ['menuProfilesBtn', 'menuSettings'],                         open: ['settingSubmenu'] },
         'option-list':      { btns: ['menuOptionListBtn', 'menuSettings'],                        open: ['settingSubmenu'] },
+        'batch-send-email': { btns: ['menuBatchSendEmailBtn', 'menuSettings'],                    open: ['settingSubmenu'] },
+        'document':         { btns: ['menuDocumentBtn', 'menuSettings'],                           open: ['settingSubmenu'] },
         'brand-create':     { btns: ['brandCreateBtn', 'menuBrand'],                             open: ['brandSubmenu'] },
         'brand-view':       { btns: ['brandViewBtn', 'menuBrand'],                               open: ['brandSubmenu'] },
         'customer':         { btns: ['customerCreateBtn', 'menuCustomer'],                       open: ['customerSubmenu'] },
@@ -4978,6 +5035,8 @@
       document.getElementById('quotationTierPanel').style.display = id === 'profiles' ? 'block' : 'none';
       document.getElementById('currencyPanel').style.display = id === 'profiles' ? 'block' : 'none';
       document.getElementById('optionListPanel').style.display = id === 'option-list' ? 'block' : 'none';
+      document.getElementById('batchSendEmailPanel').style.display = id === 'batch-send-email' ? 'block' : 'none';
+      document.getElementById('documentPanel').style.display = id === 'document' ? 'block' : 'none';
       document.getElementById('emails').style.display = id === 'emails' ? 'block' : 'none';
       document.getElementById('email-send').style.display = id === 'email-send' ? 'block' : 'none';
       document.getElementById('customerPanel').style.display = id === 'customer' ? 'block' : 'none';
@@ -8949,6 +9008,161 @@
       };
     }
 
+    // Menu click: show Batch Send Email (address book) — inside Setting group
+    const menuBatchSendEmailBtn = document.getElementById('menuBatchSendEmailBtn');
+    if (menuBatchSendEmailBtn) {
+      menuBatchSendEmailBtn.onclick = () => {
+        document.getElementById('settingSubmenu').style.display = 'none';
+        ensureTab('batch-send-email', 'Setting (Batch Send Email)');
+        activateTab('batch-send-email');
+        initBatchSendEmailPanel();
+      };
+    }
+
+    // Menu click: show Document (generator) — inside Setting group
+    const menuDocumentBtn = document.getElementById('menuDocumentBtn');
+    if (menuDocumentBtn) {
+      menuDocumentBtn.onclick = () => {
+        document.getElementById('settingSubmenu').style.display = 'none';
+        ensureTab('document', 'Setting (Document)');
+        activateTab('document');
+        if (typeof window.initializeDocumentPanel === 'function') window.initializeDocumentPanel();
+      };
+    }
+
+    // --- Batch Send Email address book (Setting panel CRUD) ---
+    // The shared recipient list managed under Setting → Batch Send Email. The Batch
+    // Send modal searches this list live via GET /api/email-address-book?q=… rather
+    // than pre-filling recipients.
+
+    async function loadBatchSendEmailEntries() {
+      const listEl = document.getElementById('batchSendEmailList');
+      if (!listEl) return;
+      let entries = [];
+      try {
+        const r = await fetch('/api/email-address-book');
+        const d = await r.json();
+        if (d && d.success) entries = d.entries || [];
+      } catch (e) {
+        console.warn('Failed to load email address book:', e);
+      }
+      if (entries.length === 0) {
+        listEl.innerHTML = '<div style="padding:12px; color:#999; font-size:13px;">No recipients yet. Add one above.</div>';
+        return;
+      }
+      listEl.innerHTML = `<table style="width:100%; border-collapse:collapse;">
+        <thead><tr>
+          <th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">Name</th>
+          <th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">Email</th>
+          <th style="width:160px; padding:8px; border-bottom:1px solid #ddd;"></th>
+        </tr></thead>
+        <tbody>
+          ${entries.map((e) => `<tr data-id="${e.id}">
+            <td class="bsab-name" style="padding:8px; border-bottom:1px solid #eee;">${escapeHtml(e.name || '')}</td>
+            <td class="bsab-email" style="padding:8px; border-bottom:1px solid #eee;">${escapeHtml(e.email)}</td>
+            <td style="padding:8px; border-bottom:1px solid #eee; text-align:right;">
+              <button class="btn" type="button" data-act="edit">Edit</button>
+              <button class="btn" type="button" data-act="delete">Delete</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+    }
+
+    function initBatchSendEmailPanel() {
+      const addBtn = document.getElementById('batchSendEmailAddBtn');
+      const cancelBtn = document.getElementById('batchSendEmailCancelBtn');
+      const nameInput = document.getElementById('batchSendEmailNameInput');
+      const emailInput = document.getElementById('batchSendEmailInput');
+      const listEl = document.getElementById('batchSendEmailList');
+      if (!addBtn || !listEl) return;
+
+      let editingId = null;
+
+      function resetForm() {
+        editingId = null;
+        nameInput.value = '';
+        emailInput.value = '';
+        addBtn.textContent = 'Add';
+        cancelBtn.style.display = 'none';
+      }
+
+      async function saveEntry() {
+        const email = emailInput.value.trim();
+        const name = nameInput.value.trim();
+        if (!email) { emailInput.focus(); return; }
+        const isEdit = editingId != null;
+        const url = isEdit ? '/api/email-address-book/' + encodeURIComponent(editingId) : '/api/email-address-book';
+        const method = isEdit ? 'PUT' : 'POST';
+        try {
+          const r = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email }),
+          });
+          const d = await r.json();
+          if (!r.ok || !d.success) {
+            await showModal({ title: 'Error', body: escapeHtml(d.error || 'Failed to save recipient.'), okText: 'OK' });
+            return;
+          }
+          resetForm();
+          await loadBatchSendEmailEntries();
+          nameInput.focus();
+        } catch (e) {
+          await showModal({ title: 'Error', body: 'Failed to save recipient.', okText: 'OK' });
+        }
+      }
+
+      // Wire once — init runs on every tab open but the DOM/controls persist.
+      if (!addBtn.dataset.wired) {
+        addBtn.dataset.wired = '1';
+        addBtn.onclick = saveEntry;
+        cancelBtn.onclick = resetForm;
+        const onEnter = (e) => { if (e.key === 'Enter') { e.preventDefault(); saveEntry(); } };
+        emailInput.addEventListener('keydown', onEnter);
+        nameInput.addEventListener('keydown', onEnter);
+
+        listEl.addEventListener('click', async (e) => {
+          const btn = e.target.closest('button[data-act]');
+          if (!btn) return;
+          const tr = btn.closest('tr[data-id]');
+          if (!tr) return;
+          const id = tr.dataset.id;
+          if (btn.dataset.act === 'delete') {
+            const confirmed = await showModal({
+              title: 'Confirm',
+              body: 'Remove this recipient from the address book?',
+              okText: 'Delete',
+              cancelText: 'Cancel',
+            });
+            if (!confirmed) return;
+            try {
+              const r = await fetch('/api/email-address-book/' + encodeURIComponent(id), { method: 'DELETE' });
+              if (!r.ok) {
+                const d = await r.json().catch(() => ({}));
+                await showModal({ title: 'Error', body: escapeHtml(d.error || 'Failed to delete.'), okText: 'OK' });
+                return;
+              }
+              if (editingId === id) resetForm();
+              await loadBatchSendEmailEntries();
+            } catch (err) {
+              await showModal({ title: 'Error', body: 'Failed to delete recipient.', okText: 'OK' });
+            }
+          } else if (btn.dataset.act === 'edit') {
+            editingId = id;
+            nameInput.value = tr.querySelector('.bsab-name').textContent;
+            emailInput.value = tr.querySelector('.bsab-email').textContent;
+            addBtn.textContent = 'Update';
+            cancelBtn.style.display = '';
+            nameInput.focus();
+          }
+        });
+      }
+
+      resetForm();
+      loadBatchSendEmailEntries();
+    }
+
     // Expand / Collapse cycle: L1 only -> L1+L2 -> collapse all -> L1 ...
     const menuExpandToggle = document.getElementById('menuExpandToggle');
     const ICON_L1 = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
@@ -10109,7 +10323,7 @@
     // Multi-recipient input modal — supports adding/removing email rows via a + button.
     // Validates each address inline (keeps the modal open on error). Resolves with
     // { ok, value } where value is an array of validated email strings.
-    function showMultiEmailInputModal({ title = 'Input', label = '', okText = 'OK', cancelText = 'Cancel' }) {
+    function showMultiEmailInputModal({ title = 'Input', label = '', okText = 'OK', cancelText = 'Cancel', initialEmails = [], enableAddressBookSearch = false }) {
       return new Promise((resolve) => {
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
@@ -10211,10 +10425,101 @@
           newRow.querySelector('input').focus();
         };
 
-        rowsContainer.appendChild(createRow(''));
+        // Seed from the caller (e.g. the address book prefill). De-duped + trimmed;
+        // falls back to a single blank row when nothing usable is passed.
+        const seedEmails = [...new Set(
+          (Array.isArray(initialEmails) ? initialEmails : [])
+            .map((e) => (typeof e === 'string' ? e.trim() : ''))
+            .filter((e) => e.length > 0)
+        )];
+        if (seedEmails.length > 0) {
+          seedEmails.forEach((e) => rowsContainer.appendChild(createRow(e)));
+        } else {
+          rowsContainer.appendChild(createRow(''));
+        }
         refreshRemoveState();
 
+        // Optional address-book "search-to-add" box. Server-side substring search
+        // via GET /api/email-address-book?q=...; clicking a result adds it as a
+        // recipient row (skipping any already present). Manual typing still works.
+        let onSearchOutside = null;
+        let searchBox = null;
+        if (enableAddressBookSearch) {
+          searchBox = document.createElement('div');
+          searchBox.style.cssText = 'position:relative; margin-bottom:10px;';
+
+          const searchInput = document.createElement('input');
+          searchInput.type = 'text';
+          searchInput.placeholder = '🔍 Search address book to add a recipient…';
+          searchInput.style.cssText = 'width:100%; box-sizing:border-box;';
+
+          const dropdown = document.createElement('div');
+          dropdown.style.cssText = 'display:none; position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; background:#fff; border:1px solid #ccc; border-top:none; z-index:10; box-shadow:0 4px 8px rgba(0,0,0,0.12);';
+
+          searchBox.appendChild(searchInput);
+          searchBox.appendChild(dropdown);
+
+          let debounceT = null;
+          let lastReq = 0;
+          searchInput.addEventListener('input', () => {
+            const term = searchInput.value.trim();
+            clearTimeout(debounceT);
+            if (!term) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
+            debounceT = setTimeout(async () => {
+              const reqId = ++lastReq;
+              let entries = [];
+              try {
+                const r = await fetch('/api/email-address-book?q=' + encodeURIComponent(term));
+                const d = await r.json();
+                if (d && d.success && Array.isArray(d.entries)) entries = d.entries;
+              } catch (e) { /* network failure: show nothing */ }
+              if (reqId !== lastReq) return; // superseded by a newer keystroke
+              const present = new Set(collectEmails().map(s => s.toLowerCase()));
+              const avail = entries.filter(e => !present.has(String(e.email).toLowerCase()));
+              if (avail.length === 0) {
+                dropdown.innerHTML = '<div style="padding:8px; color:#999; font-size:12px;">No matching recipients</div>';
+              } else {
+                dropdown.innerHTML = avail.map(e =>
+                  '<div class="autocomplete-item" data-email="' + escapeHtml(e.email) + '" style="padding:8px; cursor:pointer; border-bottom:1px solid #eee;">' +
+                    '<div style="font-weight:600;">' + escapeHtml(e.name || e.email) + '</div>' +
+                    '<div style="font-size:12px; color:#666;">' + escapeHtml(e.email) + '</div>' +
+                  '</div>'
+                ).join('');
+              }
+              dropdown.style.display = 'block';
+            }, 200);
+          });
+
+          dropdown.addEventListener('click', (ev) => {
+            const item = ev.target.closest('.autocomplete-item');
+            if (!item) return;
+            const email = item.getAttribute('data-email');
+            if (!email) return;
+            if (!collectEmails().map(s => s.toLowerCase()).includes(email.toLowerCase())) {
+              rowsContainer.appendChild(createRow(email));
+              refreshRemoveState();
+            }
+            searchInput.value = '';
+            dropdown.style.display = 'none';
+            searchInput.focus();
+          });
+
+          searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && dropdown.style.display === 'block') { dropdown.style.display = 'none'; e.stopPropagation(); return; }
+            if (e.key === 'Enter') {
+              const first = dropdown.querySelector('.autocomplete-item');
+              if (first) { e.preventDefault(); first.click(); }
+            }
+          });
+
+          onSearchOutside = (ev) => {
+            if (!searchBox.contains(ev.target)) dropdown.style.display = 'none';
+          };
+          document.addEventListener('click', onSearchOutside);
+        }
+
         content.appendChild(labelEl);
+        if (searchBox) content.appendChild(searchBox);
         content.appendChild(rowsContainer);
         content.appendChild(addBtn);
         content.appendChild(errorEl);
@@ -10236,6 +10541,7 @@
 
         const close = (result) => {
           document.removeEventListener('keydown', onKey);
+          if (onSearchOutside) document.removeEventListener('click', onSearchOutside);
           try { document.body.removeChild(overlay); } catch {}
           resolve(result);
         };
@@ -10272,6 +10578,10 @@
         document.addEventListener('keydown', onKey);
 
         setTimeout(() => {
+          // Focus the address-book search box first when present (it's the primary
+          // action); otherwise focus the first recipient row.
+          const searchInput = searchBox ? searchBox.querySelector('input') : null;
+          if (searchInput) { searchInput.focus(); return; }
           const first = rowsContainer.querySelector('input');
           if (first) { first.focus(); first.select(); }
         }, 0);
@@ -11763,6 +12073,9 @@
               <input type="tel" class="member-tel" placeholder="Phone Number">
             </div>
           </div>
+          <div class="row" style="margin-bottom:10px;">
+            <label class="dtype-opt"><input type="radio" name="primaryMember" value="${memberIndex === 0 ? 'first' : ''}" ${memberIndex === 0 ? 'checked' : ''}> Primary</label>
+          </div>
           <div class="row">
             <button class="page-btn save-member-btn" data-index="${memberIndex}">Save Member</button>
             <button class="page-btn delete-member-btn" data-index="${memberIndex}" style="margin-left:10px;">Delete</button>
@@ -11811,6 +12124,12 @@
         title,
         tel
       };
+
+      // Determine primary contact: this row is primary iff its radio is the
+      // currently-checked one within the shared `primaryMember` radio group.
+      const primaryRadio = memberDiv.querySelector('input[name="primaryMember"]');
+      const isPrimary = primaryRadio && primaryRadio.checked;
+      membersData.forEach((m, i) => { if (m) m.isPrimary = (i === index ? isPrimary : false); });
 
       // Update current customer with members
       if (currentCustomerData) {
@@ -12057,6 +12376,10 @@
         if (window.customerAutocomplete) {
           window.customerAutocomplete.refreshCustomers();
         }
+
+        // Re-fetch every dependent list so on-screen tables reflect the edit
+        // (snapshot fields are rewritten server-side by the master-data sync).
+        try { await refreshMasterDependentLists(); } catch (e) { console.warn('master refresh failed', e); }
 
         console.log('Customer saved:', result.customer);
         return result.customer;
@@ -14452,12 +14775,15 @@
       // 2. Collect quotation IDs (preserve selection order)
       const quotationIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.dataset.quotationId, 10));
 
-      // 3. Prompt for recipient email address(es) — multiple supported via the + button
+      // 3. Prompt for recipient email address(es). The modal opens EMPTY — the user
+      //    fuzzy-searches the shared address book (Setting → Batch Send Email) and
+      //    clicks matches to add them, or types a one-off email. No pre-fill.
       const emailResult = await showMultiEmailInputModal({
         title: 'Batch Send Email',
-        label: 'Enter recipient email address(es):',
+        label: 'Recipients — search the address book, or type an email:',
         okText: 'Send',
-        cancelText: 'Cancel'
+        cancelText: 'Cancel',
+        enableAddressBookSearch: true,
       });
 
       if (!emailResult.ok || !emailResult.value || emailResult.value.length === 0) {
@@ -14621,11 +14947,12 @@
       const osRef = quotation.outsourcingSeq || quotation.quotationSeq || '';
 
       // 5. Generate HTML email body (reuse existing template, no threading).
-      //    At the Confirm Price stage show ONLY the selected supplier's tiers with
-      //    markup applied (customer-facing price); otherwise the full supplier
-      //    comparison section. Falls back to the comparison when no selection/tiers.
+      //    Once past Compare Quotation (markup added) show ONLY the selected
+      //    supplier's tiers with markup applied (customer-facing price); otherwise
+      //    the full supplier comparison section. Falls back to the comparison when
+      //    no selection/tiers.
       let tierSectionHtml = '';
-      if (isConfirmPriceStatus(quotation.status)) {
+      if (isPostCompareStatus(quotation.status)) {
         tierSectionHtml = generateCustomerMarkupTiersHtml(tierCtx);
       }
       if (!tierSectionHtml) {
@@ -14969,10 +15296,10 @@
             (mode.selectedSupplierId != null && Number(r.supplierId) === mode.selectedSupplierId);
           const ccy = resolveCurrencyCode(quotation.currency);
 
-          // Confirm Price stage: customer-facing marked-up tiers ONLY (selected
+          // Past Compare Quotation: customer-facing marked-up tiers ONLY (selected
           // supplier), mirroring the email. Falls through to the comparison below
           // when there is no selected supplier / no tiers.
-          const customerTiers = isConfirmPriceStatus(quotation.status)
+          const customerTiers = isPostCompareStatus(quotation.status)
             ? resolveCustomerMarkupTiers({ ...tierCtx })
             : null;
           if (customerTiers && customerTiers.length > 0) {
@@ -14987,12 +15314,23 @@
               margin: { left: margin, right: margin },
             });
             y = (doc.lastAutoTable ? doc.lastAutoTable.finalY : y) + 2.5;
-            // Sample charge (selected supplier) is customer-facing, unlike MOQ/surcharge.
+            // Selected-supplier commercial terms (Delivery Days / MOQ / Surcharge
+            // below MOQ / Sample Charge / Notes), shown customer-facing under the
+            // marked-up pricing table. Only rows with a value are drawn, in column order.
             const sampleCharge = resolveSelectedSampleCharge({ ...tierCtx });
-            if (sampleCharge != null) {
+            const terms = resolveSelectedSupplierTerms({ ...tierCtx });
+            const termBody = [];
+            if (terms) {
+              if (terms.deliveryDays != null) termBody.push(['Delivery Days', String(terms.deliveryDays)]);
+              if (terms.moq != null) termBody.push(['MOQ (pcs)', Number(terms.moq).toLocaleString()]);
+              if (terms.surchargeBelowMoq != null) termBody.push(['Surcharge below MOQ (' + ccy + ')', terms.surchargeBelowMoq.toFixed(2)]);
+            }
+            if (sampleCharge != null) termBody.push(['Sample Charge (' + ccy + ')', sampleCharge.toFixed(2)]);
+            if (terms && terms.notes) termBody.push(['Notes', String(terms.notes)]);
+            if (termBody.length) {
               doc.autoTable({
                 startY: y, theme: 'grid',
-                body: [['Sample Charge', sampleCharge.toFixed(2) + ' ' + ccy]],
+                body: termBody,
                 styles: { fontSize: 7.5, cellPadding: 1.3, textColor: [51, 51, 51], overflow: 'linebreak' },
                 columnStyles: { 1: { halign: 'right' } },
                 margin: { left: margin, right: margin },
@@ -21772,6 +22110,226 @@
     let optionListState = { productType: null, fieldKey: null, options: [] };
     window.optionListState = optionListState;
 
+      // ---------- Document generator (Setting > Document) ----------
+      window._docState = { type: 'PI', byType: {} }; // byType caches per-type form data
+
+      function docInput(id, label, value, opts) {
+        opts = opts || {};
+        const v = value == null ? '' : String(value);
+        const style = 'width:100%;padding:4px;font-size:12px;border:1px solid #ccc;box-sizing:border-box;';
+        const el = opts.area
+          ? `<textarea id="${id}" style="${style}min-height:46px;">${v.replace(/</g, '&lt;')}</textarea>`
+          : `<input type="text" id="${id}" value="${v.replace(/"/g, '&quot;')}" style="${style}">`;
+        return `<div style="margin-bottom:6px;"><label style="display:block;font-size:11px;color:#666;">${label}</label>${el}</div>`;
+      }
+
+      function brandOptions(selectedName) {
+        const brands = (window.cachedBrands && Array.isArray(window.cachedBrands)) ? window.cachedBrands : [];
+        const opts = brands.map((b) => `<option value="${(b.id != null ? b.id : '').toString().replace(/"/g, '&quot;')}"${(b.name === selectedName) ? ' selected' : ''}>${(b.name || '').replace(/</g, '&lt;')}</option>`).join('');
+        return `<option value="">(use fallback seller)</option>${opts}`;
+      }
+
+      function renderDocForm(type) {
+        const cfg = window.getDocumentType(type);
+        const data = window._docState.byType[type] || window.getDummyDocData(type);
+        // Pre-fill seller from first cached brand if user hasn't chosen one yet
+        if (!data.seller._chosen && window.cachedBrands && window.cachedBrands[0]) {
+          const b = window.cachedBrands[0];
+          data.seller = { _chosen: false, name: b.name || data.seller.name, address: b.address || data.seller.address, phone: data.seller.phone, email: data.seller.email, logoUrl: b.logoPath || data.seller.logoUrl };
+        }
+        window._docState.byType[type] = data;
+
+        const seller = data.seller || {};
+        const buyer = data.buyer || {};
+        const meta = data.meta || {};
+        const items = Array.isArray(data.items) ? data.items : [];
+
+        const brandSel = `<div style="margin-bottom:6px;"><label style="display:block;font-size:11px;color:#666;">Seller (brand)</label>
+          <select id="docBrandSel" style="width:100%;padding:4px;font-size:12px;border:1px solid #ccc;box-sizing:border-box;">${brandOptions(seller.name)}</select></div>`;
+
+        const sellerHtml = brandSel
+          + docInput('docSellerName', 'Seller name', seller.name)
+          + docInput('docSellerAddr', 'Seller address', seller.address, { area: true })
+          + docInput('docSellerPhone', 'Seller phone', seller.phone)
+          + docInput('docSellerEmail', 'Seller email', seller.email);
+
+        const buyerHtml =
+            docInput('docBuyerName', cfg.buyerLabel + ' name', buyer.name)
+          + docInput('docBuyerAddr', cfg.buyerLabel + ' address', buyer.address, { area: true })
+          + docInput('docBuyerPhone', 'Phone', buyer.phone)
+          + docInput('docBuyerEmail', 'Email', buyer.email);
+
+        const metaHtml = cfg.metaFields.map((f) => docInput('docMeta_' + f.key, f.label, meta[f.key])).join('')
+          + (cfg.showPrices ? docInput('docMeta_taxRate', 'Tax % (e.g. 0.1 = 10%)', meta.taxRate) : '');
+
+        // items table
+        const cols = cfg.itemColumns;
+        const editableCols = cols.filter((c) => c !== 'no' && c !== 'amount'); // no/amount are derived
+        const head = cols.map((c) => `<th style="border:1px solid #ccc;padding:4px 6px;font-size:11px;text-align:left;">${(window.COLUMN_LABELS[c] || c)}</th>`).join('')
+          + '<th style="border:1px solid #ccc;"></th>';
+        const rowsHtml = items.map((it, idx) => {
+          const tds = cols.map((c) => {
+            if (c === 'no') return `<td style="border:1px solid #ddd;padding:4px 6px;font-size:11px;text-align:center;">${idx + 1}</td>`;
+            if (c === 'amount') {
+              const amt = (Number(it.qty) || 0) * (Number(it.unitPrice) || 0);
+              return `<td style="border:1px solid #ddd;padding:4px 6px;font-size:11px;text-align:right;background:#fafafa;">${(Number(amt) || 0).toFixed(2)}</td>`;
+            }
+            const align = ['qty', 'unitPrice', 'netWeight', 'grossWeight', 'cartons'].includes(c) ? 'right' : 'left';
+            return `<td style="border:1px solid #ddd;padding:0;"><input data-row="${idx}" data-col="${c}" value="${String(it[c] == null ? '' : it[c]).replace(/"/g, '&quot;')}" style="width:100%;padding:4px 6px;font-size:11px;border:none;box-sizing:border-box;text-align:${align};"></td>`;
+          }).join('');
+          return `<tr>${tds}<td style="border:1px solid #ddd;padding:4px;text-align:center;"><button type="button" onclick="window.removeDocRow(${idx})" style="font-size:11px;">✕</button></td></tr>`;
+        }).join('');
+
+        const itemsHtml = `
+          <div style="margin-top:8px;"><div style="font-weight:700;font-size:12px;margin-bottom:4px;">Items</div>
+          <table style="width:100%;border-collapse:collapse;"><thead><tr>${head}</tr></thead><tbody id="docItemsBody">${rowsHtml}</tbody></table>
+          <button type="button" id="docAddRowBtn" style="margin-top:4px;font-size:12px;">+ Add row</button></div>`;
+
+        const notesHtml = docInput('docNotes', 'Notes', data.notes, { area: true });
+
+        document.getElementById('docFormContainer').innerHTML =
+          `<div style="font-weight:700;font-size:13px;margin-bottom:6px;">${cfg.title}</div>`
+          + `<fieldset style="border:1px solid #ddd;padding:8px;margin-bottom:8px;"><legend style="font-size:11px;color:#666;">${cfg.sellerLabel}</legend>${sellerHtml}</fieldset>`
+          + `<fieldset style="border:1px solid #ddd;padding:8px;margin-bottom:8px;"><legend style="font-size:11px;color:#666;">${cfg.buyerLabel}</legend>${buyerHtml}</fieldset>`
+          + `<fieldset style="border:1px solid #ddd;padding:8px;margin-bottom:8px;"><legend style="font-size:11px;color:#666;">Details</legend>${metaHtml}</fieldset>`
+          + itemsHtml + notesHtml;
+
+        // tab highlight
+        ['PI', 'PO', 'PL', 'CI'].forEach((t) => {
+          const el = document.getElementById('docTab' + t);
+          if (el) el.classList.toggle('active', t === type);
+        });
+
+        wireDocFormEvents(type);
+      }
+
+      function wireDocFormEvents(type) {
+        const readField = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
+        const data = window._docState.byType[type];
+
+        const onBrandChange = () => {
+          const sel = document.getElementById('docBrandSel');
+          const chosen = sel && sel.value !== '' ? window.cachedBrands.find((b) => String(b.id) === String(sel.value)) : null;
+          if (chosen) {
+            data.seller = { _chosen: true, name: chosen.name || '', address: chosen.address || '', phone: data.seller.phone, email: data.seller.email, logoUrl: chosen.logoPath || '' };
+            renderDocForm(type); collectDocForm(type); updateDocPreview();
+          }
+        };
+        const brandSel = document.getElementById('docBrandSel');
+        if (brandSel) brandSel.onchange = () => { onBrandChange(); };
+
+        const syncSimple = () => {
+          data.seller.name = readField('docSellerName');
+          data.seller.address = readField('docSellerAddr');
+          data.seller.phone = readField('docSellerPhone');
+          data.seller.email = readField('docSellerEmail');
+          data.buyer.name = readField('docBuyerName');
+          data.buyer.address = readField('docBuyerAddr');
+          data.buyer.phone = readField('docBuyerPhone');
+          data.buyer.email = readField('docBuyerEmail');
+          const cfg = window.getDocumentType(type);
+          cfg.metaFields.forEach((f) => { data.meta[f.key] = readField('docMeta_' + f.key); });
+          const taxEl = document.getElementById('docMeta_taxRate');
+          if (taxEl) data.meta.taxRate = Number(taxEl.value) || 0;
+          data.notes = readField('docNotes');
+        };
+
+        document.querySelectorAll('#docItemsBody input').forEach((inp) => {
+          inp.oninput = () => {
+            const r = Number(inp.dataset.row); const c = inp.dataset.col;
+            const v = ['qty', 'unitPrice', 'netWeight', 'grossWeight', 'cartons'].includes(c) ? (Number(inp.value) || 0) : inp.value;
+            data.items[r][c] = v;
+            // amount is derived; preview recomputes it from qty*unitPrice.
+            updateDocPreview();
+          };
+        });
+
+        const handler = () => { syncSimple(); updateDocPreview(); };
+        document.getElementById('docFormContainer').querySelectorAll('input,textarea,select').forEach((el) => {
+          if (el.id === 'docBrandSel') return;
+          el.removeEventListener('input', handler); el.addEventListener('input', handler);
+          el.removeEventListener('change', handler); el.addEventListener('change', handler);
+        });
+
+        const addBtn = document.getElementById('docAddRowBtn');
+        if (addBtn) addBtn.onclick = () => {
+          const cfg = window.getDocumentType(type);
+          const blank = { no: data.items.length + 1 };
+          cfg.itemColumns.forEach((c) => { if (!(c in blank) && c !== 'no' && c !== 'amount') blank[c] = ''; });
+          data.items.push(blank);
+          renderDocForm(type); updateDocPreview();
+        };
+      }
+
+      window.removeDocRow = function (idx) {
+        const type = window._docState.type;
+        const data = window._docState.byType[type];
+        data.items.splice(idx, 1);
+        renderDocForm(type); updateDocPreview();
+      };
+
+      function collectDocForm(type) { return window._docState.byType[type]; }
+
+      function updateDocPreview() {
+        const type = window._docState.type;
+        const data = collectDocForm(type);
+        document.getElementById('docPreviewContainer').innerHTML = window.buildDocumentHtml(type, data);
+      }
+
+      window.selectDocType = function (type) {
+        window._docState.type = type;
+        if (!window._docState.byType[type]) window._docState.byType[type] = window.getDummyDocData(type);
+        renderDocForm(type);
+        updateDocPreview();
+      };
+
+      window.initializeDocumentPanel = function () {
+        // wire toolbar tabs/buttons once
+        ['PI', 'PO', 'PL', 'CI'].forEach((t) => {
+          const el = document.getElementById('docTab' + t);
+          if (el) el.onclick = () => window.selectDocType(t);
+        });
+        const dl = document.getElementById('docDownloadBtn');
+        if (dl) dl.onclick = window.downloadDocPdf;
+        const rs = document.getElementById('docResetBtn');
+        if (rs) rs.onclick = window.dummyInput;
+        window.selectDocType(window._docState.type || 'PI');
+      };
+
+      window.dummyInput = function () {
+        const type = window._docState.type;
+        const prev = window._docState.byType[type];
+        const currentSeller = prev && prev.seller ? prev.seller : null; // preserve the selected brand/seller
+        const data = window.getRandomDummyData(type); // randomizes buyer + items + all numbers/terms
+        if (currentSeller) data.seller = currentSeller;
+        window._docState.byType[type] = data;
+        renderDocForm(type); updateDocPreview();
+      };
+
+      window.downloadDocPdf = async function () {
+        const type = window._docState.type;
+        const data = collectDocForm(type);
+        try {
+          const res = await fetch('/api/documents/pdf', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type, data }),
+          });
+          if (!res.ok) { alert('Failed to generate PDF (HTTP ' + res.status + ')'); return; }
+          const blob = await res.blob();
+          const cd = res.headers.get('content-disposition') || '';
+          const m = cd.match(/filename="([^"]+)"/);
+          const fname = m ? m[1] : ((data.meta && data.meta.docNumber) || type) + '.pdf';
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = fname; document.body.appendChild(a); a.click(); a.remove();
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          console.error('downloadDocPdf error', e);
+          alert('Failed to generate PDF: ' + e.message);
+        }
+      };
+
     function initializeOptionListPanel() {
       const types = Object.keys(PRODUCT_SPEC_FIELDS);
       if (!optionListState.productType || !PRODUCT_SPEC_FIELDS[optionListState.productType]) {
@@ -23437,6 +23995,17 @@
         console.error('Error saving quotation to database:', error);
         throw error;
       }
+    }
+
+    // Re-fetch every list that depends on customer/workshop master data, so all
+    // open view tables refresh on the same page after a master-record edit.
+    async function refreshMasterDependentLists() {
+      try { await loadQuotationsFromStorage(); } catch (e) { console.warn('quotation refresh failed', e); }
+      try { await loadOutsourcingQuotationsFromStorage(); } catch (e) { console.warn('outsourcing refresh failed', e); }
+      try {
+        const ordersRefresh = document.getElementById('refreshOrdersBtn');
+        if (ordersRefresh) ordersRefresh.click();
+      } catch (e) { console.warn('orders refresh failed', e); }
     }
 
     async function loadQuotationsFromStorage() {
@@ -26559,6 +27128,9 @@
         const result = await res.json();
         if (result.success) {
           initializeWorkshopPanel();
+          // Re-fetch every dependent list so on-screen tables reflect the edit
+          // (snapshot fields are rewritten server-side by the master-data sync).
+          try { await refreshMasterDependentLists(); } catch (e) { console.warn('master refresh failed', e); }
         } else {
         }
       } catch (err) {
